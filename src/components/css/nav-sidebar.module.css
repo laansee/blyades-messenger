@@ -1,0 +1,147 @@
+.nav-sidebar {
+  min-width: 70px;
+  width: 70px;
+  max-width: 70px;
+  background-color: var(--bg-nav-sidebar);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 0;
+  justify-content: space-between;}
+.nav-logo { 
+  font-size: 24px; 
+  margin-bottom: 20px; 
+  user-select: none;}
+.nav-menu { 
+  display: flex; 
+  flex-direction: column; 
+  gap: 20px; 
+  width: 100%; 
+  align-items: center; }
+.nav-item {
+  background: none; 
+  border: none; 
+  font-size: 20px; 
+  cursor: pointer;
+  padding: 6px; 
+  width: 50px; 
+  height: 50px; 
+  border-radius: 14px;
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  transition: background 0.2s;}
+.nav-item.active, .nav-item:hover { background-color: #232327; }
+a.nav-item {
+  text-decoration: none;
+  box-sizing: border-box;
+  user-select: none;
+  cursor: default;}
+.nav-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%; /* Делаем идеальный круг */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  margin-top: auto; /* Прижимает аватарку к самому низу меню */
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  user-select: none;
+  cursor: default;}
+
+.nav-avatar:hover {
+  transform: scale(1.08);
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.15);}
+.nav-avatar:active {transform: scale(0.95);}
+
+/* Контейнер-обертка */
+.avatar-container {
+  position: relative;
+  margin-top: auto; /* Прижимает всю конструкцию к низу сайдбара */
+  display: flex;
+  justify-content: center;}
+
+/* Всплывающее окошко профиля */
+.profile-popup {
+  position: absolute;
+  bottom: 50px; /* Приподнимаем над нижней аватаркой */
+  left: 10px;   /* Легкий отступ от края экрана */
+  background-color: #1e1e24; /* Такой же темный цвет, как у карточек чатов */
+  border: 1px solid #383842;  /* Тонкая рамка, чтобы окно выделялось */
+  padding: 16px;
+  border-radius: 12px;
+  width: 180px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  z-index: 100;
+  animation: popupSlideIn 0.2s ease-out; /* Плавное появление снизу вверх */}
+
+/* Анимация появления окошка */
+@keyframes popupSlideIn {
+  0% { transform: translateY(10px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }}
+
+/* Большой аватар внутри окошка */
+.profile-popup-avatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 20px;
+  margin-bottom: 10px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  user-select: none;}
+
+/* Стиль имени пользователя */
+.profile-popup-name {
+  color: #f9fafb;
+  font-weight: 600;
+  font-size: 15px;
+  margin-bottom: 12px;
+  text-align: center;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  user-select: none;}
+
+/* Разделительная линия */
+.profile-popup-divider {
+  width: 100%;
+  height: 1px;
+  background-color: #383842;
+  margin-bottom: 12px;}
+
+/* Кнопка "Выйти" */
+.profile-logout-btn {
+  width: 100%;
+  background: none;
+  border: none;
+  color: #ef4444; /* Красный неоновый цвет для предупреждения */
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: background-color 0.2s ease;
+  user-select: none;
+  cursor: default;}
+
+/* Эффект наведения на кнопку выхода */
+.profile-logout-btn:hover {
+  background-color: rgba(239, 68, 68, 0.1); /* Легкий красный фон */}

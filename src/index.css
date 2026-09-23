@@ -1,0 +1,106 @@
+@import "tailwindcss";
+
+:root {
+  /* --text: #6b6375;
+  --text-h: #08060d;
+  --bg: #fff;
+  --code-bg: #f4f3ec;
+  --accent: #aa3bff;
+  --accent-bg: rgba(170, 59, 255, 0.1);
+  --accent-border: rgba(170, 59, 255, 0.5);
+  --social-bg: rgba(244, 243, 236, 0.5);
+  --shadow:
+    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px; */
+
+  --bg-main:#17171c;
+  --bg-secondary: #111113;
+  --bg-nav-sidebar: #131315;
+
+  --modal-info-label: #9ca3af;
+  --modal-info-id: #007aff;
+  --modal-info-value: #dddddd;
+
+  --text-color: #eeeeee;
+  --text-secondary-color: #8f918f;
+  -- : ;
+  --text-online-color: #00cc66;
+  --text-offline-color: #7a7a85;
+
+  --message-incoming-bg-color : #232327;
+  --message-outgoing-bg-color : linear-gradient(135deg, #75031b 0%, #550214 100%);
+  --message-text-color: #dfdfde;
+  --message-text-secondary-color: #9d9d9e;
+
+  --border: #232327;
+  /* --border: #1212ec; */
+
+  --apple : system-ui, -apple-system, sans-serif; ;
+  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --mono: ui-monospace, Consolas, monospace;
+
+  /* font: 18px/145% var(--sans); */
+  font: 18px var(--sans);
+  letter-spacing: 0.18px;
+  /* color: var(--text); */
+  background: var(--bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3 {
+  font-family: var(--heading);
+  font-weight: 500;
+  color: var(--text-color);
+  line-height: 1.2 !important; 
+}
+
+h1 {
+  font-size: 56px;
+  letter-spacing: -1.68px;
+  margin: 32px 0;
+}
+
+@media (max-width: 1024px) {
+  h1 {
+    font-size: 36px;
+    margin: 20px 0;
+  }
+}
+
+h2 {
+  font-size: 24px;
+  line-height: 118%;
+  letter-spacing: -0.24px;
+  margin: 0 0 8px;
+}
+
+@media (max-width: 1024px) {
+  h2 {
+    font-size: 20px;
+  }
+}
+
+p {
+  margin: 0;
+}
+
+code, .counter {
+  font-family: var(--mono);
+  display: inline-flex;
+  border-radius: 4px;
+  color: var(--text-h);
+}
+
+code {
+  font-size: 15px;
+  line-height: 135%;
+  padding: 4px 8px;
+  background: var(--code-bg);
+}
+
+/* Фикс для элементов списков внутри сообщений, чтобы они тоже не раздувались */
+.message-text ul, .message-text li {
+  line-height: 1.25 !important;}

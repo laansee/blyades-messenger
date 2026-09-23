@@ -1,0 +1,704 @@
+/* телефон */
+@media (max-width: 480px) {}
+/* планшет */
+@media (min-width: 481px) and (max-width: 739px) {}
+/* всё до компа */
+@media (max-width: 739px) {
+  .chat-window {display: none}}
+/* комп */
+@media (min-width: 740px) {
+  .chat-window {display: flex; flex: 1; flex-direction: column; }}
+
+/* * {transition: all 200ms ease;} */
+.chat-window { 
+  background-color: var(--bg-secondary); 
+  position: relative; }
+.chat-header {
+  height: 70px; 
+  padding: 0 24px; 
+  border-bottom: 1px solid var(--border); 
+  user-select: none;
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  background-color: #131315;}
+.chat-header-user { display: flex; align-items: center; gap: 12px; }
+.chat-header-user h3 { margin: 0; font-size: 16px; font-weight: 600; }
+.chat-avatar {
+  width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; 
+  justify-content: center;  color: #ffffff; font-weight: 600; font-size: 16px; flex-shrink: 0; 
+  user-select: none;}
+.chat-header-user-name {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+  -webkit-box-orient: vertical;}
+
+.user-status.online {color: #00cc66; font-size: 12px;}
+.user-status.offline {color: #666666; font-size: 12px;}
+.chat-header-actions {display: flex; gap: 10px; }
+.header-btn {background: none; border: none; font-size: 18px; cursor: pointer; color: #a0a0ab; }
+
+.close-chat-btn {font-size: 22px; color: #9ca3af; cursor: pointer; transition: color 0.2s ease;}
+.close-chat-btn:hover {color: #ef4444; }
+
+.accountMenu-dropdown {
+  position: absolute; top: 38px; right: 80px; margin-top: 8px; width: 256px; 
+  background-color: var(--bg-secondary); border: 1px solid var(--bg-main); border-radius: 12px; 
+  box-shadow: 0 25px 20px -12px rgba(0, 0, 0, 0.6); padding: 4px 0; z-index: 50; 
+  animation: menuAppear 0.1s ease-out forwards;}
+@keyframes menuAppear {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.accountMenu-list {
+  display: flex; 
+  flex-direction: column; 
+  background: none; 
+  border: none;}
+.accountMenu-item {
+  display: flex; 
+  align-items: center; 
+  justify-content: space-between; 
+  padding: 10px 16px; 
+  font-size: 14px; 
+  text-align: left; 
+  background: transparent; 
+  border: none; 
+  color: #d9d9da; 
+  cursor: pointer; 
+  transition: background-color 0.15s; 
+  width: 100%;}
+.accountMenu-item:hover {background-color: #261f30;}
+.accountMenu-item-left-side {display: flex; align-items: center; gap: 12px;}
+.accountMenu-item-arrow-indicator {color: #6b7280; font-size: 10px;}
+.accountMenu-item.separator { border-bottom: 5px solid #2c233699; 
+  padding-bottom: 12px; margin-bottom: 4px;}
+.accountMenu-item.danger {
+  color: #ef4444;
+  transition: background-color 0.2s ease, color 0.2s ease;}
+.accountMenu-item.danger svg,
+.accountMenu-item.danger .item-icon {
+  color: #ff4d4d !important;
+  stroke: #ff4d4d !important;}
+.accountMenu-item.danger:hover {
+  background-color: #ef44441a;
+  color: #ff6666 !important;}
+.accountMenu-item.danger:hover svg {
+  stroke: #ff6666 !important;}
+
+.message-search-bar {
+  padding: 10px 16px; background-color: var(--bg-sidebar); border-bottom: 1px solid #383842; 
+  animation: slideDown 0.2s ease-out; }
+
+@keyframes slideDown {
+  0% { transform: translateY(-10px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+.message-search-input {
+  width: 100%; padding: 10px 14px; font-size: 14px; border-radius: 8px; 
+  border: 1px solid #383842; background-color: #121216; color: #ffffff; outline: none; 
+  box-sizing: border-box; transition: border-color 0.2s ease, box-shadow 0.2s ease;}
+
+.message-search-input:focus { border-color: #007aff; box-shadow: 0 0 8px rgba(0, 122, 255, 0.25);}
+
+.message-search-input::placeholder { color: #747480; opacity: 0.8;}
+
+.pinned-message-bar {
+  display: flex; align-items: center; justify-content: space-between; 
+  background-color: var(--bg-sidebar); padding: 8px 16px; 
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1); border-left: 3px solid #007aff;}
+.pinned-bar-content { display: flex; flex-direction: column; overflow: hidden;}
+.pinned-title { font-size: 12px; font-weight: 600; color: #007aff;}
+.pinned-text {
+  font-size: 13px; color: var(--text-color); white-space: nowrap; overflow: hidden; 
+  text-overflow: ellipsis; margin: 2px 0 0 0;}
+.unpin-btn {background: none; border: none; font-size: 18px; color: #9ca3af; cursor: pointer;}
+.unpin-btn:hover {color: #ef4444;}
+
+@keyframes flashBackground {
+  0% { background-color: rgba(0, 122, 255, 0.4); } /* Синяя вспышка */
+  100% { background-color: transparent; }
+}
+
+.highlighted {
+  animation: flashBackground 1.5s ease-out;
+  border-radius: 8px;}
+
+/* 📅 СТИЛИ ДЛЯ ПЛАШЕК ГРУППИРОВКИ ПО ДАТАМ */
+.chat-date-divider {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 16px 0;
+  width: 100%;
+  user-select: none;
+}
+
+.chat-date-text {
+  background-color: rgba(31, 32, 40, 0.6); /* Полупрозрачный тёмный фон */
+  color: rgba(255, 255, 255, 0.85);       /* Мягкий белый цвет текста */
+  font-size: 13px;
+  font-weight: 500;
+  padding: 4px 14px;
+  border-radius: 12px;                      /* Закругление ТГ-стиля */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  backdrop-filter: blur(4px);               /* Эффект лёгкого размытия под плашкой */
+}
+
+
+.messages-body {flex: 1; padding: 24px 16px; overflow-y: auto; display: flex; 
+  flex-direction: column; gap: 10px; position: relative;}
+.messages-body::-webkit-scrollbar {/* Ширина всего элемента навигации */
+  width: 5px; }
+.messages-body::-webkit-scrollbar-track {/* Цвет дорожки */
+  background: #00000000;}
+.messages-body::-webkit-scrollbar-thumb {
+  background: #525252;
+  border-radius: 20px;
+  border: none;}
+.message {display: flex; width: 100%; }
+.message-incoming {justify-content: flex-start; }
+.message-outgoing {justify-content: flex-end; }
+.message-bubble {
+  max-width: 90%; 
+  padding: 6px 10px; 
+  border-radius: 18px; 
+  font-size: 15px; 
+  line-height: 1.4; 
+  position: relative; 
+  display: flex; 
+  gap: 8px;}
+.message-incoming .message-bubble {
+  background-color: var(--message-incoming-bg-color); 
+  border-bottom-left-radius: 4px; }
+.message-outgoing .message-bubble {
+  background: var(--message-outgoing-bg-color); 
+  border-bottom-right-radius: 4px; }
+.message-text {
+  color: var(--message-text-color);
+  font-size: 16px;
+  line-height: 1.3125;
+  word-break: break-word;
+  white-space: pre-wrap;
+  position: relative;
+  text-align: left;
+  width: 100%; 
+  display: inline;  /* 🎯 ВАЖНО для вложенного обтекания */}
+.message-text::after {
+  content: "";
+  display: inline-block;
+  width: 2px;
+  min-width: auto;
+  max-width: 2px; /* Ширина «островка» под время и галочку */
+  height: 1px;
+}
+.message-meta {
+  float: right;            /* 🎯 Сдвигает время вправо */
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+  margin-right: -4px;
+  margin-bottom: 6px;
+  bottom: -4px;
+  position: relative;
+  font-size: 11px;
+  line-height: 1;
+  user-select: none;
+  pointer-events: none;
+  white-space: nowrap; }
+.message-time {
+  font-size: 10px; 
+  color: var(--message-text-secondary-color); 
+  display: block; 
+  text-align: right; 
+  margin-top: 4px; }
+.message-status {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 1px;}
+.message-buttons {position: absolute; top: -8px; right: 6px;}
+.edit-msg-btn, .delete-msg-btn {
+  width: 20px; height: 20px; background: none; border: none; border-radius: 5px; color: #9ca3af; 
+  background-color: #7c7b7b62; font-size: 16px; cursor: pointer; padding: 0; line-height: 1; 
+  opacity: 0; transition: opacity 0.2s ease, color 0.2s ease;}
+.edit-msg-btn {position: absolute; right: 30px;}
+.delete-msg-btn {position: absolute; right: 6px;}
+.message-bubble:hover .edit-msg-btn {opacity: 1;}
+.message-bubble:hover .delete-msg-btn {opacity: 1;}
+.delete-msg-btn:hover {color: #ef4444;}
+
+.scroll-anchor-zone {
+  position: relative;
+  width: 100%;
+  height: 0; /* Нулевая высота, чтобы не раздвигать Flex-блоки и не делать дыр! */
+  z-index: 999;
+}
+
+.scroll-bottom-btn {
+  position: absolute;
+  bottom: 75px; 
+  right: 30px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: var(--accent, #46464683);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 999;
+  /* transition: transform 0.2s ease, opacity 0.2s ease; */
+  
+  /* Эффекты скрытия: */
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(10px) scale(0.8);
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease;
+}
+
+/* 🚀 Состояние, когда кнопка становится ВИДИМОЙ (плавно выползает и увеличивается) */
+.scroll-bottom-btn.visible {
+  opacity: 1;
+  pointer-events: auto;      /* Включаем кликабельность обратно */
+  transform: translateY(0) scale(1); /* Возвращается в свою точку и плавно выезжает вверх */
+}
+
+/* Эффект при наведении мышки на ПК */
+.scroll-bottom-btn:hover {
+  background-color: #2d2d37;
+  color: #9563f1;            /* Стрелочка слегка подсвечивается фиолетовым при наведении */
+  transition: all 200ms ease;
+}
+
+/* Эффект при клике / тапе пальцем на телефоне */
+.scroll-bottom-btn:active {
+    transform: scale(0.95);    /* Кнопка слегка пружинит внутрь при нажатии */
+}
+
+.block-editing {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  background-color: #007aff1a;
+  border-top: 1px solid #007aff;
+  color: #007aff;
+  font-size: 13px;}
+.block-editing span {
+  height: stretch;
+  display: flex;
+  align-items: center;}
+.block-editing div span {
+  font-weight: 700;}
+.block-editing p {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+  -webkit-box-orient: vertical;
+  text-overflow: ellipsis;
+  margin: 3px 0 2px;}
+.block-editing button {
+  background: none;
+  border-width: medium;
+  border-style: none;
+  border-color: currentcolor;
+  border-image: none;
+  color: rgb(239, 68, 68);
+  cursor: pointer;
+  margin-left: auto;
+  height: stretch;
+  display: flex;
+  align-items: center;}
+
+form.chat-input-zone {
+    padding: 0px 8px;
+  border: none;}
+.chat-input-zone {
+  /* padding: 20px 24px;  */
+  display: flex; 
+    align-items: flex-end;
+  gap: 6px;
+  /* background-color: #131315;  */
+  background-color: #1c1c1f; 
+  border-top: 1px solid #232327;}
+.main-message-input {
+  flex: 1 1;
+  padding: 10px 10px 4px;
+  margin: 4px 0 10px 0;
+  background-color: #1c1c1f;
+  /* background-color: #131315; */
+  border: none;
+  border-radius: 14px;
+  color: white;
+  outline: none;
+  font-size: 15px;
+  resize: none;
+  height: auto;
+  field-sizing: content;
+  max-height: 20vh;
+  font-family: system-ui, -apple-system, sans-serif;}
+.main-message-input::-webkit-scrollbar {
+  width: 0; 
+  /* margin-bottom: 50px; */
+}
+.input-action-btn { 
+  background: none; border: none; font-size: 20px; cursor: pointer; color: #a0a0ab; 
+  display: flex; margin: 10px 0; }
+.send-message-btn {
+  background: none; border: none; width: 44px; height: 44px; border-radius: 12px; 
+  cursor: pointer; display: flex; align-items: center; justify-content: center; 
+  font-size: 16px; transition: transform 0.1s; display: flex; margin-bottom: 1px;}
+.send-message-btn:active { transform: scale(0.95); }
+.emoji-picker-popup { 
+  position: absolute; bottom: 50px; left: 0; background: #2a2a34; padding: 8px; border-radius: 8px; 
+  display: flex; gap: 8px; z-index: 10; }
+.emoji-item { cursor: pointer; transition: transform 0.1s; }
+.emoji-item:hover { transform: scale(1.2); }
+
+.chat-placeholder {
+  display: flex; width: 100%; height: 100%; align-items: center; justify-content: center; 
+  background-color: #121216;}
+.placeholder-content {
+  text-align: center;
+  color: #9ca3af;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;}
+.placeholder-content p {
+  font-size: 16px;
+  font-weight: 500;
+  margin: 0 0 6px 0;
+  color: var(--text-color);}
+.placeholder-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+  opacity: 0.6;}
+
+/* Полноэкранный затемненный задний фон */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.6); /* Полупрозрачный черный цвет */
+  backdrop-filter: blur(6px); /* Эффект красивого размытия заднего плана */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999; /* Окно гарантированно поверх всего мессенджера */
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  
+  /* Запускаем анимации появления */
+  animation: fadeInBg 0.2s ease-out forwards;
+}
+.modal-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* 🔥 КЛАСС ЗАКРЫТИЯ: Когда запускается handleCloseModalSmooth */
+.modal-overlay.closing {animation: fadeOutBg 0.2s ease-in forwards;}
+.modal-overlay.closing .profile-modal-card {animation: scaleOutCard 0.2s ease-in forwards;}
+
+/* Главная карточка модалки фиксированного размера по центру */
+.profile-modal-card {
+  width: 380px;
+  background-color: #1c1c24; /* Стильный глубокий темный цвет */
+  border: 1px solid #2d2d37;
+  border-radius: 16px;
+  padding: 24px;
+  position: relative;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.7);
+  color: #ffffff;
+  font-family: system-ui, -apple-system, sans-serif;
+  animation: fadeIn 0.2s ease-out;
+}
+
+/* Применяем анимацию масштаба к самой карточке внутри оверлея при открытии */
+.modal-overlay .profile-modal-card {
+  animation: scaleInCard 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* Кнопка закрытия модалки (крестик) */
+.close-modal-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px; /* 🔥 Жестко привязываем к правому верхнему углу карточки */
+  background: transparent;
+  border: none;
+  color: #707579; /* ТГ-серый цвет для иконок */
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s, transform 0.2s;
+  z-index: 10;
+}
+
+/* Эффект при наведении мышки */
+.close-modal-btn:hover {
+  color: #ffffff; /* Крестик ярко подсвечивается белым */
+  transform: scale(1.1);
+}
+
+/* Центрирование аватара */
+.profile-avatar-wrapper {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.profile-avatar {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  font-weight: 600;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.profile-name {
+  text-align: center;
+  font-size: 20px;
+  font-weight: 500;
+  margin: 0 0 4px 0;
+}
+
+.profile-status {
+  display: block;
+  text-align: center;
+  font-size: 13px;
+  color: #707579; /* ТГ-офлайн цвет */
+  margin-bottom: 24px;
+}
+
+/* Строка с квадратными/круглыми кнопками действий в ряд */
+.action-buttons-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.action-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: #242430; /* Чуть светлее подложка кнопок */
+  border: none;
+  border-radius: 10px;
+  padding: 10px 0;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.action-btn:hover {
+  background-color: #2d2d3d;
+}
+
+.btn-icon {
+  font-size: 18px;
+  margin-bottom: 4px;
+}
+
+.btn-text {
+  font-size: 12px;
+  color: #8b8e99;
+}
+
+/* Секция инфы (Телефон, Юзернейм) */
+.info-section {
+  background-color: #242430;
+  border-radius: 12px;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.info-value {
+  font-size: 15px;
+  color: #ffffff;
+  margin-bottom: 2px;
+}
+
+.info-label {
+  font-size: 12px;
+  color: #707579;
+}
+
+/* Кнопки футера в режиме редактирования */
+.tg-edit-mode {
+  display: flex;
+  flex-direction: column;
+  color: #ffffff;
+}
+
+.tg-edit-title {
+  font-size: 18px;
+  font-weight: 500;
+  margin: 0 0 24px 0;
+}
+
+.tg-edit-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.tg-edit-avatar {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.tg-meta-name {
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.tg-meta-phone {
+  font-size: 13px;
+  color: #707579;
+  margin-top: 2px;
+}
+
+.tg-inputs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin-bottom: 20px;
+}
+
+.tg-input-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.tg-field-label {
+  font-size: 13px;
+  color: #707579;
+  margin-bottom: 4px;
+}
+
+.tg-label-with-emoji {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.tg-emoji-icon {
+  color: #707579;
+  cursor: pointer;
+}
+
+/* 🚀 СТИЛЬ ИНПУТОВ ИЗ ТЕЛИКА: Просто линия снизу */
+.tg-line-input {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #2d2d37;
+  color: #ffffff;
+  padding: 6px 0;
+  font-size: 15px;
+  outline: none;
+  transition: border-bottom-color 0.2s;}
+.tg-line-input:focus {border-bottom-color: #007aff;}
+.tg-input-hint {
+  font-size: 12px;
+  color: #505559;
+  margin-top: 4px;}
+.tg-delete-link {
+  background: transparent;
+  border: none;
+  color: #ef4444;
+  font-size: 14px;
+  cursor: pointer;
+  text-align: left;
+  padding: 8px 0;
+  width: max-content;}
+.tg-delete-link:hover {text-decoration: underline;}
+.tg-edit-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 24px;
+  margin-top: 16px;}
+.tg-footer-cancel-btn {
+  background: transparent;
+  border: none;
+  color: #8b5cf6; /* Фиолетовые аккуратные кнопки ТГ */
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;}
+.tg-footer-ready-btn {
+  background: transparent;
+  border: none;
+  color: #8b5cf6;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;}
+
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* 1. Анимации для ЗАДНЕГО ФОНА (Затемнение / Осветление) */
+@keyframes fadeInBg {
+  from { background-color: rgba(0, 0, 0, 0); backdrop-filter: blur(0px); }
+  to { background-color: rgba(10, 10, 15, 0.6); backdrop-filter: blur(6px); }
+}
+@keyframes fadeOutBg {
+  from { background-color: rgba(10, 10, 15, 0.6); backdrop-filter: blur(6px); }
+  to { background-color: rgba(0, 0, 0, 0); backdrop-filter: blur(0px); }
+}
+
+/* 2. Анимации для КАРТОЧКИ (Пружинистое появление / Уплывание назад) */
+@keyframes scaleInCard {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes scaleOutCard {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.9); }
+}

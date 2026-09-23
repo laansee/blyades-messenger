@@ -1,0 +1,192 @@
+.authPageContainer {
+  width: 100vw;
+  height: 100vh;
+  background-color: #7b0909; /* Твой фирменный глубокий красный */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  box-sizing: border-box;
+  font-family: system-ui, -apple-system, sans-serif;
+  overflow: hidden;
+}
+
+/* Главное видимое окно-маска */
+.authMainCard {
+  width: 100%;
+  max-width: 900px;
+  height: 100%;
+  max-height: 540px;
+  background-color: #121216;
+  border-radius: 24px;
+  overflow: hidden; /* 🔥 ОБРЕЗАЕТ ВСЁ ЛИШНЕЕ по краям карточки (каракули прячутся!) */
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  position: relative;
+}
+
+/* 🔥 ДЛИННЫЙ ПОЕЗД КОНТЕНТА: Выстраивает блоки в один горизонтальный ряд */
+.authTrack {
+  display: flex;
+  width: 150%; /* 3 блока по 50% каждый = 150% общей ширины */
+  height: 100%;
+  transition: transform 0.6s cubic-bezier(0.76, 0, 0.24, 1); /* Дорогая плавная инерция движения */
+  transform: translateX(0); /* По умолчанию: Авторизоваться (Картинка слева, форма справа) */
+}
+
+/* 🔥 СДВИГ ПРИ РЕГИСТРАЦИИ: Смещаем весь ряд ровно на одну секцию (на 50% влево) */
+.showRegister {
+  transform: translateX(-33.3333%); /* Сдвигает поезд, выдвигая скрытую форму справа */
+}
+
+/* Каждый из трех блоков занимает строго одинаковую долю */
+.authFormSide, .authGraphicSide {
+  width: 33.3333%; /* Каждая панель равна ровно половине видимой карточки */
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.authFormSide {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 40px;
+  color: #ffffff;
+  background-color: #121216;
+}
+
+.authGraphicSide {
+  overflow: hidden;
+}
+
+/* Внутренний UI (дизайн инпутов и текста) */
+.authFormWrapper {
+  width: 100%;
+  max-width: 320px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.authHeaderText {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.authTitle {
+  margin: 0 0 -6px 0;
+  color: #ffffff;
+  border: 0 solid;
+  font: 26px system-ui, 'Segoe UI', Roboto, sans-serif;
+  font-weight: 700;
+  letter-spacing: -1.68px;
+}
+
+.authSubtitle {
+  color: #9ca3af;
+  font-size: 13px;
+  margin: 0;
+}
+
+.authFormFields {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.inputGroup label {
+  font-size: 11px;
+  color: #9ca3af;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: -8px 0;
+  text-align: justify;
+}
+
+.inputGroup input {
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid #383842;
+  background-color: #1a1a22;
+  color: #ffffff;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.inputGroup input:focus {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+}
+
+.authSubmitBtn {
+  width: 100%;
+  padding: 9px 14px;
+  background-color: #ef4444;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+  margin-top: 6px;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.authSubmitBtn:hover { background-color: #dc2626; }
+.authSubmitBtn:active { transform: scale(0.98); }
+
+.registerBtnColor {
+  background-color: #2ec761;
+  box-shadow: 0 4px 12px rgba(46, 199, 97, 0.3);
+}
+.registerBtnColor:hover { background-color: #22c55e; }
+
+.authSwitchText {
+  text-align: center;
+  font-size: 13px;
+  color: #9ca3af;
+  margin: 10px 0 0 0;
+}
+
+.authSwitchLink {
+  color: #ef4444;
+  font-weight: 600;
+  cursor: pointer;
+}
+.authSwitchLink:hover { text-decoration: underline; }
+
+.authErrorAlert {
+  background-color: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.authMockImage {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #1c2b59 0%, #0d1326 100%);
+}
+
+/* Мобильная адаптация */
+@media (max-width: 768px) {
+  .authGraphicSide { display: none; }
+  .authTrack { width: 200%; }
+  .showRegister { transform: translateX(-50%); }
+  .authFormSide { width: 50%; padding: 30px 20px; }
+}
+@media (min-width: 942px) {
+    .authGraphicSide {width: 451px}
+}

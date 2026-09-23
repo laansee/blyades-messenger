@@ -1,0 +1,90 @@
+
+
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100dvh !important; /* Лечим белую область снизу намертво для всего сайта! */
+  box-sizing: border-box;
+  
+  /* 🚀 Опускаем весь сайт ниже челки iPhone на мобильных устройствах */
+  padding-top: env(safe-area-inset-top); 
+  background-color: #0e0e12; /* Родной темный фон мессенджера */
+}
+
+*, *:before, *::after {
+  box-sizing: inherit;
+}
+
+
+
+/* ======================================================== */
+/* 📱 УЛЬТИМАТИВНЫЙ БУФЕР ДЛЯ ЧЕЛКИ И СИСТЕМНОЙ СТРОКИ IOS */
+/* ======================================================== */
+@media (max-width: 600px) {
+  html, body, #root {
+    height: 100dvh !important; /* Убирает белую область снизу */
+    max-height: 100dvh !important;
+    overflow: hidden !important;
+    background-color: #0e0e12 !important;}
+
+  div#root {display: flex}
+
+  [class*="mainContainer"], 
+  [class*="mainLayout"], 
+  [class*="app-container"],
+  div[style*="display: flex"] { 
+      padding-top: 44px !important; 
+      box-sizing: border-box !important;}}
+
+
+
+
+
+
+
+
+
+/* Главный экран мессенджера */
+.messenger-container {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  background-color: #0c0c0e; 
+  color: #ffffff;
+  font-family: var(--apple);
+  overflow: hidden;
+}
+
+/* .messenger-container[data-theme='light'] {
+  --bg-main: #ffffff;
+  --bg-sidebar: #f3f4f6;
+  --text-color: #111827;
+}
+
+.messenger-container[data-theme='dark'] {
+  --bg-main: #121216;
+  --bg-sidebar: #1e1e24;
+  --text-color: #f9fafb;
+}  */
+
+@media (max-width: 739px) {
+  .messenger-container > main {
+    display: none !important;
+  }
+  
+  .messenger-container > section,
+  .messenger-container > aside {
+    display: flex !important;
+    width: calc(100% - 70px) !important;
+  }
+  .chat-opened > section {
+    display: none !important;
+  }
+
+  .chat-opened > main {
+    display: flex !important;
+        flex-direction: column;
+    width: 100% !important;
+  }
+}
