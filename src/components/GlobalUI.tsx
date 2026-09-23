@@ -1,6 +1,5 @@
 import React from 'react';
-import styles from './css/global-ui.module.css'; // Твой CSS-модуль для UI
-
+import styles from './css/global-ui.module.css';
 // Описание типов для Уведомлений (Toast)
 export interface ToastState {
   show: boolean;
@@ -23,7 +22,6 @@ export function ToastNotification({ toast }: ToastNotificationProps) {
 
   return (
     <div 
-      /* 🚀 ИСПРАВЛЕНИЕ: active пишем как чистую строку, чтобы CSS-модуль его не сожрал */
       className={`${styles['toast-container']} ${toast.show ? 'active' : ''} ${styles[toast.type] || ''}`}
       style={{
         /* 🎯 ЖЕЛЕЗНЫЙ ПРЕДОХРАНИТЕЛЬ: если в стейте false — полностью выключаем элемент из видимости */

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import styles from '../../components/CSS/sidebar.module.css';
+import styles from '../../components/css/sidebar.module.css';
 import useMessengerContext from '../../context/messengerContext';
 import { supabase } from '../../services/supabaseClient';
 import { Search } from 'lucide-react';

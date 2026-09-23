@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import styles from '../../components/CSS/settings.module.css';
+import styles from '../../components/css/settings.module.css';
 import useMessengerContext from '../../context/messengerContext';
 import { supabase } from '../../services/supabaseClient';
 

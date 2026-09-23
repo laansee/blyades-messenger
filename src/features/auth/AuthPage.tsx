@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../../services/supabaseClient';
 import { ToastNotification, type ToastState } from '../../components/GlobalUI';
 import Image from '../../assets/img/auth-backImg.jpg'; // Картинка из общей папки assets
-import styles from '../../components/css/auth.module.css'; // Путь к твоему CSS-модулю
+import styles from '../../components/css/auth.module.css';
 import uiStyles from '../../components/css/global-ui.module.css';
 
 export default function AuthPage() {

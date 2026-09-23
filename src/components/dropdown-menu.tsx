@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import styles from './CSS/chat-window.module.css'; // Твой CSS со стилями accountMenu
+import styles from './css/chat-window.module.css';
 
 export interface DropdownItem {
   id: string;

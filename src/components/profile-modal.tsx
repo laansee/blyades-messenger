@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import styles from './CSS/chat-window.module.css'; // Твои оригинальные стили модалки
+import styles from './css/chat-window.module.css'; // Твои оригинальные стили модалки
 import useMessengerContext from '../context/messengerContext';
 import { supabase } from '../services/supabaseClient';
 

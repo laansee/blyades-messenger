@@ -1,5 +1,5 @@
 import React from 'react';
-import mainStyle from '../../components/CSS/main.module.css';
+import mainStyle from '../../components/css/main.module.css';
 import useMessengerContext from '../../context/messengerContext';
 import NavSidebar from '../channels/nav-sidebar';
 import ContactsSidebar from './contacts-sidebar';
