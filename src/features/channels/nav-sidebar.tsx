@@ -24,17 +24,6 @@ export default function NavSidebar() {
     <aside className={styles['nav-sidebar']}>
       <div className={styles['nav-logo']}>💬</div>
       <nav className={styles['nav-menu']}>
-        {/* <Link 
-          to="/chat" 
-          className={`${styles['nav-item']} ${ctx.activeTab === 'chats' ? styles.active : ''}`} 
-          onClick={() => {
-            ctx.setActiveTab('chats');
-            ctx.setSearchQuery('');
-          }} 
-          title="Чаты"
-        >
-          <User strokeWidth="2" color='#aaa8a8' size={30}/>
-        </Link> */}
         <NavLink 
           to="/chat" 
           className={({ isActive }) => `${styles['nav-item']} ${isActive ? styles.active : ''}`} 
@@ -43,17 +32,6 @@ export default function NavSidebar() {
         >
           <User strokeWidth="2" color='#aaa8a8' size={30}/>
         </NavLink>
-        {/* <Link 
-          to="/calls" 
-          className={`${styles['nav-item']} ${ctx.activeTab === 'calls' ? styles.active : ''}`} 
-          onClick={() => {
-            ctx.setActiveTab('calls');
-            ctx.setActiveChatId(null);
-          }} 
-          title='Звонки'
-        >
-          <Phone strokeWidth="2" color='#aaa8a8' size={30}/>
-        </Link> */}
         <NavLink 
           to="/calls" 
           className={({ isActive }) => `${styles['nav-item']} ${isActive ? styles.active : ''}`} 
@@ -65,18 +43,6 @@ export default function NavSidebar() {
         >
           <Phone strokeWidth="2" color='#aaa8a8' size={30}/>
         </NavLink>
-        {/* <Link 
-          to="/contacts" 
-          className={`${styles['nav-item']} ${ctx.activeTab === 'contacts' ? styles.active : ''}`} 
-          onClick={() => {
-            ctx.setActiveTab('contacts');
-            ctx.setActiveChatId(null);
-            ctx.setSearchQuery('');
-          }} 
-          title="Контакты"
-        >
-          <Users strokeWidth="2" color='#aaa8a8' size={30}/>
-        </Link> */}
         <NavLink 
           to="/contacts" 
           className={({ isActive }) => `${styles['nav-item']} ${isActive ? styles.active : ''}`} 
@@ -89,17 +55,6 @@ export default function NavSidebar() {
         >
           <Users strokeWidth="2" color='#aaa8a8' size={30}/>
         </NavLink>
-        {/* <Link 
-          to="/settings" 
-          className={`${styles['nav-item']} ${ctx.activeTab === 'settings' ? styles.active : ''}`} 
-          onClick={() => {
-            ctx.setActiveTab('settings');
-            ctx.setActiveChatId(null); // Сбрасываем выбранный чат
-          }} 
-          title="Настройки"
-        >
-          <Settings strokeWidth="2" color='#aaa8a8' size={30}/>
-        </Link> */}
         <NavLink 
           to="/settings" 
           className={({ isActive }) => `${styles['nav-item']} ${isActive ? styles.active : ''}`} 
