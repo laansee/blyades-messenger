@@ -46,7 +46,11 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
   const [ctxMenu, setCtxMenu] = useState({ show: false, x: 0, y: 0, items: [] as any[] });
   const closeContextMenu = () => setCtxMenu((prev: any) => ({ ...prev, show: false }));
 
-  // Подгружаем профиль вошедшего юзера
+  // РЕФЫ-ЗАМКИ ДЛЯ ПРЕДОТВРАЩЕНИЯ ДУБЛИКАТОВ СЛУШАТЕЛЕЙ В STRICT MODE [2]
+  const messagesChannelRef = useRef<any>(null);
+  const outboundCallChannelRef = useRef<any>(null);
+
+  // 1. Подгружаем профиль вошедшего юзера [2]
   useEffect(() => {
     const myId = localStorage.getItem('blyades_user_id');
     if (myId) {
@@ -56,21 +60,26 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // 🚀 ПОДГРУЖАЕМ СПИСОК КОНТАКТОВ ИЗ ТВОЕЙ ТАБЛИЦЫ contacts
+  // 2. ПОДГРУЖАЕМ СПИСОК КОНТАКТОВ [2]
   useEffect(() => {
     if (!currentUser) return;
 
     const fetchMyContacts = async () => {
-      const { data: myContacts } = await supabase
+      const { data: myContacts, error: contactsError } = await supabase
         .from('contacts')
         .select('*')
         .eq('userId', String(currentUser.id));
+
+      if (contactsError) {
+        console.error('Ошибка загрузки контактов:', contactsError.message);
+        return;
+      }
 
       const { data: allUsers } = await supabase.from('users').select('*');
 
       if (allUsers) {
         const formattedChats = allUsers
-          .filter((u: any) => String(u.id).trim() !== String(currentUser.id).trim()) // Исключаем себя из списка чатов
+          .filter((u: any) => String(u.id).trim() !== String(currentUser.id).trim())
           .map((u: any) => {
             const contactMeta = myContacts?.find((c: any) => String(c.contactId).trim() === String(u.id).trim());
             const isContact = !!contactMeta;
@@ -94,6 +103,7 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
               avatarColor: u.avatarColor || '#007aff',
               isContact: isContact, 
               note: contactMeta?.note || '',
+              online: false,
               lastMessage: 'Нет сообщений',
               lastMessageTime: '',
               unreadCount: 0
@@ -107,7 +117,7 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
     fetchMyContacts();
   }, [currentUser]);
 
-    // 3. 🚀 ПОДГРУЖАЕМ ВСЕ СООБЩЕНИЯ И ВКЛЮЧАЕМ REALTIME ДЛЯ ЧАТОВ
+  // 3. 🚀 ПОДГРУЖАЕМ ВСЕ СООБЩЕНИЯ И ВКЛЮЧАЕМ REALTIME ДЛЯ ЧАТОВ
   useEffect(() => {
     if (!currentUser) return;
 
@@ -152,8 +162,50 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
     };
   }, [currentUser]);
 
+  // 3. ПОДГРУЖАЕМ ВСЕ СООБЩЕНИЯ И ВКЛЮЧАЕМ REALTIME ДЛЯ ЧАТОВ С ЗАЩИТОЙ ИЗ РЕФА [2]
+  // useEffect(() => {
+  //   if (!currentUser) return;
 
-  // 4. 🚀 МЭТЧИМ ПОСЛЕДНИЕ СООБЩЕНИЯ В САЙДБАРЕ КОМНАТ
+  //   const fetchAllMessages = async () => {
+  //     const { data, error } = await supabase
+  //       .from('messages')
+  //       .select('*')
+  //       .order('createdAt', { ascending: true });
+
+  //     if (!error && data) {
+  //       setAllMessages(data);
+  //     }
+  //   };
+
+  //   fetchAllMessages();
+
+  //   // Защита от двойного монтажа сообщений [2]
+  //   if (messagesChannelRef.current) return;
+
+  //   console.log('[WebRTC_Call] Создаем чистый канал Realtime-сообщений');
+  //   const msgChannel = supabase
+  //     .channel('global-messages-live')
+  //     .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, (payload) => {
+  //       if (payload.eventType === 'INSERT') {
+  //         setAllMessages((prev) => [...prev, payload.new]);
+  //       }
+  //       if (payload.eventType === 'UPDATE') {
+  //         setAllMessages((prev) => prev.map(m => m.id === payload.new.id ? payload.new : m));
+  //       }
+  //       if (payload.eventType === 'DELETE') {
+  //         setAllMessages((prev) => prev.filter(m => m.id !== payload.old.id));
+  //       }
+  //     })
+  //     .subscribe();
+
+  //   messagesChannelRef.current = msgChannel;
+
+  //   return () => {
+  //     // Оставляем реф активным в Strict Mode
+  //   };
+  // }, [currentUser]);
+
+  // 4. МЭТЧИМ ТЕКСТ ПОСЛЕДНИХ СООБЩЕНИЙ ДЛЯ САЙДБАРА [2]
   useEffect(() => {
     if (chats.length === 0 || allMessages.length === 0) return;
 
@@ -180,6 +232,38 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
     }
   }, [allMessages, chats, currentUser]);
 
+  // const handleSendMessage = async (e: React.FormEvent) => {
+  //   if (e) e.preventDefault();
+  //   if (!messageText.trim() || !currentUser || !activeChatId) return;
+
+  //   const myId = String(currentUser.id);
+  //   const partnerId = String(activeChatId);
+  //   const currentJoinedRoom = Number(myId) < Number(partnerId) ? `${myId}_${partnerId}` : `${partnerId}_${myId}`;
+
+  //   const now = new Date();
+  //   const formattedTime = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  //   if (editingMessage) {
+  //     await supabase
+  //       .from('messages')
+  //       .update({ 
+  //         text: messageText, 
+  //         isEdited: true,
+  //         status: editingMessage.status
+  //       })
+  //       .eq('id', editingMessage.id);
+  //     setEditingMessage(null);
+  //   } else {
+  //     await supabase.from('messages').insert([{
+  //       chatId: currentJoinedRoom,
+  //       senderId: myId,
+  //       text: messageText,
+  //       status: 'sent'
+  //     }]);
+  //   }
+  //   setMessageText('');
+  // };
+
   const handleSendMessage = async (e: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!messageText.trim() || !currentUser || !activeChatId) return;
@@ -188,17 +272,10 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
     const partnerId = String(activeChatId);
     const currentJoinedRoom = Number(myId) < Number(partnerId) ? `${myId}_${partnerId}` : `${partnerId}_${myId}`;
 
-    const now = new Date();
-    const formattedTime = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
     if (editingMessage) {
       await supabase
         .from('messages')
-        .update({ 
-          text: messageText, 
-          isEdited: true,
-          status: editingMessage.status
-        })
+        .update({ text: messageText, isEdited: true })
         .eq('id', editingMessage.id);
       setEditingMessage(null);
     } else {
@@ -211,6 +288,27 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
     }
     setMessageText('');
   };
+
+  // const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  //   if (e.key === 'Enter' && !e.shiftKey) {
+  //     e.preventDefault();
+  //     handleSendMessage(e);
+  //   }
+  // };
+
+  // const handleCopyMessageText = (text: string) => {
+  //   navigator.clipboard.writeText(text);
+  //   showToast('Текст скопирован!', 'success');
+  // };
+
+  // const showToast = (message: string, type: 'success' | 'warning' | 'error' | 'info' = 'info') => {
+  //   setToast({ show: true, message, type });
+  //   setTimeout(() => setToast((prev: any) => ({ ...prev, show: false })), 3000);
+  // };
+
+  // const showConfirm = (
+  //   title: string, text: string, onConfirm: () => void, isDanger = false
+  // ) => {setConfirm({ show: true, title, text, onConfirm, isDanger });};
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -229,20 +327,32 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
     setTimeout(() => setToast((prev: any) => ({ ...prev, show: false })), 3000);
   };
 
-  const showConfirm = (
-    title: string, text: string, onConfirm: () => void, isDanger = false
-  ) => {setConfirm({ show: true, title, text, onConfirm, isDanger });};
+  const showConfirm = (title: string, text: string, onConfirm: () => void, isDanger = false) => {
+    setConfirm({ show: true, title, text, onConfirm, isDanger });
+  };
 
   const handleLogout = () => {   
-    if (globalOutboundCallChannelInstance) {
-      supabase.removeChannel(globalOutboundCallChannelInstance);
-      globalOutboundCallChannelInstance = null;
+    if (outboundCallChannelRef.current) {
+      supabase.removeChannel(outboundCallChannelRef.current);
+      outboundCallChannelRef.current = null;
     } 
+    if (messagesChannelRef.current) {
+      supabase.removeChannel(messagesChannelRef.current);
+      messagesChannelRef.current = null;
+    }
     localStorage.clear();
     window.location.reload();
   };
 
-  const filteredMessages = allMessages.filter((m: { chatId: string }) => {
+  // const filteredMessages = allMessages.filter((m: { chatId: string }) => {
+  //   if (!currentUser || !activeChatId) return false;
+  //   const myId = String(currentUser.id);
+  //   const partnerId = String(activeChatId);
+  //   const currentJoinedRoom = Number(myId) < Number(partnerId) ? `${myId}_${partnerId}` : `${partnerId}_${myId}`;
+  //   return m.chatId === currentJoinedRoom;
+  // });
+
+  const filteredMessages = allMessages.filter((m: { chatId: string; }) => {
     if (!currentUser || !activeChatId) return false;
     const myId = String(currentUser.id);
     const partnerId = String(activeChatId);
@@ -253,9 +363,7 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
 // ========================================================
 // 🎙️ ОЖИВЛЯЕМ ЗВОНКИ И НАСТРАИВАЕМ РЕФ-ЗАМОК
 // ========================================================
-  const callsChannelRef = useRef<any>(null);
 
-  // 🚀 НАДEЖНЫЙ СТАРТ ЗВOНКA НА ДВИЖКЕ JOSE
   const handleStartAudioCall = async (targetPartnerId: string) => {
     if (!currentUser) return;
     
@@ -270,7 +378,6 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
     try {
       const apiKey = "APIdub3CsA3TNJE";
       const apiSecret = "CptL3A3BQjVaaFzG9f0hbtz23YfQvVuB0cerptM1UbyA";
-
       const secretBuffer = new TextEncoder().encode(apiSecret);
 
       const validToken = await new jose.SignJWT({
@@ -282,8 +389,6 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
         .setSubject(currentUser.username)
         .setExpirationTime('1h')
         .sign(secretBuffer);
-
-      console.log('[WebRTC_Call] Токен создан. Очищаем старые зависшие звонки в базе...');
 
       await supabase
         .from('calls')
@@ -308,13 +413,7 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      console.log('[WebRTC_Call] Строка вызова успешно опубликована. ID вызова:', newCallRow.id);
-
-      setCurrentCall({ 
-        id: newCallRow.id, 
-        roomName, 
-        token: validToken 
-      });
+      setCurrentCall({ id: newCallRow.id, roomName, token: validToken });
 
     } catch (err) {
       console.error('🔴 Критическая ошибка WebRTC соединения jose:', err);
@@ -322,35 +421,122 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // 🚀 ГЛОБАЛЬНАЯ ФУНКЦИЯ СБРОСА И ПОЛНОГО ЗАВЕРШЕНИЯ ЗВOНКA
+  // const callsChannelRef = useRef<any>(null);
+
+  // 🚀 НАДEЖНЫЙ СТАРТ ЗВOНКA НА ДВИЖКЕ JOSE
+  // const handleStartAudioCall = async (targetPartnerId: string) => {
+  //   if (!currentUser) return;
+    
+  //   const myIdStr = String(currentUser.id);
+  //   const partnerIdStr = String(targetPartnerId);
+  //   const roomName = Number(myIdStr) < Number(partnerIdStr) 
+  //     ? `call_${myIdStr}_${partnerIdStr}` 
+  //     : `call_${partnerIdStr}_${myIdStr}`;
+
+  //   showToast('Инициализация защищенного WebRTC канала...', 'info');
+
+  //   try {
+  //     const apiKey = "APIdub3CsA3TNJE";
+  //     const apiSecret = "CptL3A3BQjVaaFzG9f0hbtz23YfQvVuB0cerptM1UbyA";
+
+  //     const secretBuffer = new TextEncoder().encode(apiSecret);
+
+  //     const validToken = await new jose.SignJWT({
+  //       video: { roomJoin: true, room: roomName, audio: true, video: false },
+  //       name: currentUser.username,
+  //     })
+  //       .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
+  //       .setIssuer(apiKey)
+  //       .setSubject(currentUser.username)
+  //       .setExpirationTime('1h')
+  //       .sign(secretBuffer);
+
+  //     console.log('[WebRTC_Call] Токен создан. Очищаем старые зависшие звонки в базе...');
+
+  //     await supabase
+  //       .from('calls')
+  //       .delete()
+  //       .or(`and(callerId.eq.${myIdStr},receiverId.eq.${partnerIdStr}),and(callerId.eq.${partnerIdStr},receiverId.eq.${myIdStr})`);
+
+  //     const { data: newCallRow, error: insertError } = await supabase
+  //       .from('calls')
+  //       .insert([{
+  //         roomName,
+  //         token: validToken,
+  //         callerId: myIdStr,
+  //         receiverId: partnerIdStr,
+  //         status: 'ringing'
+  //       }])
+  //       .select()
+  //       .single();
+
+  //     if (insertError) {
+  //       console.error('Ошибка записи вызова в Supabase:', insertError.message);
+  //       showToast('Не удалось отправить вызов собеседнику', 'error');
+  //       return;
+  //     }
+
+  //     console.log('[WebRTC_Call] Строка вызова успешно опубликована. ID вызова:', newCallRow.id);
+
+  //     setCurrentCall({ 
+  //       id: newCallRow.id, 
+  //       roomName, 
+  //       token: validToken 
+  //     });
+
+  //   } catch (err) {
+  //     console.error('🔴 Критическая ошибка WebRTC соединения jose:', err);
+  //     showToast('Не удалось запустить аудиодвижок', 'error');
+  //   }
+  // };
+
   const handleEndCall = async () => {
-    // Если в стейте нет активного звонка — просто выходим
     if (!currentCall) return;
-
-    console.log('[WebRTC_Call] Кнопка отбоя нажата. Завершаем звонок для всех...');
-
     try {
       if (currentCall.id) {
-        // 1. Ставим в базе статус 'ended', чтобы Realtime-хук на втором ПК моментально поймал это и закрыл окно!
-        await supabase
-          .from('calls')
-          .update({ status: 'ended' })
-          .eq('id', currentCall.id);
-          
-        // 2. Спустя секунду бережно удаляем эту строку, чтобы не засорять таблицу в Supabase
+        await supabase.from('calls').update({ status: 'ended' }).eq('id', currentCall.id);
         setTimeout(async () => {
           await supabase.from('calls').delete().eq('id', currentCall.id);
         }, 1200);
       }
     } catch (err) {
-      console.error('Ошибка при отправке статуса отбоя в Supabase:', err);
+      console.error('Ошибка при сбросе звонка:', err);
     } finally {
-      // 3. В любом случае мгновенно тушим оверлей звонка у себя на экране
       setCurrentCall(null);
       setIncomingCallData(null);
       showToast('Звонок завершен', 'info');
     }
   };
+
+  // 🚀 ГЛОБАЛЬНАЯ ФУНКЦИЯ СБРОСА И ПОЛНОГО ЗАВЕРШЕНИЯ ЗВOНКA
+  // const handleEndCall = async () => {
+  //   // Если в стейте нет активного звонка — просто выходим
+  //   if (!currentCall) return;
+
+  //   console.log('[WebRTC_Call] Кнопка отбоя нажата. Завершаем звонок для всех...');
+
+  //   try {
+  //     if (currentCall.id) {
+  //       // 1. Ставим в базе статус 'ended', чтобы Realtime-хук на втором ПК моментально поймал это и закрыл окно!
+  //       await supabase
+  //         .from('calls')
+  //         .update({ status: 'ended' })
+  //         .eq('id', currentCall.id);
+          
+  //       // 2. Спустя секунду бережно удаляем эту строку, чтобы не засорять таблицу в Supabase
+  //       setTimeout(async () => {
+  //         await supabase.from('calls').delete().eq('id', currentCall.id);
+  //       }, 1200);
+  //     }
+  //   } catch (err) {
+  //     console.error('Ошибка при отправке статуса отбоя в Supabase:', err);
+  //   } finally {
+  //     // 3. В любом случае мгновенно тушим оверлей звонка у себя на экране
+  //     setCurrentCall(null);
+  //     setIncomingCallData(null);
+  //     showToast('Звонок завершен', 'info');
+  //   }
+  // };
 
   // 🚀 ГАРАНТИРОВАННО СТАБИЛЬНЫЙ ПЕРЕХВАТ ОТВЕТА ДЛЯ ЗВОНЯЩЕГО
   useEffect(() => {
