@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Link } from "react-router-dom";
+import { NavLink } from 'react-router-dom';
 import styles from '../../components/css/nav-sidebar.module.css';
 import { User, Phone, Users, Settings } from 'lucide-react';
 import useMessengerContext from '../../context/messengerContext';
@@ -24,23 +24,48 @@ export default function NavSidebar() {
     <aside className={styles['nav-sidebar']}>
       <div className={styles['nav-logo']}>💬</div>
       <nav className={styles['nav-menu']}>
-        <Link 
+        {/* <Link 
           to="/chat" 
           className={`${styles['nav-item']} ${ctx.activeTab === 'chats' ? styles.active : ''}`} 
+          onClick={() => {
+            ctx.setActiveTab('chats');
+            ctx.setSearchQuery('');
+          }} 
+          title="Чаты"
+        >
+          <User strokeWidth="2" color='#aaa8a8' size={30}/>
+        </Link> */}
+        <NavLink 
+          to="/chat" 
+          className={({ isActive }) => `${styles['nav-item']} ${isActive ? styles.active : ''}`} 
           onClick={() => ctx.setActiveTab('chats')} 
           title="Чаты"
         >
           <User strokeWidth="2" color='#aaa8a8' size={30}/>
-        </Link>
-        <Link 
-          to="/chat" 
+        </NavLink>
+        {/* <Link 
+          to="/calls" 
           className={`${styles['nav-item']} ${ctx.activeTab === 'calls' ? styles.active : ''}`} 
-          onClick={() => ctx.setActiveTab('calls')} 
+          onClick={() => {
+            ctx.setActiveTab('calls');
+            ctx.setActiveChatId(null);
+          }} 
           title='Звонки'
         >
           <Phone strokeWidth="2" color='#aaa8a8' size={30}/>
-        </Link>
-        <Link 
+        </Link> */}
+        <NavLink 
+          to="/calls" 
+          className={({ isActive }) => `${styles['nav-item']} ${isActive ? styles.active : ''}`} 
+          onClick={() => {
+            ctx.setActiveTab('calls');
+            ctx.setActiveChatId(null);
+          }} 
+          title='Звонки'
+        >
+          <Phone strokeWidth="2" color='#aaa8a8' size={30}/>
+        </NavLink>
+        {/* <Link 
           to="/contacts" 
           className={`${styles['nav-item']} ${ctx.activeTab === 'contacts' ? styles.active : ''}`} 
           onClick={() => {
@@ -51,8 +76,20 @@ export default function NavSidebar() {
           title="Контакты"
         >
           <Users strokeWidth="2" color='#aaa8a8' size={30}/>
-        </Link>
-        <Link 
+        </Link> */}
+        <NavLink 
+          to="/contacts" 
+          className={({ isActive }) => `${styles['nav-item']} ${isActive ? styles.active : ''}`} 
+          onClick={() => {
+            ctx.setActiveTab('contacts');
+            ctx.setActiveChatId(null);
+            ctx.setSearchQuery('');
+          }} 
+          title="Контакты"
+        >
+          <Users strokeWidth="2" color='#aaa8a8' size={30}/>
+        </NavLink>
+        {/* <Link 
           to="/settings" 
           className={`${styles['nav-item']} ${ctx.activeTab === 'settings' ? styles.active : ''}`} 
           onClick={() => {
@@ -62,7 +99,15 @@ export default function NavSidebar() {
           title="Настройки"
         >
           <Settings strokeWidth="2" color='#aaa8a8' size={30}/>
-        </Link>
+        </Link> */}
+        <NavLink 
+          to="/settings" 
+          className={({ isActive }) => `${styles['nav-item']} ${isActive ? styles.active : ''}`} 
+          onClick={() => ctx.setActiveTab('settings')}
+          title="Настройки"
+        >
+          <Settings strokeWidth="2" color='#aaa8a8' size={30}/>
+        </NavLink>
       </nav>
       <div ref={profileMenuRef} className={styles['avatar-container']}>
         {ctx.showProfileMenu && (

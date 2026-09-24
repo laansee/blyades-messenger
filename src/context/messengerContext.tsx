@@ -2,17 +2,23 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import { supabase } from '../services/supabaseClient';
 import { ToastNotification, ConfirmModal } from '../components/GlobalUI';
 import ProfileModal from '../components/profile-modal';
-import { Room } from 'livekit-client';
 import CallOverlay from '../components/call-overlay';
 import * as jose from 'jose'; 
 import IncomingCallModal from '../components/incoming-call-modal';
 
+// import { SpeedInsights } from "@vercel/speed-insights/next"
+// import { Analytics } from "@vercel/analytics/next"
+
+// 🚀 ГЛОБАЛЬНЫЙ ЗАМОК ДЛЯ ИСХОДЯЩИХ ЗВОНКОВ: Защищает контекст от двойного монтажа React Strict Mode!
+let isOutboundChannelInitialized = false;
+// 🚀 ГЛОБАЛЬНЫЙ ЗАМОК ДЛЯ СООБЩЕНИЙ: Защищает стрим переписок от двойного монтажа Strict Mode!
+let isMessagesChannelInitialized = false;
+
+
 const MessengerContext = createContext<any>(null);
 
 export function MessengerProvider({ children }: { children: React.ReactNode }) {
-
   const [currentCall, setCurrentCall] = useState<{ roomName: string; token: string } | null>(null);
-  const [isIncomingCall, setIsIncomingCall] = useState(false);
   const [incomingCallData, setIncomingCallData] = useState<any | null>(null);
 
   const [activeTab, setActiveTab] = useState('chats');
@@ -37,10 +43,8 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
   const [confirm, setConfirm] = useState({ show: false, title: '', text: '', onConfirm: () => {}, isDanger: false });
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  // const channelRef = useRef<any>(null); // 🚀 ТЕПЕРЬ ОН ЖИВЕТ ЗДЕСЬ!
-
   const [ctxMenu, setCtxMenu] = useState({ show: false, x: 0, y: 0, items: [] as any[] });
-  const closeContextMenu = () => setCtxMenu(prev => ({ ...prev, show: false }));
+  const closeContextMenu = () => setCtxMenu((prev: any) => ({ ...prev, show: false }));
 
   // Подгружаем профиль вошедшего юзера
   useEffect(() => {
@@ -57,76 +61,44 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
     if (!currentUser) return;
 
     const fetchMyContacts = async () => {
-      // 1. Берем все контакты текущего авторизованного пользователя
-      const { data: myContacts, error: contactsError } = await supabase
+      const { data: myContacts } = await supabase
         .from('contacts')
         .select('*')
         .eq('userId', String(currentUser.id));
 
-      if (contactsError) {
-        console.error('Ошибка загрузки контактов:', contactsError.message);
-        return;
-      }
-
-      // 2. Берем вообще всех пользователей из таблицы users для мэтчинга данных
       const { data: allUsers } = await supabase.from('users').select('*');
 
       if (allUsers) {
-        const formattedChats = allUsers.map(u => {
-          // Ищем, есть ли этот пользователь у нас в контактах (чтобы подтянуть кастомные Имя/Фамилию/Заметку)
-          const contactMeta = myContacts?.find(c => {
-            // Принудительно приводим оба ID к строке, отрезаем лишние пробелы и сравниваем значения
-            return String(c.contactId).trim() === String(u.id).trim();
-          });
-          const isContact = !!contactMeta;
+        const formattedChats = allUsers
+          .filter((u: any) => String(u.id).trim() !== String(currentUser.id).trim()) // Исключаем себя из списка чатов
+          .map((u: any) => {
+            const contactMeta = myContacts?.find((c: any) => String(c.contactId).trim() === String(u.id).trim());
+            const isContact = !!contactMeta;
 
-          // 🚀 ЛОГИКА ПРИВАТНОСТИ ИМЕНИ ДЛЯ НЕ-КОНТАКТОВ:
-          let calculatedName = u.username;
-
-          if (isContact) {
-            // Сценарий A: Пользователь в контактах — берем наше кастомное имя из записной книжки
-            calculatedName = `${contactMeta.firstName || ''} ${contactMeta.lastName || ''}`.trim() || u.username;
-          } else {
-            // Сценарий B: Пользователя НЕТ в контактах — подчиняемся ЕГО настройкам приватности из базы
-            if (u.privacyNameFormat === 'full_name' && (u.firstName || u.lastName)) {
+            let calculatedName = u.username;
+            if (isContact) {
+              calculatedName = `${contactMeta.firstName || ''} ${contactMeta.lastName || ''}`.trim() || u.username;
+            } else if (u.privacyNameFormat === 'full_name' && (u.firstName || u.lastName)) {
               calculatedName = `${u.firstName || ''} ${u.lastName || ''}`.trim();
-            } else {
-              calculatedName = u.username;
             }
-          }
 
-          return {
-            id: String(u.id),
-            username: u.username,
-            uniqueId: u.uniqueId,
-            name: calculatedName,
-            
-            // Данные профиля из таблицы users
-            firstName: u.firstName || '',
-            lastName: u.lastName || '',
-            email: u.email || '',
-            phone: u.phone || '',
-            avatarColor: u.avatarColor || '#007aff',
-            
-            // Настройки приватности конкретного пользователя
-            privacyPhone: u.privacyPhone || 'all',
-            privacyEmail: u.privacyEmail || 'all',
-            privacyFullName: u.privacyFullName || 'all',
-            privacyNameFormat: u.privacyNameFormat || 'username',
-            privacySearch: u.privacySearch || 'all', 
-
-            // Кастомные метаданные из нашей записной книжки (contacts)
-            isContact: isContact, 
-            contactFirstName: contactMeta?.firstName || '',
-            contactLastName: contactMeta?.lastName || '',
-            note: contactMeta?.note || '',
-
-            online: false,
-            lastMessage: 'Нет сообщений',
-            lastMessageTime: '',
-            unreadCount: 0
-          };
-        });
+            return {
+              id: String(u.id),
+              username: u.username,
+              uniqueId: u.uniqueId,
+              name: calculatedName,
+              firstName: u.firstName || '',
+              lastName: u.lastName || '',
+              email: u.email || '',
+              phone: u.phone || '',
+              avatarColor: u.avatarColor || '#007aff',
+              isContact: isContact, 
+              note: contactMeta?.note || '',
+              lastMessage: 'Нет сообщений',
+              lastMessageTime: '',
+              unreadCount: 0
+            };
+          });
 
         setChats(formattedChats);
       }
@@ -134,42 +106,79 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
 
     fetchMyContacts();
   }, [currentUser]);
-  
-  // 🚀 2. ЕДИНСТВЕННЫЙ И НЕУБИВАЕМЫЙ СТРИМ СООБЩЕНИЙ В СИСТЕМЕ (ЗАМЕНЯЕМ ВСЁ ОСТАЛЬНОЕ)
+
+    // 3. 🚀 ПОДГРУЖАЕМ ВСЕ СООБЩЕНИЯ И ВКЛЮЧАЕМ REALTIME ДЛЯ ЧАТОВ
   useEffect(() => {
-    // Сначала загружаем историю из базы данных с маленькой буквы
-    supabase.from('messages').select('*').then(({ data }) => {
-      if (data) setAllMessages(data);
+    if (!currentUser) return;
+
+    const fetchAllMessages = async () => {
+      const { data } = await supabase
+        .from('messages')
+        .select('*')
+        .order('createdAt', { ascending: true });
+
+      if (data) {
+        setAllMessages(data);
+      }
+    };
+
+    fetchAllMessages();
+
+    if (isMessagesChannelInitialized) {
+      console.log('[WebRTC_Call] Блокировка дубликата Strict Mode для канала сообщений.');
+      return;
+    }
+
+    console.log('[WebRTC_Call] Создаем ОДИН чистый канал Realtime-сообщений: global-messages-live');
+    isMessagesChannelInitialized = true; // Запираем замок сообщений!
+
+    const msgChannel = supabase
+      .channel('global-messages-live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          setAllMessages((prev) => [...prev, payload.new]);
+        }
+        if (payload.eventType === 'UPDATE') {
+          setAllMessages((prev) => prev.map(m => m.id === payload.new.id ? payload.new : m));
+        }
+        if (payload.eventType === 'DELETE') {
+          setAllMessages((prev) => prev.filter(m => m.id !== payload.old.id));
+        }
+      })
+      .subscribe();
+
+    return () => {
+      // Оставляем инстанс активным при быстром перезапуске Strict Mode, чтобы сокет не падал
+    };
+  }, [currentUser]);
+
+
+  // 4. 🚀 МЭТЧИМ ПОСЛЕДНИЕ СООБЩЕНИЯ В САЙДБАРЕ КОМНАТ
+  useEffect(() => {
+    if (chats.length === 0 || allMessages.length === 0) return;
+
+    const myId = String(currentUser?.id);
+
+    const updatedChats = chats.map(chat => {
+      const partnerId = String(chat.id);
+      const roomName = Number(myId) < Number(partnerId) ? `${myId}_${partnerId}` : `${partnerId}_${myId}`;
+
+      const roomMessages = allMessages.filter(m => m.chatId === roomName);
+      const lastMsg = roomMessages[roomMessages.length - 1];
+
+      return {
+        ...chat,
+        lastMessage: lastMsg ? lastMsg.text : 'Нет сообщений',
+        lastMessageTime: lastMsg 
+          ? new Date(lastMsg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
+          : ''
+      };
     });
 
-    // 2. Создаем уникальное имя канала для каждого рендера, чтобы они не сталкивались в памяти сокетов
-    const uniqueChannelName = `messages-stream-${Math.floor(Math.random() * 100000)}`;
-
-    const channel = supabase
-      .channel(uniqueChannelName)
-      .on(
-        'postgres_changes', 
-        { event: '*', schema: 'public', table: 'messages' }, 
-        (payload) => {
-          if (payload.eventType === 'INSERT') {
-            setAllMessages(prev => [...prev, payload.new]);
-          } else if (payload.eventType === 'UPDATE') {
-            // Заменяем старое сообщение на измененное (с новыми text и isEdited)
-            setAllMessages(prev => prev.map(m => m.id === payload.new.id ? payload.new : m));
-          } else if (payload.eventType === 'DELETE') {
-            setAllMessages(prev => prev.filter(m => m.id !== payload.old.id));
-          }
-        }
-      );
-
-    channel.subscribe();
-    
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
-
-  
+    if (JSON.stringify(chats) !== JSON.stringify(updatedChats)) {
+      setChats(updatedChats);
+    }
+  }, [allMessages, chats, currentUser]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -217,25 +226,36 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
 
   const showToast = (message: string, type: 'success' | 'warning' | 'error' | 'info' = 'info') => {
     setToast({ show: true, message, type });
-    setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
+    setTimeout(() => setToast((prev: any) => ({ ...prev, show: false })), 3000);
   };
 
   const showConfirm = (
     title: string, text: string, onConfirm: () => void, isDanger = false
   ) => {setConfirm({ show: true, title, text, onConfirm, isDanger });};
 
-  const handleLogout = () => {
+  const handleLogout = () => {   
+    if (globalOutboundCallChannelInstance) {
+      supabase.removeChannel(globalOutboundCallChannelInstance);
+      globalOutboundCallChannelInstance = null;
+    } 
     localStorage.clear();
     window.location.reload();
   };
 
-  // Фильтр сообщений для окна чата с учетом поискового запроса
-  const filteredMessages = allMessages.filter(m => {
-    if (!showMsgSearch || !messageSearchQuery.trim()) return true;
-    return m.text.toLowerCase().includes(messageSearchQuery.toLowerCase());
+  const filteredMessages = allMessages.filter((m: { chatId: string }) => {
+    if (!currentUser || !activeChatId) return false;
+    const myId = String(currentUser.id);
+    const partnerId = String(activeChatId);
+    const currentJoinedRoom = Number(myId) < Number(partnerId) ? `${myId}_${partnerId}` : `${partnerId}_${myId}`;
+    return m.chatId === currentJoinedRoom;
   });
 
-  // 🚀 НАДЕЖНЫЙ СТАРТ ЗВОНКА НА СВЕРХЛЕГКОМ ДВИЖКЕ JOSE
+// ========================================================
+// 🎙️ ОЖИВЛЯЕМ ЗВОНКИ И НАСТРАИВАЕМ РЕФ-ЗАМОК
+// ========================================================
+  const callsChannelRef = useRef<any>(null);
+
+  // 🚀 НАДEЖНЫЙ СТАРТ ЗВOНКA НА ДВИЖКЕ JOSE
   const handleStartAudioCall = async (targetPartnerId: string) => {
     if (!currentUser) return;
     
@@ -248,14 +268,11 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
     showToast('Инициализация защищенного WebRTC канала...', 'info');
 
     try {
-      // 🎯 ВСТАВЛЯЕМ КЛЮЧИ НАПРЯМУЮ, ЧТОБЫ ВИТЕ ИХ НЕ СКРЫЛ ПРИ СБОРКЕ ДЛЯ БРАУЗЕРА:
       const apiKey = "APIdub3CsA3TNJE";
       const apiSecret = "CptL3A3BQjVaaFzG9f0hbtz23YfQvVuB0cerptM1UbyA";
 
-      // 1. Переводим строку секретного ключа в бинарный буфер для криптографии SHA-256
       const secretBuffer = new TextEncoder().encode(apiSecret);
 
-      // 2. Собираем и подписываем JWT токен строго по официальному протоколу LiveKit
       const validToken = await new jose.SignJWT({
         video: { roomJoin: true, room: roomName, audio: true, video: false },
         name: currentUser.username,
@@ -263,65 +280,120 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
         .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
         .setIssuer(apiKey)
         .setSubject(currentUser.username)
-        .setExpirationTime('1h') // Срок жизни токена — 1 час
+        .setExpirationTime('1h')
         .sign(secretBuffer);
 
-      // 3. Запускаем оверлей звонка — токен теперь на 100% валидный!
-      setCurrentCall({ roomName, token: validToken });
+      console.log('[WebRTC_Call] Токен создан. Очищаем старые зависшие звонки в базе...');
 
-      // 🚀 ПУБЛИКУЕМ ЗВЕНО ВЫЗОВА В БАЗУ ДАННЫХ ДЛЯ СОБЕСЕДНИКА
-      await supabase.from('calls').insert([{
-        roomName,
-        token: validToken,
-        callerId: myIdStr,
-        receiverId: partnerIdStr,
-        status: 'ringing'
-      }]);
+      await supabase
+        .from('calls')
+        .delete()
+        .or(`and(callerId.eq.${myIdStr},receiverId.eq.${partnerIdStr}),and(callerId.eq.${partnerIdStr},receiverId.eq.${myIdStr})`);
 
-      // 🚀 REALTIME-ПОТОК ДЛЯ ПЕРЕХВАТА ВХОДЯЩИХ ЗВOНКOВ
-      useEffect(() => {
-        if (!currentUser) return;
+      const { data: newCallRow, error: insertError } = await supabase
+        .from('calls')
+        .insert([{
+          roomName,
+          token: validToken,
+          callerId: myIdStr,
+          receiverId: partnerIdStr,
+          status: 'ringing'
+        }])
+        .select()
+        .single();
 
-        const myIdStr = String(currentUser.id);
+      if (insertError) {
+        console.error('Ошибка записи вызова в Supabase:', insertError.message);
+        showToast('Не удалось отправить вызов собеседнику', 'error');
+        return;
+      }
 
-        const callsChannel = supabase
-          .channel('global-calls-stream')
-          .on(
-            'postgres_changes',
-            { event: '*', schema: 'public', table: 'calls' },
-            (payload) => {
-              const call = payload.new as any;
-              const oldCall = payload.old as any;
+      console.log('[WebRTC_Call] Строка вызова успешно опубликована. ID вызова:', newCallRow.id);
 
-              // 📞 СЦЕНАРИЙ 1: Нам кто-то звонит (INSERT)
-              if (payload.eventType === 'INSERT' && String(call.receiverId) === myIdStr && call.status === 'ringing') {
-                // Ищем данные звонящего, чтобы показать его имя на экране
-                const callerUser = chats.find(c => String(c.id) === String(call.callerId));
-                setIncomingCallData({ ...call, callerName: callerUser?.name || 'Неизвестный контакт' });
-              }
-
-              // ❌ СЦЕНАРИЙ 2: Звонящий сбросил вызов до того, как мы взяли трубку (UPDATE на rejected/ended или DELETE)
-              if (payload.eventType === 'UPDATE' && String(call.receiverId) === myIdStr && (call.status === 'rejected' || call.status === 'ended')) {
-                setIncomingCallData(null);
-              }
-              if (payload.eventType === 'DELETE') {
-                setIncomingCallData(null);
-              }
-            }
-          )
-          .subscribe();
-
-        return () => {
-          supabase.removeChannel(callsChannel);
-        };
-      }, [currentUser, chats]);
-
+      setCurrentCall({ 
+        id: newCallRow.id, 
+        roomName, 
+        token: validToken 
+      });
 
     } catch (err) {
       console.error('🔴 Критическая ошибка WebRTC соединения jose:', err);
       showToast('Не удалось запустить аудиодвижок', 'error');
     }
   };
+
+  // 🚀 ГЛОБАЛЬНАЯ ФУНКЦИЯ СБРОСА И ПОЛНОГО ЗАВЕРШЕНИЯ ЗВOНКA
+  const handleEndCall = async () => {
+    // Если в стейте нет активного звонка — просто выходим
+    if (!currentCall) return;
+
+    console.log('[WebRTC_Call] Кнопка отбоя нажата. Завершаем звонок для всех...');
+
+    try {
+      if (currentCall.id) {
+        // 1. Ставим в базе статус 'ended', чтобы Realtime-хук на втором ПК моментально поймал это и закрыл окно!
+        await supabase
+          .from('calls')
+          .update({ status: 'ended' })
+          .eq('id', currentCall.id);
+          
+        // 2. Спустя секунду бережно удаляем эту строку, чтобы не засорять таблицу в Supabase
+        setTimeout(async () => {
+          await supabase.from('calls').delete().eq('id', currentCall.id);
+        }, 1200);
+      }
+    } catch (err) {
+      console.error('Ошибка при отправке статуса отбоя в Supabase:', err);
+    } finally {
+      // 3. В любом случае мгновенно тушим оверлей звонка у себя на экране
+      setCurrentCall(null);
+      setIncomingCallData(null);
+      showToast('Звонок завершен', 'info');
+    }
+  };
+
+  // 🚀 ГАРАНТИРОВАННО СТАБИЛЬНЫЙ ПЕРЕХВАТ ОТВЕТА ДЛЯ ЗВОНЯЩЕГО
+  useEffect(() => {
+    const myIdStr = currentUser?.id ? String(currentUser.id).trim() : null;
+    if (!myIdStr) return;
+
+    const channelName = `outbound_status_stream_${myIdStr}`;
+
+    // 🛑 МЕГА-ФИКС: Переменная на уровне файла никогда не сбросится повторным рендером!
+    if (isOutboundChannelInitialized) {
+      console.log(`[WebRTC_Call] Блокировка дубликата Strict Mode в контексте для канала: ${channelName}`);
+      return;
+    }
+
+    console.log(`[WebRTC_Call] Создаем ОДИН чистый канал перехвата ответа: ${channelName}`);
+    isOutboundChannelInitialized = true; // Запираем замок!
+
+    const outboundCallChannel = supabase.channel(channelName);
+
+    outboundCallChannel
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'calls' },
+        (payload) => {
+          const callRow = payload.new as any;
+
+          if (String(callRow.callerId) === myIdStr && callRow.status === 'accepted') {
+            console.log('[WebRTC_Call] Собеседник принял наш вызов! Переключаем оверлей.');
+            setCurrentCall((prev: any) => prev ? { ...prev, status: 'accepted' } : prev);
+          }
+
+          if (String(callRow.callerId) === myIdStr && (callRow.status === 'rejected' || callRow.status === 'ended')) {
+            setCurrentCall(null);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      // Специально оставляем флаг true, чтобы Strict Mode при двойном монтаже не плодил ошибки подписок
+    };
+  }, [currentUser?.id]);
+
 
   return (
     <>
@@ -332,9 +404,9 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
         messageText, setMessageText, editingMessage, setEditingMessage, showUserModal, setShowUserModal,
         showProfileMenu, setShowProfileMenu, typingUser, toast, setToast, confirm, setConfirm,
         messagesEndRef, ctxMenu, setCtxMenu, closeContextMenu, handleSendMessage, handleKeyDown,
-        handleCopyMessageText, showToast, showConfirm, handleLogout,
+        handleCopyMessageText, showToast, showConfirm, handleLogout, handleEndCall, filteredMessages,
         currentCall, setCurrentCall, handleStartAudioCall, incomingCallData, setIncomingCallData,
-        dropdown, setDropdown, closeDropdown: () => setDropdown(prev => ({ ...prev, show: false }))
+        dropdown, setDropdown, closeDropdown: () => setDropdown((prev: any) => ({ ...prev, show: false }))
       }}>
         {children}
         <ToastNotification toast={toast} />
@@ -342,6 +414,12 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
         <ProfileModal /> 
         <CallOverlay />
         <IncomingCallModal />
+
+
+        {/* <SpeedInsights/>
+        <Analytics/> */}
+
+
       </MessengerContext.Provider>
     </>
   );

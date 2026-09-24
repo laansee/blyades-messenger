@@ -116,8 +116,9 @@ export default function ProfileModal() {
               <button 
                 type="button"
                 onClick={() => {
-                  handleCloseModalSmooth();
-                  ctx.setActiveTab('calls');
+                  // 🚀 ИСПРАВЛЕНИЕ: Передали правильный рабочий объект пользователя!
+                  ctx.handleStartAudioCall(currentChatUser.id); 
+                  ctx.setShowUserModal(false); 
                 }}
                 className={styles['action-btn']}
               >

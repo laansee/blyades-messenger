@@ -7,6 +7,7 @@ import AuthPage from './features/auth/AuthPage';
 import ChatLayout from './features/chat/chatLayout';
 import SettingsPage from './features/settings/settingsPage';
 import ContactsPage from './features/contacts/contactsPage';
+import CallsPage from './features/calls/callsPage';
 import useMessengerContext, { MessengerProvider } from './context/messengerContext';
 import ContextMenu from './components/context-menu';
 import ProfileModal from './components/profile-modal';
@@ -40,7 +41,7 @@ function AppContent() {
         ) : (
           <>
             <Route path="/chat" element={<ChatLayout />} />
-            <Route path="/calls" element={<ChatLayout />} />
+            <Route path="/calls" element={<CallsPage />} />
             <Route path="/contacts" element={<ContactsPage />} />
             <Route path="/settings" element={<SettingsPage />} /> 
             
