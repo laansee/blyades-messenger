@@ -1,248 +1,31 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React from 'react';
 import useMessengerContext from '../context/messengerContext';
-import { supabase } from '../services/supabaseClient';
+import { useWebRTCCalls } from '../hooks/useWebRTCCalls'; // 🚀 Импортируем наш вынесенный WebRTC-движок
 import { Phone, PhoneOff, Volume2, Mic, MicOff, Users } from 'lucide-react';
 
 export default function CallOverlay() {
   const ctx = useMessengerContext();
-  const [isMuted, setIsMuted] = useState(false);
   
-  const localStreamRef = useRef<MediaStream | null>(null);
-  const pcRef = useRef<RTCPeerConnection | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  const [myVolume, setMyVolume] = useState(0); 
-
-  const [conferenceUsers, setConferenceUsers] = useState<any[]>([]);
-  const [loadingMembers, setLoadingMembers] = useState(false);
-
-  const activeCall = ctx?.currentCall || ctx?.incomingCallData;
-  const myIdStr = ctx?.currentUser ? String(ctx.currentUser.id) : '';
-
-  // 1. 🕒 МОНИТОРИНГ И ОТРИСОВКА ПОДКЛЮЧИВШИХСЯ УЧАСТНИКОВ
-  useEffect(() => {
-    if (!activeCall || activeCall.status !== 'accepted' || !ctx?.chats || !myIdStr) return;
-
-    const updateActiveConferenceUsers = async () => {
-      setLoadingMembers(true);
-      try {
-        const { data: activeSessions } = await supabase
-          .from('call_participants')
-          .select('userId')
-          .eq('callId', Number(activeCall.id));
-
-        if (activeSessions && activeSessions.length > 0) {
-          const activeUserIds = activeSessions.map(s => String(s.userId));
-          
-          const { data: usersData } = await supabase
-            .from('users')
-            .select('id, username, avatarColor, firstName, lastName')
-            .in('id', activeUserIds);
-          
-          if (usersData) {
-            const filtered = usersData.filter(u => String(u.id) !== myIdStr);
-            setConferenceUsers(filtered);
-          }
-        } else {
-          setConferenceUsers([]);
-        }
-      } catch (err) {
-        console.error('Ошибка загрузки участников:', err);
-      } finally {
-        setLoadingMembers(false);
-      }
-    };
-
-    updateActiveConferenceUsers();
-
-    const participantSubscription = supabase
-      .channel(`call-room-people-${activeCall.id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'call_participants', filter: `callId=eq.${Number(activeCall.id)}` }, () => {
-        updateActiveConferenceUsers();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(participantSubscription);
-    };
-  }, [activeCall?.status, activeCall?.id, ctx?.chats, myIdStr]);
-
-  // 2. 🎙️ НАСТОЯЩИЙ ИЗОЛИРОВАННЫЙ ТАБЛИЧНЫЙ WebRTC ДВИЖОК
-  useEffect(() => {
-    if (!activeCall || activeCall.status !== 'accepted' || !myIdStr) return;
-
-    let localStream: MediaStream | null = null;
-    let pc: RTCPeerConnection | null = null;
-    let animId: number;
-
-    // Инициализируем PeerConnection без падающих STUN серверов для локальных тестов
-    const pcInstance = new RTCPeerConnection({});
-    pc = pcInstance;
-    pcRef.current = pcInstance;
-
-    // 🎯 ВАЖНО: Ловим аудиодорожку от собеседника по сети и выводим строго в динамики!
-    pcInstance.ontrack = (event) => {
-      console.log('[WebRTC_Table] УСПЕХ! Поймали входящий аудиопоток от собеседника!');
-      const remoteStream = event.streams[0]; 
-      
-      let audioEl = document.getElementById('blymessenger-remote-audio') as HTMLAudioElement | null;
-      if (!audioEl) {
-        audioEl = document.createElement('audio');
-        audioEl.id = 'blymessenger-remote-audio';
-        document.body.appendChild(audioEl);
-      }
-
-      audioEl.srcObject = remoteStream;
-      audioEl.autoplay = true;
-      audioEl.volume = 1.0;
-      
-      audioEl.play().catch(err => {
-        console.warn('[WebRTC_Audio_Play_Error] Ожидание взаимодействия с экраном:', err);
-      });
-    };
-
-    // 🚀 ЖЕЛЕЗНЫЙ ФИКС №1: Записываем сетевые ICE-кандидаты строго в поле "ice" и приводим объект к JSON строке!
-    pcInstance.onicecandidate = async (event) => {
-      if (event.candidate && activeCall?.id) {
-        await supabase
-          .from('call_participants')
-          .update({ ice: event.candidate.toJSON() })
-          .eq('callId', Number(activeCall.id))
-          .eq('userId', myIdStr);
-      }
-    };
-
-    const startAudioEngine = async () => {
-      try {
-        // Захватываем микрофон у операционной системы
-        localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-        console.log('[WebRTC_Table] Локальный микрофон успешно запущен!');
-        localStreamRef.current = localStream;
-
-        const audioTracks = localStream.getAudioTracks();
-        if (audioTracks.length > 0) {
-          audioTracks[0].applyConstraints({ echoCancellation: true, noiseSuppression: true });
-        }
-
-        // Привязываем микрофон к передатчику WebRTC
-        localStream.getTracks().forEach(track => pcInstance.addTrack(track, localStream!));
-
-        // Настройка визуальных прыгающих полосок частот
-        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-        const audioContext = new AudioContextClass();
-        const analyser = audioContext.createAnalyser();
-        const source = audioContext.createMediaStreamSource(localStream);
-        source.connect(analyser);
-        analyser.fftSize = 32;
-        audioContextRef.current = audioContext;
-        analyserRef.current = analyser;
-
-        const bufferLength = analyser.frequencyBinCount;
-        const dataArray = new Uint8Array(bufferLength);
-        
-        const checkVolume = () => {
-          if (!analyser) return;
-          analyser.getByteFrequencyData(dataArray);
-          let sum = 0;
-          for (let i = 0; i < bufferLength; i++) sum += dataArray[i];
-          setMyVolume(sum / bufferLength);
-          animId = requestAnimationFrame(checkVolume);
-        };
-        checkVolume();
-
-        // 🚀 ТАКТИКА ГИТХАБА: Создатель звонка генерирует Offer первым в свою строку!
-        const isCaller = String(activeCall.callerId) === myIdStr;
-        if (isCaller) {
-          console.log('[WebRTC_Table] Мы создатель звонка. Пушим Offer в базу...');
-          const offer = await pcInstance.createOffer();
-          await pcInstance.setLocalDescription(offer);
-
-          // 🚀 ЖЕЛЕЗНЫЙ ФИКС №2: Сериализуем offer через валидный плоский объект без offer2 и без .toJSON()!
-          await supabase
-            .from('call_participants')
-            .update({ sdp: { type: offer.type, sdp: offer.sdp } })
-            .eq('callId', Number(activeCall.id))
-            .eq('userId', myIdStr);
-        }
-      } catch (err) {
-        console.error('Ошибка запуска микрофона:', err);
-      }
-    };
-
-    startAudioEngine();
-
-    // ⚡ ТАБЛИЧНЫЙ СИГНАЛИНГ: Слушаем изменения строк ДРУГ ДРУГА через Realtime сокеты
-    const signalingSubscription = supabase
-      .channel(`webrtc-table-signaling-${activeCall.id}`)
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'call_participants', filter: `callId=eq.${Number(activeCall.id)}` },
-        async (payload) => {
-          const partnerId = String(payload.new.userId);
-          if (partnerId === myIdStr) return; // Свои апдейты полностью игнорируем!
-
-          // А. Ловим Offer от создателя и пишем Answer в свою ЛИЧНУЮ строку!
-          if (payload.new.sdp && payload.new.sdp.type === 'offer' && String(activeCall.callerId) !== myIdStr) {
-            console.log('[WebRTC_Table] Поймали Offer от создателя. Ставим RemoteDescription...');
-            await pcInstance.setRemoteDescription(new RTCSessionDescription(payload.new.sdp));
-            const answer = await pcInstance.createAnswer();
-            await pcInstance.setLocalDescription(answer);
-
-            // 🚀 ЖЕЛЕЗНЫЙ ФИКС №3: Сериализуем answer через валидный плоский объект в базу!
-            await supabase
-              .from('call_participants')
-              .update({ sdp: { type: answer.type, sdp: answer.sdp } })
-              .eq('callId', Number(activeCall.id))
-              .eq('userId', myIdStr);
-          }
-
-          // Б. Ловим Answer на стороне создателя звонка
-          if (payload.new.sdp && payload.new.sdp.type === 'answer' && String(activeCall.callerId) === myIdStr) {
-            // 🚀 ПРЕДОХРАНИТЕЛЬ: Применяем Answer ТОЛЬКО если соединение еще не находится в стабильной фазе!
-            // Это полностью сотрет ошибку "Called in wrong state: stable" из консоли навсегда!
-            if (pcInstance.signalingState !== 'stable' && pcInstance.signalingState !== 'closed') {
-              console.log('[WebRTC_Table] Поймали Answer от собеседника! Сетевой мост состыкован!');
-              await pcInstance.setRemoteDescription(new RTCSessionDescription(payload.new.sdp));
-            }
-          }
-
-          // В. Ловим сетевые ICE кандидаты собеседника
-          if (payload.new.ice) {
-            try {
-              await pcInstance.addIceCandidate(new RTCIceCandidate(payload.new.ice));
-            } catch (e) {
-              // Игнорируем мелкие дубликаты
-            }
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      cancelAnimationFrame(animId);
-      supabase.removeChannel(signalingSubscription);
-      if (audioContextRef.current) audioContextRef.current.close();
-      if (localStream) localStream.getTracks().forEach(track => track.stop());
-      if (pcRef.current) pcRef.current.close();
-      const el = document.getElementById('blymessenger-remote-audio');
-      if (el) el.remove();
-    };
-  }, [activeCall?.status, activeCall?.id, myIdStr]);
-
-  // Контроль мута
-  useEffect(() => {
-    if (localStreamRef.current) {
-      localStreamRef.current.getAudioTracks().forEach(track => { track.enabled = !isMuted; });
-    }
-  }, [isMuted]);
+  // Подключаем наш изолированный хук звонков
+  const {
+    isMuted,
+    setIsMuted,
+    myVolume,
+    conferenceUsers,
+    loadingMembers,
+    activeCall,
+    myIdStr
+  } = useWebRTCCalls(ctx);
 
   if (!ctx || !activeCall) return null;
+  
   const isIncoming = !!ctx.incomingCallData; 
   const isRinging = activeCall.status === 'ringing'; 
 
   const myName = ctx.currentUser?.username || 'Вы';
   const myAvatarColor = ctx.currentUser?.avatarColor || '#007aff';
 
+  // Вычисляем динамическую высоту полосок частот на основе живого стейта из хука
   const liveHeight1 = isMuted ? '3px' : `${Math.max(15, Math.min(100, myVolume * 1.8))}%`;
   const liveHeight2 = isMuted ? '3px' : `${Math.max(15, Math.min(100, myVolume * 2.4))}%`;
   const liveHeight3 = isMuted ? '3px' : `${Math.max(15, Math.min(100, myVolume * 1.2))}%`;
@@ -340,5 +123,4 @@ export default function CallOverlay() {
       `}</style>
     </div>
   );
-
 }
