@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../services/supabaseClient';
-import * as jose from 'jose'; // 🚀 ВОЗВРАЩАЕМ КРИПТОГРАФИЮ JOSE ДЛЯ ГЕНЕРАЦИИ ТОКЕНОВ ЛЕТУ!
+import * as jose from 'jose'; 
 
 export function useCallsLogic(currentUser: any, showToast: any) {
   const [currentCall, setCurrentCall] = useState<any | null>(null);
   const [incomingCallData, setIncomingCallData] = useState<any | null>(null);
 
-  // 📞 1. Инициализация исходящего вызова с генерацией легального JWT-токена LiveKit
+  // 📞 1. Инициализация исходящего вызова с генерацией JWT-токена LiveKit
   const handleStartAudioCall = async (partnerId: string) => {
     if (!currentUser) return;
     
@@ -21,14 +21,12 @@ export function useCallsLogic(currentUser: any, showToast: any) {
     try {
       showToast('Вызов пользователя...', 'info');
       
-      // Генерируем имя комнаты
       const generatedRoomName = targetIdStr.startsWith('group_')
         ? `call_${targetIdStr}`
         : (Number(myIdStr) < Number(targetIdStr) ? `call_${myIdStr}_${targetIdStr}` : `call_${targetIdStr}_${myIdStr}`);
 
       console.log(`[WebRTC_Call] Инициализация вызова в комнату: ${generatedRoomName}`);
 
-      // 🔐 ГЕНЕРАЦИЯ ОРИГИНАЛЬНОГО ТОКЕНА LIVEKIT ЧЕРЕЗ JOSE ИЗ ТВОЕГО АРХИВА
       const apiKey = "APIdub3CsA3TNJE";
       const apiSecret = "CptL3A3BQjVaaFzG9f0hbtz23YfQvVuB0cerptM1UbyA";
       const secretBuffer = new TextEncoder().encode(apiSecret);
@@ -43,18 +41,17 @@ export function useCallsLogic(currentUser: any, showToast: any) {
         .setExpirationTime('1h')
         .sign(secretBuffer);
 
-      // 🧹 Стираем старые зависшие звонки между этими двумя пользователями (из твоего архива)
+      // Стираем старые вызовы
       await supabase
         .from('calls')
         .delete()
         .or(`and(callerId.eq.${myIdStr},receiverId.eq.${targetIdStr}),and(callerId.eq.${targetIdStr},receiverId.eq.${myIdStr})`);
 
-      // 2. Делаем инсерт с РЕАЛЬНЫМ, валидным токеном и точными Case-Sensitive колонками таблицы!
       const { data: newCallRow, error: insertError } = await supabase
         .from('calls')
         .insert([{
           roomName: generatedRoomName,
-          token: validToken, // 🎯 НАСТОЯЩИЙ ПОДПИСАННЫЙ JWT ТОКЕН УЛЕТАЕТ В БАЗУ!
+          token: validToken, 
           callerId: myIdStr,
           receiverId: targetIdStr,
           status: 'ringing'
@@ -68,7 +65,11 @@ export function useCallsLogic(currentUser: any, showToast: any) {
         return;
       }
 
-      // Открываем модалку вызова у звонящего
+      // 🚀 ЖЕЛЕЗНЫЙ ФИКС №1: Записываем создателя как активного числового участника
+      await supabase
+        .from('call_participants')
+        .insert([{ callId: Number(newCallRow.id), userId: myIdStr }]);
+
       setCurrentCall(newCallRow);
 
     } catch (err) {
@@ -83,13 +84,18 @@ export function useCallsLogic(currentUser: any, showToast: any) {
     try {
       const { data, error } = await supabase
         .from('calls')
-        .update({ status: 'accepted' }) // Меняем статус на разговор
+        .update({ status: 'accepted' })
         .eq('id', incomingCallData.id)
         .select()
         .single();
 
       if (!error && data) {
-        setCurrentCall(data); // Развертываем созвон у себя
+        // 🚀 ЖЕЛЕЗНЫЙ ФИКС №2: Преобразуем id звонка в число перед инсертом участника
+        await supabase
+          .from('call_participants')
+          .insert([{ callId: Number(incomingCallData.id), userId: String(currentUser.id) }]);
+
+        setCurrentCall(data); 
         setIncomingCallData(null);
       }
     } catch (err) {
@@ -97,7 +103,7 @@ export function useCallsLogic(currentUser: any, showToast: any) {
     }
   };
 
-  // ❌ 3. Отклонение/Сброс вызова
+  // ❌ 3. Отклонение/Сброс вызова (Персональный выход из комнаты)
   const handleHangUp = async () => {
     const activeCall = currentCall || incomingCallData;
     if (!activeCall) return;
@@ -107,11 +113,16 @@ export function useCallsLogic(currentUser: any, showToast: any) {
     const isIAnAuthor = String(activeCall.callerId) === myIdStr;
 
     try {
-      // Мгновенно тушим интерфейс звонка СТРОГО у себя на экране
       setCurrentCall(null);
       setIncomingCallData(null);
 
-      // Если это личный чат (ЛС) ИЛИ если звонок отменяет сам СОЗДАТЕЛЬ на этапе гудков — гасим запись в базе
+      // 🚀 ЖЕЛЕЗНЫЙ ФИКС №3: Удаляем себя из таблицы сессий, приводя callId строго к числу!
+      await supabase
+        .from('call_participants')
+        .delete()
+        .eq('callId', Number(activeCall.id))
+        .eq('userId', myIdStr);
+
       if (!isGroupCall || (isGroupCall && isIAnAuthor && activeCall.status === 'ringing')) {
         await supabase
           .from('calls')
@@ -119,8 +130,15 @@ export function useCallsLogic(currentUser: any, showToast: any) {
           .eq('id', activeCall.id);
         showToast('Звонок отменен', 'info');
       } else {
-        // Если обычный участник просто выходит из активной беседы — мы не ломаем строку в базе,
-        // а просто пишем лог локального выхода, чтобы конференция продолжала жить для остальных!
+        // Проверяем, остался ли кто-то ещё в конференции
+        const { data: remaining } = await supabase
+          .from('call_participants')
+          .select('id')
+          .eq('callId', Number(activeCall.id));
+             
+        if (!remaining || remaining.length === 0) {
+          await supabase.from('calls').update({ status: 'ended' }).eq('id', activeCall.id);
+        }
         showToast('Вы вышли из конференции', 'info');
       }
     } catch (err) {
@@ -128,7 +146,7 @@ export function useCallsLogic(currentUser: any, showToast: any) {
     }
   };
 
-    // 🕒 Реалтайм-слушатель: Теперь умеет транслировать звонки на ВСЮ группу сразу!
+  // 🕒 4. Реалтайм-слушатель изменений статусов звонков
   useEffect(() => {
     if (!currentUser) return;
     const myIdStr = String(currentUser.id);
@@ -141,16 +159,13 @@ export function useCallsLogic(currentUser: any, showToast: any) {
         async (payload) => {
           console.log('[WebRTC_Socket] Сигнал звонка:', payload.eventType, payload);
 
-          // ==========================================
-          // 📞 А. ОБРАБОТКА ВХОДЯЩЕГО ЗВOНКА (INSERT)
-          // ==========================================
+          // А. Входящий звонок
           if (payload.eventType === 'INSERT') {
             const isGroupCall = String(payload.new.receiverId).startsWith('group_');
             const isIAnAuthor = String(payload.new.callerId) === myIdStr;
 
             if (isGroupCall) {
-              // 👥 ГРУППОВОЙ ЗВOНОК: Проверяем, состоим ли мы в этой беседе
-              if (!isIAnAuthor) { // Если звоним не мы сами
+              if (!isIAnAuthor) { 
                 const { data: membership } = await supabase
                   .from('group_members')
                   .select('id')
@@ -159,29 +174,19 @@ export function useCallsLogic(currentUser: any, showToast: any) {
                   .maybeSingle();
 
                 if (membership && payload.new.status === 'ringing') {
-                  console.log('[WebRTC_Call] Входящий вызов БЕСЕДЫ для нас!');
                   setIncomingCallData(payload.new);
                 }
               }
             } else {
-              // 👤 ЛИЧНЫЙ ЗВOНОК (Твоя старая проверенная логика ЛС)
               if (String(payload.new.receiverId) === myIdStr && payload.new.status === 'ringing') {
                 setIncomingCallData(payload.new);
               }
             }
           }
 
-          // ==========================================
-          // 🔄 Б. ОБРАБОТКА ИЗМЕНЕНИЯ СТАТУСА (UPDATE)
-          // ==========================================
-                    // ==========================================
-          // 🔄 Б. ОБРАБОТКА ИЗМЕНЕНИЯ СТАТУСА (UPDATE)
-          // ==========================================
+          // Б. Обновление статуса
           if (payload.eventType === 'UPDATE') {
-            const myIdStr = String(currentUser.id);
             const isGroupCall = String(payload.new.receiverId).startsWith('group_');
-            
-            // Проверяем, имеем ли мы отношение к этому звонку
             const isCaller = String(payload.new.callerId) === myIdStr;
             const isReceiver = String(payload.new.receiverId) === myIdStr;
             
@@ -198,11 +203,8 @@ export function useCallsLogic(currentUser: any, showToast: any) {
 
             if (!isParticipant) return;
 
-            // 🎯 ЖЕЛЕЗНЫЙ ФИКС ДЛЯ СОЗДАТЕЛЯ И УЧАСТНИКОВ:
-            // Если статус в базе стал accepted — ВСЕ, кто принял звонок (или создал его), переходят на экран разговора!
             if (payload.new.status === 'accepted') {
               if (isCaller || currentCall) { 
-                // Создатель или тот, кто уже нажал "Принять", мгновенно переключаются на фазу разговора!
                 setCurrentCall(payload.new);
                 setIncomingCallData(null);
               }
@@ -222,7 +224,7 @@ export function useCallsLogic(currentUser: any, showToast: any) {
     return () => {
       supabase.removeChannel(callSubscription);
     };
-  }, [currentUser]);
+  }, [currentUser, currentCall]);
 
   return {
     currentCall, setCurrentCall,

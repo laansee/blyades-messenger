@@ -62,16 +62,16 @@ export default function UserProfileView({
           <span className={styles['info-label']}>Имя пользователя</span>
         </div>
         
-        {shouldShowField(currentChatUser.privacyPhone, currentChatUser.isContact) && (
+        {shouldShowField(currentChatUser.privacyPhone, currentChatUser.isContact) && currentChatUser.phone && currentChatUser.phone.trim() !== '' && (
           <div className={styles['info-item']}>
-            <span className={styles['info-value']}>{currentChatUser.phone || 'Номер не указан'}</span>
+            <span className={styles['info-value']}>{currentChatUser.phone}</span>
             <span className={styles['info-label']}>Телефон</span>
           </div>
         )}
 
-        {shouldShowField(currentChatUser.privacyEmail, currentChatUser.isContact) && (
+        {shouldShowField(currentChatUser.privacyEmail, currentChatUser.isContact) && currentChatUser.email && currentChatUser.email.trim() !== '' && (
           <div className={styles['info-item']}>
-            <span className={styles['info-value']}>{currentChatUser.email || 'Почта не указана'}</span>
+            <span className={styles['info-value']}>{currentChatUser.email}</span>
             <span className={styles['info-label']}>Электронная почта</span>
           </div>
         )}

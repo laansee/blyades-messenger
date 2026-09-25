@@ -74,7 +74,7 @@ export default function CallsWindow() {
           {isVideoOn ? <Video size={20} /> : <VideoOff size={20} />}
         </button>
 
-        <button type="button" onClick={ctx.handleEndCall} style={buttonStyle('#da373c', '#ffffff')} title="Завершить вызов">
+        <button type="button" onClick={ctx.handleHangUp} style={buttonStyle('#da373c', '#ffffff')} title="Завершить вызов">
           <Phone size={20} style={{ transform: 'rotate(135deg)' }} />
         </button>
 
