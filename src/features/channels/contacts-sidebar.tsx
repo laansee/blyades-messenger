@@ -67,23 +67,16 @@ export default function ContactsSidebar({
       <>
         <div className={styles['sidebar-header']}>
           <h2>Контакты</h2>
-            <div style={{ position: 'relative', width: '100%' }}>
-              <Search size={18} className={styles['sidebar-search-icon']}/>
-              <input 
-                type="search" 
-                placeholder="Найти человека по логину..." 
-                className={styles['chat-search']} 
-                value={globalSearchQuery} 
-                onChange={e => setGlobalSearchQuery(e.target.value)} 
-              />
-            </div>
-          {/* <input 
-            type="search" 
-            placeholder="Найти человека по логину..." 
-            className={styles['chat-search']} 
-            value={globalSearchQuery} 
-            onChange={e => setGlobalSearchQuery(e.target.value)} 
-          /> */}
+          <div style={{ position: 'relative', width: '100%' }}>
+            <Search size={18} className={styles['sidebar-search-icon']}/>
+            <input 
+              type="search" 
+              placeholder="Поиск по логину..." 
+              className={styles['chat-search']} 
+              value={globalSearchQuery} 
+              onChange={e => setGlobalSearchQuery(e.target.value)} 
+            />
+          </div>
         </div>
         
         <div className={styles['chats-list']}>

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Phone, Video, VideoOff, Mic, MicOff } from 'lucide-react';
 import useMessengerContext from '../../context/messengerContext';
+// 🚀 Импортируем твой родной модульный CSS-файл окон чата
+import styles from '../../components/css/chat-window.module.css'; 
 
 export default function CallsWindow() {
   const ctx = useMessengerContext();
@@ -30,22 +32,24 @@ export default function CallsWindow() {
     return `${mins}:${secs}`;
   };
 
-  // ❌ СЦЕНАРИЙ А: Если звонков сейчас нет — рендерим твою красивую заглушку
+  // ❌ СЦЕНАРИЙ А: Если звонков сейчас нет — рендерим идеальную заглушку один-в-один с чатами
   if (!isCallActive) {
     return (
-      <div style={{ flex: 1, height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px', padding: '20px', backgroundColor: '#0e0e12' }}>
-        <div style={{ width: '80px', height: '80px', borderRadius: '50%', backgroundColor: '#1c1c24', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#636366' }}>
-          <Phone size={36} />
+      <main className={styles['chat-window']}>
+        <div className={styles['chat-placeholder']}>
+          <div className={styles['placeholder-content']}>
+            {/* Большая стильная трубка по центру в оригинальном CSS-круге */}
+            <div className={styles['placeholder-icon']}>
+              <Phone size={64} />
+            </div>
+            <p>Выберите звонок, чтобы начать общение</p>
+          </div>
         </div>
-        <h2 style={{ color: '#fff', fontSize: '18px', margin: 0, fontWeight: '600' }}>Выберите звонок из списка</h2>
-        <p style={{ color: '#636366', fontSize: '14px', margin: 0, textAlign: 'center', maxWidth: '280px', lineHeight: '1.4' }}>
-          Здесь будет отображаться детальная история вызовов, длительность разговоров и панель аудио-связи WebRTC.
-        </p>
-      </div>
+      </main>
     );
   }
 
-  // 📞 СЦЕНАРИЙ Б: ЕСЛИ ИДЕТ АКТИВНЫЙ РАЗГОВОР — ОЖИВЛЯЕМ ТВОЙ СТЕНД С КНОПКАМИ
+  // 📞 СЦЕНАРИЙ Б: ЕСЛИ ИДЕТ АКТИВНЫЙ РАЗГОВОР
   return (
     <div style={{ flex: 1, height: '100%', backgroundColor: '#1e1f22', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', padding: '40px' }}>
       

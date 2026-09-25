@@ -14,10 +14,14 @@ export default function SettingsLayout() {
 
   const currentUser = ctx.currentUser;
 
+  // Собираем полное реальное имя для проверки
   const mySettingsFullName = `${currentUser?.firstName || ''} ${currentUser?.lastName || ''}`.trim();
+  
+  // 🚀 ИСПРАВЛЕНИЕ: Имя отобразится ТОЛЬКО если в конфиденциальности выбран режим "full_name"
   const mySettingsDisplayName = currentUser?.privacyNameFormat === 'full_name' && mySettingsFullName
     ? mySettingsFullName
-    : (currentUser?.username || 'Аккаунт');
+    : (currentUser?.username && currentUser.username.trim() !== '' ? currentUser.username : 'Аккаунт');
+
 
   return (
     <div className={styles.settingsContainer}>
@@ -44,9 +48,9 @@ export default function SettingsLayout() {
                 <h2 className={styles.tgUserMetaName}>
                   {mySettingsDisplayName}
                 </h2>
-                <p className={styles.tgUserMetaPhone}>
+                {/* <p className={styles.tgUserMetaPhone}>
                   {currentUser?.phone || 'Номер не указан'}
-                </p>
+                </p> */}
                 <p className={styles.tgUserMetaUsername}>
                   {currentUser?.uniqueId ? `@${currentUser.uniqueId}` : `@id${currentUser?.id || '?'}`}
                 </p>

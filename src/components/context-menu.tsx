@@ -44,7 +44,13 @@ export default function ContextMenu({ show, x, y, onClose, items }: ContextMenuP
             <button
               key={`item-${index}`}
               className={`${styles['menu-item']} ${item.isDanger ? styles['menu-item-danger'] : ''}`}
-              onClick={() => { item.onClick(); onClose(); }}
+              
+              onClick={() => {
+                item.onClick();
+                setTimeout(() => {
+                  onClose();
+                }, 10);
+              }}
             >
               {item.icon && <span className={styles['menu-item-icon']}>{item.icon}</span>}
               <span className={styles['menu-text']}>{item.label}</span>

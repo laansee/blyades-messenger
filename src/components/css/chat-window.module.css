@@ -138,7 +138,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  margin: 16px 0;
+  margin: 4px 0;
   width: 100%;
   user-select: none;
 }
@@ -701,4 +701,63 @@ form.chat-input-zone {
 @keyframes scaleOutCard {
   from { opacity: 1; transform: scale(1); }
   to { opacity: 0; transform: scale(0.9); }
+}
+
+
+
+/* 🚀 СТИЛИ ДЛЯ СИСТЕМНЫХ ПЛАШЕК ПОЦЕНТРУ */
+.system-message-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
+.system-message-bubble {
+  background-color: rgba(30, 31, 34, 0.6); /* Полупрозрачный темный фон Discord */
+  border: 1px solid rgba(43, 45, 49, 0.5);
+  color: #a2a2b5;
+  padding: 6px 16px;
+  border-radius: 12px;
+  font-size: 13px;
+  text-align: center;
+  max-width: 80%;
+  line-height: 1.4;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.system-message-bubble b {
+  color: #fff; /* Выделяем жирный текст белым цветом */
+  font-weight: 600;
+}
+
+/* 👥 СТИЛИ ДЛЯ ГРУППОВЫХ АВАТАРОК РЯДОМ С БАББЛАМИ */
+.message-with-avatar {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  width: 100%;
+}
+
+.group-msg-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: bold;
+  font-size: 12px;
+  margin-bottom: 4px; /* Чтобы круг стоял на одном уровне с низом баббла */
+  flex-shrink: 0;
+}
+
+.group-msg-sender-name {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  color: #5865F2; /* Фирменный синий цвет никнеймов */
+  cursor: pointer;
 }

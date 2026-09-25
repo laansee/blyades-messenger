@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import styles from '../../components/css/settings.module.css';
 import useMessengerContext from '../../context/messengerContext';
 import { supabase } from '../../services/supabaseClient';
@@ -19,12 +19,38 @@ export default function PrivacySettings({ onBack }: PrivacySettingsProps) {
   const [privacyFullName, setPrivacyFullName] = useState(currentUser?.privacyFullName || 'all');
   const [privacySearch, setPrivacySearch] = useState(currentUser?.privacySearch || 'all');
 
+  // 🚀 АВТО-ПРОВЕРКА И КОРРЕКЦИЯ ПРИВАТНОСТИ ПРИ ПУСТЫХ ПОЛЯХ ПРОФИЛЯ
+  useEffect(() => {
+    const isUsernameEmpty = !currentUser?.username || currentUser?.username.trim() === '' || currentUser?.username === 'NULL';
+    const isFullNameEmpty = (!currentUser?.firstName || currentUser?.firstName.trim() === '' || currentUser?.firstName === 'NULL') &&
+                            (!currentUser?.lastName || currentUser?.lastName.trim() === '' || currentUser?.lastName === 'NULL');
+
+    if (isUsernameEmpty) {
+      // Если никнейма нет — принудительно заставляем показывать Имя/Фамилию
+      setPrivacyNameFormat('full_name');
+      setPrivacyFullName('all'); // Нижний селект тоже лочим во "Все"
+    } else if (isFullNameEmpty) {
+      // Если Имя и Фамилия пустые — принудительно заставляем показывать никнейм
+      setPrivacyNameFormat('username');
+    }
+  }, [currentUser]);
+
+
+  const handleNameFormatChange = (value: string) => {
+    setPrivacyNameFormat(value);
+    
+    // Если выбрали вариант "Показывать имя и фамилию"
+    if (value === 'full_name') {
+      // Автоматически переводим видимость имени и фамилии на "Все пользователи"
+      setPrivacyFullName('all'); 
+    }
+  };
+
   const handlePrivacySubmit = async (e: React.FormEvent) => {
     if (e) e.preventDefault();
     setIsSaving(true);
 
     try {
-      // 🚀 ОБНОВЛЯЕМ ПАРАМЕТРЫ КОНФИДЕНЦИАЛЬНОСТИ В SUPABASE
       const { error } = await supabase
         .from('users')
         .update({
@@ -75,7 +101,12 @@ export default function PrivacySettings({ onBack }: PrivacySettingsProps) {
             <span className={styles.privacyTextTitle}>Кто видит мой номер телефона:</span>
             <span className={styles.privacyTextSubtitle}>Скрывает ваш номер в модальном окне профиля.</span>
           </div>
-          <select value={privacyPhone} onChange={e => setPrivacyPhone(e.target.value)} className={styles.privacySelectInput}>
+          <select 
+            value={privacyPhone} 
+            id='privacyPhone'
+            onChange={e => setPrivacyPhone(e.target.value)} 
+            className={styles.privacySelectInput}
+          >
             <option value="all">Все пользователи</option>
             <option value="contacts">Только мои контакты</option>
             <option value="none">Никто</option>
@@ -87,7 +118,12 @@ export default function PrivacySettings({ onBack }: PrivacySettingsProps) {
             <span className={styles.privacyTextTitle}>Кто видит, что я в сети:</span>
             <span className={styles.privacyTextSubtitle}>Отключает отображение зеленого индикатора онлайна.</span>
           </div>
-          <select value={privacyOnline} onChange={e => setPrivacyOnline(e.target.value)} className={styles.privacySelectInput}>
+          <select 
+            value={privacyOnline}
+            id='privacyOnline' 
+            onChange={e => setPrivacyOnline(e.target.value)} 
+            className={styles.privacySelectInput}
+          >
             <option value="all">Все пользователи</option>
             <option value="contacts">Только мои контакты</option>
             <option value="none">Никто</option>
@@ -99,7 +135,12 @@ export default function PrivacySettings({ onBack }: PrivacySettingsProps) {
             <span className={styles.privacyTextTitle}>Кто видит мою эл. почту:</span>
             <span className={styles.privacyTextSubtitle}>Скрывает email в карточке вашего профиля.</span>
           </div>
-          <select value={privacyEmail} onChange={e => setPrivacyEmail(e.target.value)} className={styles.privacySelectInput}>
+          <select 
+            value={privacyEmail} 
+            id='privacyEmail'
+            onChange={e => setPrivacyEmail(e.target.value)} 
+            className={styles.privacySelectInput}
+          >
             <option value="all">Все пользователи</option>
             <option value="contacts">Только мои контакты</option>
             <option value="none">Никто</option>
@@ -110,10 +151,41 @@ export default function PrivacySettings({ onBack }: PrivacySettingsProps) {
           <div className={styles.privacyTextInfo}>
             <span className={styles.privacyTextTitle}>Отображение имени в чатах:</span>
             <span className={styles.privacyTextSubtitle}>
-              Выбирает, что увидят пользователи <b>(у которых вы не в контактах)</b> в заголовках и списках диалогов — ваш логин или настоящее имя.
+              Выбирает, что увидят пользователи в заголовках и списках диалогов — ваш логин или настоящее имя.
+              {/* 💡 Динамические подсказки для пользователя */}
+              {(!currentUser?.username || currentUser?.username.trim() === '' || currentUser?.username === 'NULL') && (
+                <b style={{ color: '#ef4444', display: 'block', marginTop: '4px' }}>⚠️ Заблокировано: у вас не заполнен никнейм в профиле.</b>
+              )}
+              {((!currentUser?.firstName || currentUser?.firstName.trim() === '' || currentUser?.firstName === 'NULL') &&
+                (!currentUser?.lastName || currentUser?.lastName.trim() === '' || currentUser?.lastName === 'NULL')) && (
+                <b style={{ color: '#ef4444', display: 'block', marginTop: '4px' }}>⚠️ Заблокировано: у вас не заполнены имя и фамилия в профиле.</b>
+              )}
             </span>
           </div>
-          <select value={privacyNameFormat} onChange={e => setPrivacyNameFormat(e.target.value)} className={styles.privacySelectInput}>
+          <select 
+            value={privacyNameFormat} 
+            onChange={e => handleNameFormatChange(e.target.value)} 
+            className={styles.privacySelectInput}
+            /* 🚀 ЖЕЛЕЗНЫЙ ДВУХСТОРОННИЙ БЛОКИРОВЩИК */
+            disabled={
+              (!currentUser?.username || currentUser?.username.trim() === '' || currentUser?.username === 'NULL') ||
+              ((!currentUser?.firstName || currentUser?.firstName.trim() === '' || currentUser?.firstName === 'NULL') &&
+               (!currentUser?.lastName || currentUser?.lastName.trim() === '' || currentUser?.lastName === 'NULL'))
+            }
+            style={{
+              opacity: (
+                (!currentUser?.username || currentUser?.username.trim() === '' || currentUser?.username === 'NULL') ||
+                ((!currentUser?.firstName || currentUser?.firstName.trim() === '' || currentUser?.firstName === 'NULL') &&
+                 (!currentUser?.lastName || currentUser?.lastName.trim() === '' || currentUser?.lastName === 'NULL'))
+              ) ? 0.4 : 1,
+              cursor: (
+                (!currentUser?.username || currentUser?.username.trim() === '' || currentUser?.username === 'NULL') ||
+                ((!currentUser?.firstName || currentUser?.firstName.trim() === '' || currentUser?.firstName === 'NULL') &&
+                 (!currentUser?.lastName || currentUser?.lastName.trim() === '' || currentUser?.lastName === 'NULL'))
+              ) ? 'not-allowed' : 'pointer',
+              transition: 'opacity 0.2s ease'
+            }}
+          >
             <option value="username">Показывать никнейм</option>
             <option value="full_name">Показывать имя и фамилию</option>
           </select>
@@ -149,25 +221,40 @@ export default function PrivacySettings({ onBack }: PrivacySettingsProps) {
           </div>
         </div>
 
-        <div className={`${styles.privacyItemRow} ${styles.privacyTopBorder}`}>
+        <div className={`${styles.privacyItemRow} ${styles.privacyBothBorder}`}>
           <div className={styles.privacyTextInfo}>
             <span className={styles.privacyTextTitle}>Кто видит моё имя и фамилию:</span>
             <span className={styles.privacyTextSubtitle}>Скрывает или показывает реальное имя и фамилию в модальном окне вашего профиля.</span>
           </div>
-          <select value={privacyFullName} onChange={e => setPrivacyFullName(e.target.value)} className={styles.privacySelectInput}>
+          <select 
+            value={privacyFullName} 
+            id='privacyFullName'
+            onChange={e => setPrivacyFullName(e.target.value)} 
+            className={styles.privacySelectInput}
+            disabled={privacyNameFormat === 'full_name'}
+            style={{
+              opacity: privacyNameFormat === 'full_name' ? 0.4 : 1,
+              cursor: privacyNameFormat === 'full_name' ? 'not-allowed' : 'pointer',
+              transition: 'opacity 0.2s ease'
+            }}
+          >
             <option value="all">Все пользователи</option>
             <option value="contacts">Только мои контакты</option>
             <option value="none">Никто</option>
           </select>
         </div>
         
-        {/* 🚀 НОВЫЙ БЛОК: ВИДИМОСТЬ ДЛЯ ПОИСКА */}
         <div className={styles.privacyItemRow}>
           <div className={styles.privacyTextInfo}>
             <span className={styles.privacyTextTitle}>Кто может найти меня по поиску:</span>
             <span className={styles.privacyTextSubtitle}>Разрешает или запрещает незнакомцам находить ваш аккаунт по логину во вкладке контактов.</span>
           </div>
-          <select value={privacySearch} onChange={e => setPrivacySearch(e.target.value)} className={styles.privacySelectInput}>
+          <select 
+            value={privacySearch} 
+            id='privacySearch'
+            onChange={e => setPrivacySearch(e.target.value)} 
+            className={styles.privacySelectInput}
+          >
             <option value="all">Глобальный поиск</option>
             <option value="none">Скрыть из поиска</option>
           </select>

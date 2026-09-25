@@ -1,26 +1,17 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { supabase } from '../services/supabaseClient';
-import { ToastNotification, ConfirmModal } from '../components/GlobalUI';
-import ProfileModal from '../components/profile-modal';
-import CallOverlay from '../components/call-overlay';
-import * as jose from 'jose'; 
-import IncomingCallModal from '../components/incoming-call-modal';
+import { ToastNotification, ConfirmModal } from '../components/GlobalUI'; 
+import ProfileModal from '../components/profile-modal'; 
+import CallModal from '../components/call-overlay'; 
 
-// import { SpeedInsights } from "@vercel/speed-insights/next"
-// import { Analytics } from "@vercel/analytics/next"
-
-// 🚀 ГЛОБАЛЬНЫЙ ЗАМОК ДЛЯ ИСХОДЯЩИХ ЗВОНКОВ: Защищает контекст от двойного монтажа React Strict Mode!
-let isOutboundChannelInitialized = false;
-// 🚀 ГЛОБАЛЬНЫЙ ЗАМОК ДЛЯ СООБЩЕНИЙ: Защищает стрим переписок от двойного монтажа Strict Mode!
-let isMessagesChannelInitialized = false;
-
+// Импортируем наши изолированные хуки логики
+import { useCallsLogic } from './messenger/useCallsLogic';
+import { useGroupChats } from './messenger/useGroupChats';
+import { useRealtimeSubscription } from './messenger/useRealtimeSubscription';
 
 const MessengerContext = createContext<any>(null);
 
 export function MessengerProvider({ children }: { children: React.ReactNode }) {
-  const [currentCall, setCurrentCall] = useState<{ roomName: string; token: string } | null>(null);
-  const [incomingCallData, setIncomingCallData] = useState<any | null>(null);
-
   const [activeTab, setActiveTab] = useState('chats');
   const [theme, setTheme] = useState('dark');
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -35,51 +26,86 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
   const [showUserModal, setShowUserModal] = useState<any>(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [typingUser, setTypingUser] = useState(false);
-  const [dropdown, setDropdown] = useState({ 
-    show: false, x: 0, y: 0, items: [] as any[] });
-
-
-  const [toast, setToast] = useState({ show: false, message: '', type: 'info' });
+  const [ctxMenu, setCtxMenu] = useState({ show: false, x: 0, y: 0, items: [] as any[] });
+  
+  const [toast, setToast] = useState({ show: false, message: '', type: 'info' as 'info' | 'success' | 'error' | 'warning' });
   const [confirm, setConfirm] = useState({ show: false, title: '', text: '', onConfirm: () => {}, isDanger: false });
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [ctxMenu, setCtxMenu] = useState({ show: false, x: 0, y: 0, items: [] as any[] });
-  const closeContextMenu = () => setCtxMenu((prev: any) => ({ ...prev, show: false }));
 
-  // РЕФЫ-ЗАМКИ ДЛЯ ПРЕДОТВРАЩЕНИЯ ДУБЛИКАТОВ СЛУШАТЕЛЕЙ В STRICT MODE [2]
-  const messagesChannelRef = useRef<any>(null);
-  const outboundCallChannelRef = useRef<any>(null);
+  const showToast = (message: string, type: 'info' | 'success' | 'error' | 'warning' = 'info') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
+  };
 
-  // 1. Подгружаем профиль вошедшего юзера [2]
+  const showConfirm = (title: string, text: string, onConfirm: () => void, isDanger = false) => {
+    setConfirm({ show: true, title, text, onConfirm, isDanger });
+  };
+
+  const closeContextMenu = () => setCtxMenu(prev => ({ ...prev, show: false }));
+
+  // 🚀 ПОДКЛЮЧАЕМ НАШИ МОДУЛЬНЫЕ ХУКИ
+  const calls = useCallsLogic(currentUser, showToast);
+  const groups = useGroupChats(currentUser, showToast, setActiveChatId, setActiveTab);
+  useRealtimeSubscription(currentUser, setAllMessages);
+
+  // 1. АВТОРИЗАЦИЯ: Холодный старт профиля из сессии
   useEffect(() => {
-    const myId = localStorage.getItem('blyades_user_id');
-    if (myId) {
-      supabase.from('users').select('*').eq('id', myId).single().then(({ data }) => {
-        if (data) setCurrentUser(data);
-      });
-    }
+    const fetchSessionUser = async () => {
+      const storedId = localStorage.getItem('blyades_user_id');
+      if (!storedId) {
+        setCurrentUser(null);
+        return;
+      }
+      const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', storedId)
+      .single();
+
+      if (!error && data)
+        setCurrentUser(data);
+      else {
+        // Если в базе юзер был удален админом, чистим сессию
+        localStorage.removeItem('blyades_user_id');
+        setCurrentUser(null);
+      }
+    };
+    fetchSessionUser();
   }, []);
 
-  // 2. ПОДГРУЖАЕМ СПИСОК КОНТАКТОВ [2]
+  // Накатываем холодную выгрузку всей истории сообщений для прогрева кэша
+  useEffect(() => {
+    const fetchHistory = async () => {
+      const { data } = await supabase.from('messages').select('*').order('id', { ascending: true });
+      if (data) setAllMessages(data);
+    };
+    fetchHistory();
+  }, []);
+
+  // 👥 2 & 4. МОНОЛИТНАЯ И БЕЗОШИБОЧНАЯ СБОРКА САЙДБАРА (ЛИЧНЫЕ ЧАТЫ + БЕСЕДЫ)
   useEffect(() => {
     if (!currentUser) return;
 
-    const fetchMyContacts = async () => {
-      const { data: myContacts, error: contactsError } = await supabase
-        .from('contacts')
-        .select('*')
-        .eq('userId', String(currentUser.id));
+    const fetchAndMatchChats = async () => {
+      const myId = String(currentUser.id);
 
-      if (contactsError) {
-        console.error('Ошибка загрузки контактов:', contactsError.message);
-        return;
+      const { data: myContacts } = await supabase.from('contacts').select('*').eq('userId', myId);
+      const { data: allUsers } = await supabase.from('users').select('*');
+      const { data: myGroupMemberships } = await supabase.from('group_members').select('chatId').eq('userId', myId);
+
+      const joinedGroupIds = myGroupMemberships ? myGroupMemberships.map(m => m.chatId) : [];
+
+      let activeGroups: any[] = [];
+      if (joinedGroupIds.length > 0) {
+        const { data: groupsData } = await supabase.from('group_chats').select('*').in('id', joinedGroupIds);
+        if (groupsData) activeGroups = groupsData;
       }
 
-      const { data: allUsers } = await supabase.from('users').select('*');
-
       if (allUsers) {
-        const formattedChats = allUsers
-          .filter((u: any) => String(u.id).trim() !== String(currentUser.id).trim())
+        // А. Форматируем личные чаты
+        const formattedPersonalChats = allUsers
+          .filter((u: any) => String(u.id).trim() !== myId.trim())
           .map((u: any) => {
             const contactMeta = myContacts?.find((c: any) => String(c.contactId).trim() === String(u.id).trim());
             const isContact = !!contactMeta;
@@ -91,224 +117,134 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
               calculatedName = `${u.firstName || ''} ${u.lastName || ''}`.trim();
             }
 
+            const partnerId = String(u.id);
+            const roomName = Number(myId) < Number(partnerId) ? `${myId}_${partnerId}` : `${partnerId}_${myId}`;
+            const roomMessages = allMessages.filter(m => m.chatId === roomName);
+            const lastMsg = roomMessages[roomMessages.length - 1];
+
             return {
               id: String(u.id),
               username: u.username,
               uniqueId: u.uniqueId,
               name: calculatedName,
+              avatarColor: u.avatarColor || '#007aff',
+              isContact: isContact,
+              isGroup: false,
+              phone: u.phone || '',
+              email: u.email || '',
               firstName: u.firstName || '',
               lastName: u.lastName || '',
-              email: u.email || '',
-              phone: u.phone || '',
-              avatarColor: u.avatarColor || '#007aff',
-              isContact: isContact, 
-              note: contactMeta?.note || '',
-              online: false,
-              lastMessage: 'Нет сообщений',
-              lastMessageTime: '',
-              unreadCount: 0
+              privacyPhone: u.privacyPhone || 'all',
+              privacyEmail: u.privacyEmail || 'all',
+              privacyOnline: u.privacyOnline || 'all',
+              privacyNameFormat: u.privacyNameFormat || 'username',
+              privacyFullName: u.privacyFullName || 'all',
+              lastMessage: lastMsg ? lastMsg.text : 'Нет сообщений',
+              lastMessageTime: lastMsg ? new Date(lastMsg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''
             };
           });
 
-        setChats(formattedChats);
+        // Б. 👥 Форматируем групповые чаты (беседы) С ЖЕЛЕЗНЫМ ВЫЧИСЛЕНИЕМ КОМНАТЫ
+        const formattedGroupChats = activeGroups.map((g: any) => {
+          // 🎯 ИСПРАВЛЕНИЕ: Чат-комната группы — это строго её собственный g.id!
+          const roomMessages = allMessages.filter(m => m.chatId === g.id);
+          const lastMsg = roomMessages[roomMessages.length - 1];
+
+          return {
+            id: g.id, 
+            name: g.name, 
+            avatarColor: g.avatarColor || '#5865F2',
+            isGroup: true, 
+            ownerId: g.ownerId,
+            lastMessage: lastMsg ? lastMsg.text : 'Нет сообщений',
+            lastMessageTime: lastMsg ? new Date(lastMsg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''
+          };
+        });
+
+        setChats([...formattedPersonalChats, ...formattedGroupChats]);
       }
     };
 
-    fetchMyContacts();
-  }, [currentUser]);
+    fetchAndMatchChats();
+  }, [currentUser, allMessages]);
 
-  // 3. 🚀 ПОДГРУЖАЕМ ВСЕ СООБЩЕНИЯ И ВКЛЮЧАЕМ REALTIME ДЛЯ ЧАТОВ
-  useEffect(() => {
-    if (!currentUser) return;
-
-    const fetchAllMessages = async () => {
-      const { data } = await supabase
-        .from('messages')
-        .select('*')
-        .order('createdAt', { ascending: true });
-
-      if (data) {
-        setAllMessages(data);
-      }
-    };
-
-    fetchAllMessages();
-
-    if (isMessagesChannelInitialized) {
-      console.log('[WebRTC_Call] Блокировка дубликата Strict Mode для канала сообщений.');
-      return;
-    }
-
-    console.log('[WebRTC_Call] Создаем ОДИН чистый канал Realtime-сообщений: global-messages-live');
-    isMessagesChannelInitialized = true; // Запираем замок сообщений!
-
-    const msgChannel = supabase
-      .channel('global-messages-live')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, (payload) => {
-        if (payload.eventType === 'INSERT') {
-          setAllMessages((prev) => [...prev, payload.new]);
-        }
-        if (payload.eventType === 'UPDATE') {
-          setAllMessages((prev) => prev.map(m => m.id === payload.new.id ? payload.new : m));
-        }
-        if (payload.eventType === 'DELETE') {
-          setAllMessages((prev) => prev.filter(m => m.id !== payload.old.id));
-        }
-      })
-      .subscribe();
-
-    return () => {
-      // Оставляем инстанс активным при быстром перезапуске Strict Mode, чтобы сокет не падал
-    };
-  }, [currentUser]);
-
-  // 3. ПОДГРУЖАЕМ ВСЕ СООБЩЕНИЯ И ВКЛЮЧАЕМ REALTIME ДЛЯ ЧАТОВ С ЗАЩИТОЙ ИЗ РЕФА [2]
-  // useEffect(() => {
-  //   if (!currentUser) return;
-
-  //   const fetchAllMessages = async () => {
-  //     const { data, error } = await supabase
-  //       .from('messages')
-  //       .select('*')
-  //       .order('createdAt', { ascending: true });
-
-  //     if (!error && data) {
-  //       setAllMessages(data);
-  //     }
-  //   };
-
-  //   fetchAllMessages();
-
-  //   // Защита от двойного монтажа сообщений [2]
-  //   if (messagesChannelRef.current) return;
-
-  //   console.log('[WebRTC_Call] Создаем чистый канал Realtime-сообщений');
-  //   const msgChannel = supabase
-  //     .channel('global-messages-live')
-  //     .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, (payload) => {
-  //       if (payload.eventType === 'INSERT') {
-  //         setAllMessages((prev) => [...prev, payload.new]);
-  //       }
-  //       if (payload.eventType === 'UPDATE') {
-  //         setAllMessages((prev) => prev.map(m => m.id === payload.new.id ? payload.new : m));
-  //       }
-  //       if (payload.eventType === 'DELETE') {
-  //         setAllMessages((prev) => prev.filter(m => m.id !== payload.old.id));
-  //       }
-  //     })
-  //     .subscribe();
-
-  //   messagesChannelRef.current = msgChannel;
-
-  //   return () => {
-  //     // Оставляем реф активным в Strict Mode
-  //   };
-  // }, [currentUser]);
-
-  // 4. МЭТЧИМ ТЕКСТ ПОСЛЕДНИХ СООБЩЕНИЙ ДЛЯ САЙДБАРА [2]
-  useEffect(() => {
-    if (chats.length === 0 || allMessages.length === 0) return;
-
-    const myId = String(currentUser?.id);
-
-    const updatedChats = chats.map(chat => {
-      const partnerId = String(chat.id);
-      const roomName = Number(myId) < Number(partnerId) ? `${myId}_${partnerId}` : `${partnerId}_${myId}`;
-
-      const roomMessages = allMessages.filter(m => m.chatId === roomName);
-      const lastMsg = roomMessages[roomMessages.length - 1];
-
-      return {
-        ...chat,
-        lastMessage: lastMsg ? lastMsg.text : 'Нет сообщений',
-        lastMessageTime: lastMsg 
-          ? new Date(lastMsg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
-          : ''
-      };
-    });
-
-    if (JSON.stringify(chats) !== JSON.stringify(updatedChats)) {
-      setChats(updatedChats);
-    }
-  }, [allMessages, chats, currentUser]);
-
-  // const handleSendMessage = async (e: React.FormEvent) => {
-  //   if (e) e.preventDefault();
-  //   if (!messageText.trim() || !currentUser || !activeChatId) return;
-
-  //   const myId = String(currentUser.id);
-  //   const partnerId = String(activeChatId);
-  //   const currentJoinedRoom = Number(myId) < Number(partnerId) ? `${myId}_${partnerId}` : `${partnerId}_${myId}`;
-
-  //   const now = new Date();
-  //   const formattedTime = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-  //   if (editingMessage) {
-  //     await supabase
-  //       .from('messages')
-  //       .update({ 
-  //         text: messageText, 
-  //         isEdited: true,
-  //         status: editingMessage.status
-  //       })
-  //       .eq('id', editingMessage.id);
-  //     setEditingMessage(null);
-  //   } else {
-  //     await supabase.from('messages').insert([{
-  //       chatId: currentJoinedRoom,
-  //       senderId: myId,
-  //       text: messageText,
-  //       status: 'sent'
-  //     }]);
-  //   }
-  //   setMessageText('');
-  // };
-
+  // 🚀 УМНАЯ ОТПРАВКА: Автоматически разделяет создание нового текста и РЕДАКТИРОВАНИЕ старого!
   const handleSendMessage = async (e: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!messageText.trim() || !currentUser || !activeChatId) return;
+    if (!messageText.trim() || !activeChatId || !currentUser) return;
 
     const myId = String(currentUser.id);
     const partnerId = String(activeChatId);
-    const currentJoinedRoom = Number(myId) < Number(partnerId) ? `${myId}_${partnerId}` : `${partnerId}_${myId}`;
-
-    if (editingMessage) {
-      await supabase
-        .from('messages')
-        .update({ text: messageText, isEdited: true })
-        .eq('id', editingMessage.id);
-      setEditingMessage(null);
-    } else {
-      await supabase.from('messages').insert([{
-        chatId: currentJoinedRoom,
-        senderId: myId,
-        text: messageText,
-        status: 'sent'
-      }]);
-    }
+    const textToSend = messageText.trim();
+    
+    // Очищаем инпут сразу
     setMessageText('');
+
+    const isGroupChat = partnerId.startsWith('group_');
+    const currentJoinedRoom = isGroupChat 
+      ? partnerId 
+      : (Number(myId) < Number(partnerId) ? `${myId}_${partnerId}` : `${partnerId}_${myId}`);
+
+    // ==========================================
+    // ✏️ ФАЗА 1: РЕЖИМ РЕДАКТИРОВАНИЯ СООБЩЕНИЯ
+    // ==========================================
+    if (editingMessage) {
+      const targetMessageId = editingMessage.id;
+      
+      // 1. Сбрасываем стейт редактирования, чтобы плашка ушла с экрана
+      setEditingMessage(null);
+
+      // 2. Оптимистично обновляем текст сообщения у себя на экране для мгновенного отклика
+      setAllMessages((prev) => 
+        prev.map(m => m.id === targetMessageId ? { ...m, text: textToSend, isEdited: true } : m)
+      );
+
+      // 3. Отправляем UPDATE-запрос в таблицу messages базы данных Supabase
+      const { error } = await supabase
+        .from('messages')
+        .update({ 
+          text: textToSend,
+          isEdited: true // Ставим флаг, что сообщение отредактировано
+        })
+        .eq('id', targetMessageId);
+
+      if (error) {
+        showToast('Не удалось сохранить изменения', 'error');
+        console.error('[Update_Error]', error.message);
+      }
+      return; // 🎯 Прерываем функцию, чтобы код не пошел создавать новое сообщение!
+    }
+
+    // ==========================================
+    // ➕ ФАЗА 2: РЕЖИМ ОТПРАВКИ НОВОГО СООБЩЕНИЯ
+    // ==========================================
+    const tempId = `temp-${Date.now()}`;
+
+    const optimisticMessage = {
+      id: tempId,
+      chatId: currentJoinedRoom,
+      senderId: myId,
+      text: textToSend,
+      status: 'sending',
+      createdAt: new Date().toISOString()
+    };
+
+    setAllMessages((prev) => [...prev, optimisticMessage]);
+
+    await supabase.from('messages').insert([{
+      chatId: currentJoinedRoom,
+      senderId: myId,
+      text: textToSend,
+      status: 'sent'
+    }]);
   };
 
-  // const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-  //   if (e.key === 'Enter' && !e.shiftKey) {
-  //     e.preventDefault();
-  //     handleSendMessage(e);
-  //   }
-  // };
-
-  // const handleCopyMessageText = (text: string) => {
-  //   navigator.clipboard.writeText(text);
-  //   showToast('Текст скопирован!', 'success');
-  // };
-
-  // const showToast = (message: string, type: 'success' | 'warning' | 'error' | 'info' = 'info') => {
-  //   setToast({ show: true, message, type });
-  //   setTimeout(() => setToast((prev: any) => ({ ...prev, show: false })), 3000);
-  // };
-
-  // const showConfirm = (
-  //   title: string, text: string, onConfirm: () => void, isDanger = false
-  // ) => {setConfirm({ show: true, title, text, onConfirm, isDanger });};
+  const handleCopyMessageText = (text: string) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text)
+      .then(() => showToast('Текст скопирован в буфер обмена! 📋', 'success'))
+      .catch(() => showToast('Не удалось скопировать текст', 'error'));
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -317,297 +253,77 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const handleCopyMessageText = (text: string) => {
-    navigator.clipboard.writeText(text);
-    showToast('Текст скопирован!', 'success');
-  };
-
-  const showToast = (message: string, type: 'success' | 'warning' | 'error' | 'info' = 'info') => {
-    setToast({ show: true, message, type });
-    setTimeout(() => setToast((prev: any) => ({ ...prev, show: false })), 3000);
-  };
-
-  const showConfirm = (title: string, text: string, onConfirm: () => void, isDanger = false) => {
-    setConfirm({ show: true, title, text, onConfirm, isDanger });
-  };
-
-  const handleLogout = () => {   
-    if (outboundCallChannelRef.current) {
-      supabase.removeChannel(outboundCallChannelRef.current);
-      outboundCallChannelRef.current = null;
-    } 
-    if (messagesChannelRef.current) {
-      supabase.removeChannel(messagesChannelRef.current);
-      messagesChannelRef.current = null;
-    }
-    localStorage.clear();
+  const handleLogout = () => {
+    localStorage.removeItem('blyades_user_id');
     window.location.reload();
   };
 
-  // const filteredMessages = allMessages.filter((m: { chatId: string }) => {
-  //   if (!currentUser || !activeChatId) return false;
-  //   const myId = String(currentUser.id);
-  //   const partnerId = String(activeChatId);
-  //   const currentJoinedRoom = Number(myId) < Number(partnerId) ? `${myId}_${partnerId}` : `${partnerId}_${myId}`;
-  //   return m.chatId === currentJoinedRoom;
-  // });
-
-  const filteredMessages = allMessages.filter((m: { chatId: string; }) => {
-    if (!currentUser || !activeChatId) return false;
-    const myId = String(currentUser.id);
-    const partnerId = String(activeChatId);
-    const currentJoinedRoom = Number(myId) < Number(partnerId) ? `${myId}_${partnerId}` : `${partnerId}_${myId}`;
-    return m.chatId === currentJoinedRoom;
-  });
-
-// ========================================================
-// 🎙️ ОЖИВЛЯЕМ ЗВОНКИ И НАСТРАИВАЕМ РЕФ-ЗАМОК
-// ========================================================
-
-  const handleStartAudioCall = async (targetPartnerId: string) => {
-    if (!currentUser) return;
-    
-    const myIdStr = String(currentUser.id);
-    const partnerIdStr = String(targetPartnerId);
-    const roomName = Number(myIdStr) < Number(partnerIdStr) 
-      ? `call_${myIdStr}_${partnerIdStr}` 
-      : `call_${partnerIdStr}_${myIdStr}`;
-
-    showToast('Инициализация защищенного WebRTC канала...', 'info');
-
-    try {
-      const apiKey = "APIdub3CsA3TNJE";
-      const apiSecret = "CptL3A3BQjVaaFzG9f0hbtz23YfQvVuB0cerptM1UbyA";
-      const secretBuffer = new TextEncoder().encode(apiSecret);
-
-      const validToken = await new jose.SignJWT({
-        video: { roomJoin: true, room: roomName, audio: true, video: false },
-        name: currentUser.username,
-      })
-        .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
-        .setIssuer(apiKey)
-        .setSubject(currentUser.username)
-        .setExpirationTime('1h')
-        .sign(secretBuffer);
-
-      await supabase
-        .from('calls')
-        .delete()
-        .or(`and(callerId.eq.${myIdStr},receiverId.eq.${partnerIdStr}),and(callerId.eq.${partnerIdStr},receiverId.eq.${myIdStr})`);
-
-      const { data: newCallRow, error: insertError } = await supabase
-        .from('calls')
-        .insert([{
-          roomName,
-          token: validToken,
-          callerId: myIdStr,
-          receiverId: partnerIdStr,
-          status: 'ringing'
-        }])
-        .select()
-        .single();
-
-      if (insertError) {
-        console.error('Ошибка записи вызова в Supabase:', insertError.message);
-        showToast('Не удалось отправить вызов собеседнику', 'error');
-        return;
-      }
-
-      setCurrentCall({ id: newCallRow.id, roomName, token: validToken });
-
-    } catch (err) {
-      console.error('🔴 Критическая ошибка WebRTC соединения jose:', err);
-      showToast('Не удалось запустить аудиодвижок', 'error');
-    }
-  };
-
-  // const callsChannelRef = useRef<any>(null);
-
-  // 🚀 НАДEЖНЫЙ СТАРТ ЗВOНКA НА ДВИЖКЕ JOSE
-  // const handleStartAudioCall = async (targetPartnerId: string) => {
-  //   if (!currentUser) return;
-    
-  //   const myIdStr = String(currentUser.id);
-  //   const partnerIdStr = String(targetPartnerId);
-  //   const roomName = Number(myIdStr) < Number(partnerIdStr) 
-  //     ? `call_${myIdStr}_${partnerIdStr}` 
-  //     : `call_${partnerIdStr}_${myIdStr}`;
-
-  //   showToast('Инициализация защищенного WebRTC канала...', 'info');
-
-  //   try {
-  //     const apiKey = "APIdub3CsA3TNJE";
-  //     const apiSecret = "CptL3A3BQjVaaFzG9f0hbtz23YfQvVuB0cerptM1UbyA";
-
-  //     const secretBuffer = new TextEncoder().encode(apiSecret);
-
-  //     const validToken = await new jose.SignJWT({
-  //       video: { roomJoin: true, room: roomName, audio: true, video: false },
-  //       name: currentUser.username,
-  //     })
-  //       .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
-  //       .setIssuer(apiKey)
-  //       .setSubject(currentUser.username)
-  //       .setExpirationTime('1h')
-  //       .sign(secretBuffer);
-
-  //     console.log('[WebRTC_Call] Токен создан. Очищаем старые зависшие звонки в базе...');
-
-  //     await supabase
-  //       .from('calls')
-  //       .delete()
-  //       .or(`and(callerId.eq.${myIdStr},receiverId.eq.${partnerIdStr}),and(callerId.eq.${partnerIdStr},receiverId.eq.${myIdStr})`);
-
-  //     const { data: newCallRow, error: insertError } = await supabase
-  //       .from('calls')
-  //       .insert([{
-  //         roomName,
-  //         token: validToken,
-  //         callerId: myIdStr,
-  //         receiverId: partnerIdStr,
-  //         status: 'ringing'
-  //       }])
-  //       .select()
-  //       .single();
-
-  //     if (insertError) {
-  //       console.error('Ошибка записи вызова в Supabase:', insertError.message);
-  //       showToast('Не удалось отправить вызов собеседнику', 'error');
-  //       return;
-  //     }
-
-  //     console.log('[WebRTC_Call] Строка вызова успешно опубликована. ID вызова:', newCallRow.id);
-
-  //     setCurrentCall({ 
-  //       id: newCallRow.id, 
-  //       roomName, 
-  //       token: validToken 
-  //     });
-
-  //   } catch (err) {
-  //     console.error('🔴 Критическая ошибка WebRTC соединения jose:', err);
-  //     showToast('Не удалось запустить аудиодвижок', 'error');
-  //   }
-  // };
-
-  const handleEndCall = async () => {
-    if (!currentCall) return;
-    try {
-      if (currentCall.id) {
-        await supabase.from('calls').update({ status: 'ended' }).eq('id', currentCall.id);
-        setTimeout(async () => {
-          await supabase.from('calls').delete().eq('id', currentCall.id);
-        }, 1200);
-      }
-    } catch (err) {
-      console.error('Ошибка при сбросе звонка:', err);
-    } finally {
-      setCurrentCall(null);
-      setIncomingCallData(null);
-      showToast('Звонок завершен', 'info');
-    }
-  };
-
-  // 🚀 ГЛОБАЛЬНАЯ ФУНКЦИЯ СБРОСА И ПОЛНОГО ЗАВЕРШЕНИЯ ЗВOНКA
-  // const handleEndCall = async () => {
-  //   // Если в стейте нет активного звонка — просто выходим
-  //   if (!currentCall) return;
-
-  //   console.log('[WebRTC_Call] Кнопка отбоя нажата. Завершаем звонок для всех...');
-
-  //   try {
-  //     if (currentCall.id) {
-  //       // 1. Ставим в базе статус 'ended', чтобы Realtime-хук на втором ПК моментально поймал это и закрыл окно!
-  //       await supabase
-  //         .from('calls')
-  //         .update({ status: 'ended' })
-  //         .eq('id', currentCall.id);
-          
-  //       // 2. Спустя секунду бережно удаляем эту строку, чтобы не засорять таблицу в Supabase
-  //       setTimeout(async () => {
-  //         await supabase.from('calls').delete().eq('id', currentCall.id);
-  //       }, 1200);
-  //     }
-  //   } catch (err) {
-  //     console.error('Ошибка при отправке статуса отбоя в Supabase:', err);
-  //   } finally {
-  //     // 3. В любом случае мгновенно тушим оверлей звонка у себя на экране
-  //     setCurrentCall(null);
-  //     setIncomingCallData(null);
-  //     showToast('Звонок завершен', 'info');
-  //   }
-  // };
-
-  // 🚀 ГАРАНТИРОВАННО СТАБИЛЬНЫЙ ПЕРЕХВАТ ОТВЕТА ДЛЯ ЗВОНЯЩЕГО
-  useEffect(() => {
-    const myIdStr = currentUser?.id ? String(currentUser.id).trim() : null;
-    if (!myIdStr) return;
-
-    const channelName = `outbound_status_stream_${myIdStr}`;
-
-    // 🛑 МЕГА-ФИКС: Переменная на уровне файла никогда не сбросится повторным рендером!
-    if (isOutboundChannelInitialized) {
-      console.log(`[WebRTC_Call] Блокировка дубликата Strict Mode в контексте для канала: ${channelName}`);
-      return;
-    }
-
-    console.log(`[WebRTC_Call] Создаем ОДИН чистый канал перехвата ответа: ${channelName}`);
-    isOutboundChannelInitialized = true; // Запираем замок!
-
-    const outboundCallChannel = supabase.channel(channelName);
-
-    outboundCallChannel
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'calls' },
-        (payload) => {
-          const callRow = payload.new as any;
-
-          if (String(callRow.callerId) === myIdStr && callRow.status === 'accepted') {
-            console.log('[WebRTC_Call] Собеседник принял наш вызов! Переключаем оверлей.');
-            setCurrentCall((prev: any) => prev ? { ...prev, status: 'accepted' } : prev);
-          }
-
-          if (String(callRow.callerId) === myIdStr && (callRow.status === 'rejected' || callRow.status === 'ended')) {
-            setCurrentCall(null);
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      // Специально оставляем флаг true, чтобы Strict Mode при двойном монтаже не плодил ошибки подписок
-    };
-  }, [currentUser?.id]);
-
-
   return (
-    <>
-      <MessengerContext.Provider value={{
-        activeTab, setActiveTab, theme, setTheme, currentUser, setCurrentUser, chats, setChats,
-        allMessages, setAllMessages, activeChatId, setActiveChatId, searchQuery, setSearchQuery,
-        messageSearchQuery, setMessageSearchQuery, showMsgSearch, setShowMsgSearch,
-        messageText, setMessageText, editingMessage, setEditingMessage, showUserModal, setShowUserModal,
-        showProfileMenu, setShowProfileMenu, typingUser, toast, setToast, confirm, setConfirm,
-        messagesEndRef, ctxMenu, setCtxMenu, closeContextMenu, handleSendMessage, handleKeyDown,
-        handleCopyMessageText, showToast, showConfirm, handleLogout, handleEndCall, filteredMessages,
-        currentCall, setCurrentCall, handleStartAudioCall, incomingCallData, setIncomingCallData,
-        dropdown, setDropdown, closeDropdown: () => setDropdown((prev: any) => ({ ...prev, show: false }))
-      }}>
-        {children}
+    <MessengerContext.Provider
+      value={{
+        activeTab, setActiveTab,
+        theme, setTheme,
+        currentUser, setCurrentUser,
+        chats, setChats,
+        allMessages, setAllMessages,
+        activeChatId, setActiveChatId,
+        searchQuery, setSearchQuery,
+        messageSearchQuery, setMessageSearchQuery,
+        showMsgSearch, setShowMsgSearch,
+        messageText, setMessageText,
+        editingMessage, setEditingMessage,
+        showUserModal, setShowUserModal,
+        showProfileMenu, setShowProfileMenu,
+        typingUser, setTypingUser,
+        ctxMenu, setCtxMenu,
+        closeContextMenu,
+        toast, setToast,
+        confirm, setConfirm,
+        messagesEndRef,
+        showToast, showConfirm,
+        handleCopyMessageText, handleSendMessage,
+        handleKeyDown, handleLogout,
+        currentCall: calls.currentCall,
+        setCurrentCall: calls.setCurrentCall,
+        incomingCallData: calls.incomingCallData,
+        setIncomingCallData: calls.setIncomingCallData,
+        handleStartAudioCall: calls.handleStartAudioCall,
+        handleAcceptCall: calls.handleAcceptCall,
+        handleHangUp: calls.handleHangUp,
+        handleCreateGroupChat: groups.handleCreateGroupChat
+      }}
+    >
+      {children}
+
+      {/* ==================================================== */}
+      {/* 📞 НАТИВНОЕ ОКНО ЗВOНКОВ (ИСХОДЯЩИЕ И ВХОДЯЩИЕ)      */}
+      {/* ==================================================== */}
+      {(calls.currentCall || calls.incomingCallData) && (
+        <CallModal 
+          currentCall={calls.currentCall} 
+          setCurrentCall={calls.setCurrentCall}
+          incomingCallData={calls.incomingCallData}
+          setIncomingCallData={calls.setIncomingCallData}
+        />
+      )}
+
+      {/* ===================================================== */}
+      {/* 👤 ГЛАВНАЯ МОДАЛКА ПРОФИЛЕЙ (ЮЗЕРЫ, КОНТАКТЫ, ГРУППЫ) */}
+      {/* ===================================================== */}
+      <ProfileModal />
+      {/* ==================================== */}
+      {/* 🚀 ВЫЗОВ ТОСТА СЛОЕМ ПОВЕРХ ОКНА    */}
+      {/* ==================================== */}
+      <div style={{ position: 'fixed', top: '24px', right: '24px', zIndex: 999999 }}>
         <ToastNotification toast={toast} />
+      </div>
+      {/* ==================================== */}
+      {/* 🚀 2. ВЫЗОВ  МОДAЛКИ ПОДТВЕРЖДЕНИЯ   */}
+      {/* ==================================== */}
+      <div style={{ position: 'fixed', zIndex: 888888 }}>
         <ConfirmModal confirm={confirm} setConfirm={setConfirm} />
-        <ProfileModal /> 
-        <CallOverlay />
-        <IncomingCallModal />
-
-
-        {/* <SpeedInsights/>
-        <Analytics/> */}
-
-
-      </MessengerContext.Provider>
-    </>
+      </div>
+    </MessengerContext.Provider>
   );
 }
 

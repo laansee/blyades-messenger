@@ -7,6 +7,7 @@ export interface DropdownItem {
   icon?: React.ComponentType<any>;
   danger?: boolean;
   arrow?: boolean;
+  isSeparatorBefore?: boolean; // 🚀 УПРАВЛЯЕМЫЙ РАЗДЕЛИТЕЛЬ: Теперь полоса ставится только там, где мы сами попросим!
   onClick: () => void;
 }
 
@@ -25,21 +26,16 @@ export default function DropdownMenu({ show, onClose, x, y, items }: DropdownMen
     const handleOutsideClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       const clickedTrigger = target.closest('.dropdown-trigger-btn');
-      // Закрываем меню, если кликнули в любую точку экрана мимо самого поп-апа
-      // if (show && menuRef.current && !menuRef.current.contains(e.target as Node)) {
-      //   onClose();
-      // }
 
-      // Закрываем меню, ТОЛЬКО если кликнули мимо самого меню И не кликали по кнопке вызова
       if (show && menuRef.current && !menuRef.current.contains(target) && !clickedTrigger) {
         onClose();
       }
     };
     
-    if (show) 
+    if (show) {
       document.addEventListener('mousedown', handleOutsideClick);
+    }
     
-    // Добавляем задержку в 10мс, чтобы клик открытия не успел сразу сработать как клик закрытия мимо
     const timeout = setTimeout(() => {
       document.addEventListener('mousedown', handleOutsideClick);
     }, 10);
@@ -52,24 +48,36 @@ export default function DropdownMenu({ show, onClose, x, y, items }: DropdownMen
 
   if (!show) return null;
 
+  // 🚀 УМНОЕ ОПРЕДЕЛЕНИЕ ПОЗИЦИИ: Если координаты переданы (не 0), юзаем fixed, иначе absolute под кнопку
+  const isAbsoluteMode = x === 0 && y === 0;
+
   return (
     <div 
       ref={menuRef}
       className={styles['accountMenu-dropdown']}
-      style={{ 
+      style={isAbsoluteMode ? {
+        position: 'absolute',
+        top: 'calc(100% + 8px)',
+        right: 0,
+        zIndex: 35000,
+        display: 'block'
+      } : {
         position: 'fixed', 
+        top: `${y}px`,
+        left: `${x}px`,
         zIndex: 10000,
-        display: 'block' // Гарантируем видимость слоя
+        display: 'block'
       }}
     >
       <div className={styles['accountMenu-list']}>
-        {items.map((item, index) => {
+        {items.map((item) => {
           const Icon = item.icon;
           return (
             <button
               key={item.id}
               onClick={() => { item.onClick(); onClose(); }}
-              className={`${styles['accountMenu-item']} ${item.danger ? styles['danger'] : ''} ${index === 0 ? styles['separator'] : ''}`}
+              /* 🚀 ИСПРАВЛЕНИЕ ЛИНЕЙКИ: Убрали авто-класс на индекс 0, теперь разделитель слушает только свойство isSeparatorBefore */
+              className={`${styles['accountMenu-item']} ${item.danger ? styles['danger'] : ''} ${item.isSeparatorBefore ? styles['separator'] : ''}`}
             >
               <div className={styles['accountMenu-item-left-side']}>
                 {Icon && <Icon size={18} className={styles['item-icon']} />}

@@ -48,7 +48,8 @@ export default function ContactsSidebar() {
           <Search size={18} className={styles['sidebar-search-icon']} />
           <input 
             type="search" 
-            placeholder="Найти человека по логину..." 
+            id='contacts-search'
+            placeholder="Поиск по логину..." 
             className={styles['chat-search']} 
             value={ctx.searchQuery} 
             onChange={e => ctx.setSearchQuery(e.target.value)} 

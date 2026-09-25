@@ -82,65 +82,122 @@ export default function EditProfile({ onBack }: EditProfileProps) {
         <h3 className={styles.settingsFormTitle}>👤 Личные данные аккаунта</h3>
 
         <div className={styles.settingsInputField}>
-          <label className={styles.settingsLabel}>Имя пользователя (ID):</label>
+          <label 
+            className={styles.settingsLabel}
+            htmlFor='uniqueId-input'
+          >
+            Имя пользователя (ID):
+          </label>
           <input 
-            type="text" className={styles.settingsInputText}
-            value={uniqueId} onChange={e => setUniqueId(e.target.value)} 
-            placeholder="Придумайте логин" required
+            type="text" 
+            className={styles.settingsInputText}
+            value={uniqueId}
+            id='uniqueId-input' 
+            onChange={e => setUniqueId(e.target.value)} 
+            placeholder="Придумайте логин" 
+            required
           />
         </div>
         
         <div className={styles.settingsInputField}>
-          <label className={styles.settingsLabel}>Отображаемое имя (Никнейм):</label>
+          <label 
+            className={styles.settingsLabel}
+            htmlFor='username-input'
+          >
+            Отображаемое имя (Никнейм):
+          </label>
           <input 
-            type="text" className={styles.settingsInputText}
-            value={username} onChange={e => setUsername(e.target.value)} 
+            type="text" 
+            className={styles.settingsInputText}
+            value={username}
+            id='username-input' 
+            onChange={e => setUsername(e.target.value)} 
             placeholder="Введите никнейм"
           />
         </div>
 
         <div className={styles.settingsInputField}>
-          <label className={styles.settingsLabel}>Имя:</label>
+          <label 
+            className={styles.settingsLabel}
+            htmlFor='firstName-input'
+          >
+            Имя:
+          </label>
           <input 
-            type="text" className={styles.settingsInputText}
-            value={firstName} onChange={e => setFirstName(e.target.value)} 
+            type="text" 
+            className={styles.settingsInputText}
+            value={firstName} 
+            id='firstName-input'
+            onChange={e => setFirstName(e.target.value)} 
             placeholder="Введите ваше имя"
           />
         </div>
 
         <div className={styles.settingsInputField}>
-          <label className={styles.settingsLabel}>Фамилия:</label>
+          <label 
+            className={styles.settingsLabel}
+            htmlFor='lastName-input'
+          >
+            Фамилия:
+          </label>
           <input 
-            type="text" className={styles.settingsInputText}
-            value={lastName} onChange={e => setLastName(e.target.value)} 
+            type="text" 
+            className={styles.settingsInputText}
+            value={lastName} 
+            id='lastName-input'
+            onChange={e => setLastName(e.target.value)} 
             placeholder="Введите вашу фамилию"
           />
         </div>
 
         <div className={styles.settingsInputField}>
-          <label className={styles.settingsLabel}>Номер телефона:</label>
+          <label 
+            className={styles.settingsLabel}
+            htmlFor='phone-input'
+          >
+            Номер телефона:
+          </label>
           <input 
-            type="text" className={styles.settingsInputText}
-            value={phone} onChange={e => setPhone(e.target.value)} 
+            type="text" 
+            className={styles.settingsInputText}
+            value={phone} 
+            id='phone-input'
+            onChange={e => setPhone(e.target.value)} 
             placeholder="+7 (999) 999-99-99"
           />
         </div>
 
         <div className={styles.settingsInputField}>
-          <label className={styles.settingsLabel}>Электронная почта:</label>
+          <label 
+            className={styles.settingsLabel}
+            htmlFor='email-input'
+          >
+            Электронная почта:
+          </label>
           <input 
-            type="email" className={styles.settingsInputText}
-            value={email} onChange={e => setEmail(e.target.value)} 
+            type="email" 
+            className={styles.settingsInputText}
+            value={email}
+            id='email-input' 
+            onChange={e => setEmail(e.target.value)} 
             placeholder="example@mail.com"
           />
         </div>
 
         <div className={styles.settingsInputField}>
-          <label className={styles.settingsLabel}>Цвет вашей аватарки:</label>
+          <label 
+            className={styles.settingsLabel}
+            htmlFor='avatarColor-input'
+          >
+            Цвет вашей аватарки:
+          </label>
           <div className={styles.settingsColorPickerRow}>
             <input 
-              type="color" className={styles.settingsColorCircleInput}
-              value={avatarColor} onChange={e => setAvatarColor(e.target.value)} 
+              type="color" 
+              className={styles.settingsColorCircleInput}
+              value={avatarColor}
+              id='avatarColor-input' 
+              onChange={e => setAvatarColor(e.target.value)} 
             />
             <span className={styles.settingsColorHint}>Выберите цвет круга</span>
           </div>
