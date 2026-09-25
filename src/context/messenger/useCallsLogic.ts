@@ -102,16 +102,27 @@ export function useCallsLogic(currentUser: any, showToast: any) {
     const activeCall = currentCall || incomingCallData;
     if (!activeCall) return;
 
+    const myIdStr = String(currentUser?.id);
+    const isGroupCall = String(activeCall.receiverId).startsWith('group_');
+    const isIAnAuthor = String(activeCall.callerId) === myIdStr;
+
     try {
+      // Мгновенно тушим интерфейс звонка СТРОГО у себя на экране
       setCurrentCall(null);
       setIncomingCallData(null);
 
-      await supabase
-        .from('calls')
-        .update({ status: 'cancelled' })
-        .eq('id', activeCall.id);
-        
-      showToast('Звонок завершён', 'info');
+      // Если это личный чат (ЛС) ИЛИ если звонок отменяет сам СОЗДАТЕЛЬ на этапе гудков — гасим запись в базе
+      if (!isGroupCall || (isGroupCall && isIAnAuthor && activeCall.status === 'ringing')) {
+        await supabase
+          .from('calls')
+          .update({ status: 'cancelled' })
+          .eq('id', activeCall.id);
+        showToast('Звонок отменен', 'info');
+      } else {
+        // Если обычный участник просто выходит из активной беседы — мы не ломаем строку в базе,
+        // а просто пишем лог локального выхода, чтобы конференция продолжала жить для остальных!
+        showToast('Вы вышли из конференции', 'info');
+      }
     } catch (err) {
       console.error(err);
     }
@@ -163,12 +174,18 @@ export function useCallsLogic(currentUser: any, showToast: any) {
           // ==========================================
           // 🔄 Б. ОБРАБОТКА ИЗМЕНЕНИЯ СТАТУСА (UPDATE)
           // ==========================================
+                    // ==========================================
+          // 🔄 Б. ОБРАБОТКА ИЗМЕНЕНИЯ СТАТУСА (UPDATE)
+          // ==========================================
           if (payload.eventType === 'UPDATE') {
+            const myIdStr = String(currentUser.id);
             const isGroupCall = String(payload.new.receiverId).startsWith('group_');
             
-            // Проверяем причастность к звонку
-            let isParticipant = String(payload.new.receiverId) === myIdStr || String(payload.new.callerId) === myIdStr;
+            // Проверяем, имеем ли мы отношение к этому звонку
+            const isCaller = String(payload.new.callerId) === myIdStr;
+            const isReceiver = String(payload.new.receiverId) === myIdStr;
             
+            let isParticipant = isCaller || isReceiver;
             if (isGroupCall && !isParticipant) {
               const { data: membership } = await supabase
                 .from('group_members')
@@ -181,13 +198,21 @@ export function useCallsLogic(currentUser: any, showToast: any) {
 
             if (!isParticipant) return;
 
+            // 🎯 ЖЕЛЕЗНЫЙ ФИКС ДЛЯ СОЗДАТЕЛЯ И УЧАСТНИКОВ:
+            // Если статус в базе стал accepted — ВСЕ, кто принял звонок (или создал его), переходят на экран разговора!
             if (payload.new.status === 'accepted') {
-              setCurrentCall(payload.new);
-              setIncomingCallData(null);
+              if (isCaller || currentCall) { 
+                // Создатель или тот, кто уже нажал "Принять", мгновенно переключаются на фазу разговора!
+                setCurrentCall(payload.new);
+                setIncomingCallData(null);
+              }
             }
+
             if (payload.new.status === 'cancelled' || payload.new.status === 'ended') {
-              setIncomingCallData(null);
-              setCurrentCall(null);
+              if (!currentCall || !isGroupCall) {
+                setIncomingCallData(null);
+                setCurrentCall(null);
+              }
             }
           }
         }
