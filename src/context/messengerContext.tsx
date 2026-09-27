@@ -18,6 +18,45 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
   const [chats, setChats] = useState<any[]>([]);
   const [allMessages, setAllMessages] = useState<any[]>([]);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
+
+  // 🚀 АВТОМАТИЧЕСКИЙ СБРОС СЧЁТЧИКОВ И ГАЛОК: Срабатывает при выборе любого чата!
+  useEffect(() => {
+    if (!activeChatId || !currentUser) return;
+
+    const myIdStr = String(currentUser.id);
+    const isGroup = String(activeChatId).startsWith('group_');
+
+    const markMessagesAsRead = async () => {
+      try {
+        if (isGroup) {
+          // 👥 В БЕСЕДЕ: Переводим все чужие сообщения этой группы из 'send' в 'read'
+          await supabase
+            .from('messages')
+            .update({ status: 'read' })
+            .eq('chatId', activeChatId)
+            .not('senderId', 'eq', myIdStr) // 🎯 ВАЖНО: Не читаем свои собственные сообщения!
+            .eq('status', 'send');
+        } else {
+          // 👤 В ЛИЧНЫХ ЧАТАХ (ЛС): Вычисляем имя комнаты
+          const currentJoinedRoom = Number(myIdStr) < Number(activeChatId) 
+            ? `${myIdStr}_${activeChatId}` 
+            : `${activeChatId}_${myIdStr}`;
+
+          await supabase
+            .from('messages')
+            .update({ status: 'read' })
+            .eq('chatId', currentJoinedRoom)
+            .not('senderId', 'eq', myIdStr)
+            .eq('status', 'send');
+        }
+      } catch (err) {
+        console.error('Ошибка сброса счётчиков в базе:', err);
+      }
+    };
+
+    markMessagesAsRead();
+  }, [activeChatId, currentUser, allMessages]); // Пересчитываем в реалтайме при новых сообщениях!
+
   const [searchQuery, setSearchQuery] = useState('');
   const [messageSearchQuery, setMessageSearchQuery] = useState('');
   const [showMsgSearch, setShowMsgSearch] = useState(false);
@@ -235,7 +274,7 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
       chatId: currentJoinedRoom,
       senderId: myId,
       text: textToSend,
-      status: 'sent'
+      status: 'send'
     }]);
   };
 

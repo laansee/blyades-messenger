@@ -44,7 +44,7 @@ export function useGroupChats(currentUser: any, showToast: any, setActiveChatId:
           chatId: groupRoomId,
           senderId: 'system',
           text: `Пользователь <b>${currentUser.username}</b> создал беседу <b>${groupName.trim()}</b>`,
-          status: 'sent'
+          status: 'send'
         }]);
 
       setActiveChatId(groupRoomId);

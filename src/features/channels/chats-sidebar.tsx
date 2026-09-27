@@ -27,10 +27,12 @@ export default function ChatsSidebar({ onOpenCreateGroup }: { onOpenCreateGroup:
         const hours = String(msgDate.getHours()).padStart(2, '0');
         const minutes = String(msgDate.getMinutes()).padStart(2, '0');
         return `${hours}:${minutes}`;
+      
       } else {
         const day = String(msgDate.getDate()).padStart(2, '0');
         const month = String(msgDate.getMonth() + 1).padStart(2, '0');
         return `${day}.${month}`;
+      
       }
     } catch (e) {
       return '';
@@ -46,13 +48,22 @@ export default function ChatsSidebar({ onOpenCreateGroup }: { onOpenCreateGroup:
         
         // 2. Вычисляем правильное имя комнаты
         const currentJoinedRoom = chat.isGroup 
-          ? chat.id // Для беседы имя комнаты — это напрямую её group_id!
+          ? chat.id 
           : (Number(currentUserIdStr) < Number(chat.id) 
-              ? `${currentUserIdStr}_${chat.id}` // 🎯 ИСПРАВЛЕНИЕ: Заменили chatIdStr на chat.id
+              ? `${currentUserIdStr}_${chat.id}` 
               : `${chat.id}_${currentUserIdStr}`);
         
-        // 3. Проверяем, есть ли сообщения в этой комнате
-        const hasMessages = ctx.allMessages.some((m: any) => m.chatId === currentJoinedRoom);
+        const chatMsgs = ctx.allMessages.filter((m: any) => m.chatId === currentJoinedRoom);
+        const hasMessages = chatMsgs.length > 0;
+
+        const unreadCount = chatMsgs.filter((m: any) => {
+          const isStatusSend = m.status && String(m.status).toLowerCase() === 'send';
+          const isNotMyMessage = m.senderId && String(m.senderId) !== currentUserIdStr;
+          return isStatusSend && isNotMyMessage;
+        }).length;
+
+        if (activeTab === 'unread' && unreadCount === 0) return false;
+        if (activeTab === 'groups' && !chat.isGroup) return false;
         return matchesSearch && hasMessages;
       })
       .sort((a: any, b: any) => {
@@ -66,12 +77,16 @@ export default function ChatsSidebar({ onOpenCreateGroup }: { onOpenCreateGroup:
         const aLast = aMsgs[aMsgs.length - 1];
         const bLast = bMsgs[bMsgs.length - 1];
 
-        const aTime = aLast ? Date.parse(aLast.createdAt) : 0;
-        const bTime = bLast ? Date.parse(bLast.createdAt) : 0;
+        // const aTime = aLast ? Date.parse(aLast.createdAt) : 0;
+        // const bTime = bLast ? Date.parse(bLast.createdAt) : 0;
+
+        const aTime = aMsgs[aMsgs.length - 1] ? Date.parse(aMsgs[aMsgs.length - 1].createdAt) : 0;
+        const bTime = bMsgs[bMsgs.length - 1] ? Date.parse(bMsgs[bMsgs.length - 1].createdAt) : 0;
 
         return bTime - aTime; // 🎯 Сортируем: новые переписки летят наверх списка
       });
-  }, [ctx.chats, ctx.allMessages, ctx.searchQuery, currentUserIdStr]);
+  // }, [ctx.chats, ctx.allMessages, ctx.searchQuery, currentUserIdStr]);
+  }, [ctx.chats, ctx.allMessages, ctx.searchQuery, activeTab, currentUserIdStr]);
 
 
   return (
@@ -178,6 +193,7 @@ export default function ChatsSidebar({ onOpenCreateGroup }: { onOpenCreateGroup:
           </div>
         ) : (
           visibleChats.map((chat: any) => {
+            
             const chatIdStr = String(chat.id);
             const currentJoinedRoom = chat.isGroup 
               ? chat.id 
@@ -187,11 +203,19 @@ export default function ChatsSidebar({ onOpenCreateGroup }: { onOpenCreateGroup:
             const lastMessage = chatMsgs[chatMsgs.length - 1];
             const isMyLast = lastMessage && String(lastMessage.senderId) === currentUserIdStr;
 
+            const unreadCount = chatMsgs.filter((m: any) => {
+              const isStatusSend = m.status && String(m.status).toLowerCase() === 'send';
+              const isNotMyMessage = m.senderId && String(m.senderId) !== currentUserIdStr;
+              return isStatusSend && isNotMyMessage;
+            }).length;
+
+            // 🕵️‍♂️ ДИАГНОСТИЧЕСКИЙ ЛОГ: Открой консоль Chrome и посмотри, что выдает этот чат!
+            // if (chat.name.toLowerCase().includes('проверка') || unreadCount > 0) {
+            //   console.log(`[Sidebar_Debug] Чат: ${chat.name}, Всего сообщений в ctx: ${chatMsgs.length}, Насчитали непрочитанных: ${unreadCount}`);
+            // }
+
             return (
-              <div 
-                key={chat.id} className={`${styles['chat-preview-card']} ${ctx.activeChatId === chat.id ? styles.active : ''}`} 
-                onClick={() => ctx.setActiveChatId(chat.id)}
-              >
+              <div key={chat.id} className={`${styles['chat-preview-card']} ${ctx.activeChatId === chat.id ? styles.active : ''}`} onClick={() => ctx.setActiveChatId(chat.id)}>
                 <div className={styles['avatar-wrapper']}>
                   <div className={styles['chat-avatar']} style={{ backgroundColor: chat.avatarColor }}>
                     {chat.name.substring(0, 1).toUpperCase()}
@@ -200,27 +224,39 @@ export default function ChatsSidebar({ onOpenCreateGroup }: { onOpenCreateGroup:
                 <div className={styles['chat-info']}>
                   <div className={styles['chat-meta']}>
                     <span className={styles['chat-name']}>{chat.name}</span>
-                    <span className={styles['chat-time']}>
-                      {formatMessageTimeOrDate(lastMessage?.createdAt)}
-                    </span>
+                    <span className={styles['chat-time']}>{formatMessageTimeOrDate(lastMessage?.createdAt)}</span>
                   </div>
                   <div className={styles['chat-last-message']}>
-                    <p style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '85%' }}>
+                    <p style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: unreadCount > 0 ? '75%' : '85%' }}>
                       {isMyLast && <span style={{ color: '#007aff', fontWeight: 'bold' }}>Вы: </span>}
-                      
-                      {/* 🚀 ПУНКТ 2.2: Если это группа и последнее сообщение писали не мы — подставляем имя автора! */}
                       {chat.isGroup && !isMyLast && lastMessage && lastMessage.senderId !== 'system' && (() => {
                         const senderUserObj = ctx.chats.find((c: any) => String(c.id) === String(lastMessage.senderId));
                         return <span style={{ color: '#a2a2b5', fontWeight: '600' }}>{senderUserObj ? senderUserObj.name : 'Участник'}: </span>;
                       })()}
-
                       {lastMessage ? lastMessage.text : 'Нет сообщений'}
                     </p>
-                    {isMyLast && lastMessage && (
-                      <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center' }}>
-                        {lastMessage.status === 'read' ? <CheckCheck size={16} style={{ color: '#007aff' }} /> : <Check size={16} style={{ color: '#9ca3af' }} />}
-                      </span>
-                    )}
+                    
+                    {/* НАША СЕТКА ИНДИКАТОРОВ (ГАЛКИ ИЛИ ЖИВОЙ КРУЖОК С ЦИФРОЙ) */}
+                    <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      {isMyLast && lastMessage && (
+                        <span>
+                          {lastMessage.status === 'read' ? <CheckCheck size={16} style={{ color: '#007aff' }} /> : <Check size={16} style={{ color: '#9ca3af' }} />}
+                        </span>
+                      )}
+
+                      {/* 🚀 ВОССТАНОВЛЕННЫЙ СЧЁТЧИК: Если есть новые сообщения — рендерим красивый синий индикатор */}
+                      {unreadCount > 0 && (
+                        <div style={{
+                          minWidth: '18px', height: '18px', borderRadius: '10px',
+                          backgroundColor: '#007aff', color: '#fff', fontSize: '11px', fontWeight: 'bold',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 5px',
+                          boxShadow: '0 2px 6px rgba(0, 122, 255, 0.3)'
+                        }}>
+                          {unreadCount}
+                        </div>
+                      )}
+                    </div>
+
                   </div>
                 </div>
               </div>

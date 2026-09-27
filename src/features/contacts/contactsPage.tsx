@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import mainStyle from '../../components/css/main.module.css';
 import useMessengerContext from '../../context/messengerContext';
 import NavSidebar from '../channels/nav-sidebar';
@@ -8,6 +8,10 @@ import ChatWindow from '../chat/chat-window';
 export default function ContactsPage() {
   const ctx = useMessengerContext();
   if (!ctx.currentUser) return null;
+    
+  useEffect(() => {
+    document.title = 'Контакты';
+  }, []);
 
   return (
     <div className={`${mainStyle['messenger-container']} ${ctx.activeChatId ? mainStyle['chat-opened'] : ''}`}>

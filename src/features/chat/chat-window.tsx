@@ -82,7 +82,7 @@ export default function ChatWindow() {
         if (!ctx.activeChatId || !myId) return;
 
         const unreadIncomingMessages = currentMessages.filter(
-          (m: any) => String(m.senderId) !== myId && m.status === 'sent'
+          (m: any) => String(m.senderId) !== myId && m.status === 'send'
         );
 
         if (unreadIncomingMessages.length > 0) {
@@ -93,7 +93,7 @@ export default function ChatWindow() {
             .update({ status: 'read' })
             .eq('chatId', currentRoomId)
             .neq('senderId', myId)
-            .eq('status', 'sent');
+            .eq('status', 'send');
         }
       };
 
@@ -429,7 +429,7 @@ export default function ChatWindow() {
                             {isMyMsg && (
                               <span className={styles['message-status']}>
                                 {msg.status === 'sending' && <Clock size={12} style={{ color: '#9ca3af' }} />}
-                                {msg.status === 'sent' && <Check size={14} style={{ color: '#9ca3af' }} />}
+                                {msg.status === 'send' && <Check size={14} style={{ color: '#9ca3af' }} />}
                                 {msg.status === 'read' && <CheckCheck size={14} style={{ color: '#007aff' }} />}
                               </span>
                             )}

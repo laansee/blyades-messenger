@@ -73,18 +73,6 @@ export default function AuthPage() {
     } finally {
       setLoading(false); // Выключаем лоадер, если произошла ошибка
     }
-    // Превращаем локальный логин во внутренний email для Supabase Auth
-    // const email = `${login.trim().toLowerCase()}@blyades.local`;
-
-    // const { error } = await supabase.auth.signInWithPassword({
-    //   email,
-    //   password,
-    // });
-
-    // if (error) {
-    //   setErrorMsg(error.message === 'Invalid login credentials' ? 'Неверное имя пользователя или пароль' : error.message);
-    // }
-    // Сессия обновится автоматически, App.tsx её подхватит и пустит в чат!
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
@@ -92,7 +80,7 @@ export default function AuthPage() {
     setErrorMsg('');
 
     if (!login.trim() || !password.trim()) {
-      setErrorMsg('Пожалуйста, заполните все поля регистрации');
+      setErrorMsg('Пожалуйста, заполните все поля');
       return;
     }
     if (password !== confirmPassword) {
@@ -101,39 +89,49 @@ export default function AuthPage() {
     }
 
     const cleanLogin = login.trim();
-    const email = `${cleanLogin.toLowerCase()}@blyades.local`;
+    setLoading(true); // Включаем красивый лоадер создания
 
-    // 1. Регистрируем пользователя в Supabase Auth
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
+    try {
+      // 🚀 1. ПРЯМОЙ ИНСЕРТ: Создаем пользователя без каких-либо email
+      const { data: newUser, error } = await supabase
+        .from('users')
+        .insert([{ 
+          uniqueId: cleanLogin, 
+          username: cleanLogin, 
+          password: password.trim(),
+          avatarColor: `#${Math.floor(Math.random()*16777215).toString(16)}` // Рандомный цвет аватарки
+        }])
+        .select()
+        .single();
 
-    if (error) {
-      setErrorMsg(error.message);
-      return;
-    }
-
-    if (data.user) {
-      // 2. Создаем запись профиля в таблице public.profiles, которую мы настраивали в SQL Editor
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert([{ id: data.user.id, username: cleanLogin }]);
-
-      if (profileError) {
-        setErrorMsg('Ошибка при создании профиля: ' + profileError.message);
+      if (error) {
+        setErrorMsg('Логин уже занят или ошибка базы: ' + error.message);
         return;
       }
 
-      // Очищаем поля и уводим на форму входа
-      setIsRegister(false);
-      setPassword('');
-      setConfirmPassword('');
-      setToast({
-        show: true,
-        message: 'Аккаунт создан! Пожалуйста, войдите в систему.',
-        type: 'success',
-      });
+      if (newUser) {
+        // 🚀 2. АВТО-ВХОД: Мгновенно сохраняем данные созданного аккаунта в LocalStorage!
+        localStorage.setItem('blyades_user_id', newUser.id.toString());
+        localStorage.setItem('blyades_username', newUser.username);
+        localStorage.setItem('blyades_unique_id', newUser.uniqueId);
+
+        setToast({
+          show: true,
+          message: 'Аккаунт успешно создан! Входим...',
+          type: 'success',
+        });
+
+        // 🚀 3. Принудительно перезагружаем страницу, чтобы App.tsx увидел сессию и сразу пустил в чаты!
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000); // Даем 1 секунду, чтобы пользователь успел увидеть зеленый тост успеха
+      }
+
+    } catch (err) {
+      console.error(err);
+      setErrorMsg('Произошла ошибка при записи в базу данных');
+    } finally {
+      setLoading(false);
     }
   };
 

@@ -22,6 +22,10 @@ export default function CallsPage() {
     
     if (data) setCallsHistory(data);
   };
+      
+  useEffect(() => {
+    document.title = 'Звонки';
+  }, []);
 
   useEffect(() => {
     ctx.setActiveTab('calls');

@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, { useState, useEffect } from 'react';
 import mainStyle from '../../components/css/main.module.css';
 import useMessengerContext, { MessengerProvider } from '../../context/messengerContext';
 import NavSidebar from '../channels/nav-sidebar';
@@ -9,6 +9,10 @@ import CreateGroupModal from '../../components/create-group-modal';
 function ChatContent() {
   const ctx = useMessengerContext();
   const [showGroupModal, setShowGroupModal] = useState(false);
+  
+  useEffect(() => {
+    document.title = 'Чаты';
+  }, []);
 
   return (
     <div className={`${mainStyle['messenger-container']} ${ctx.activeChatId ? mainStyle['chat-opened'] : ''}`}>
