@@ -10,7 +10,7 @@ export default function ContactsPage() {
   if (!ctx.currentUser) return null;
     
   useEffect(() => {
-    document.title = 'Контакты';
+    document.title = 'Контакты | Blyades';
   }, []);
 
   return (

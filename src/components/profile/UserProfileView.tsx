@@ -23,9 +23,17 @@ export default function UserProfileView({
   return (
     <div className={styles['view-mode']}>
       <div className={styles['profile-avatar-wrapper']}>
-        <div className={styles['profile-avatar']} style={{ backgroundColor: currentChatUser.avatarColor || '#007aff' }}>
-          {baseName.substring(0, 1).toUpperCase()}
-        </div>
+        {currentChatUser.avatarUrl ? (
+          <img
+            src={currentChatUser.avatarUrl}
+            alt="Avatar"
+            style={{ width: '90px', height: '90px', borderRadius: '50%', objectFit: 'cover', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}
+          />
+        ) : (
+          <div className={styles['profile-avatar']} style={{ backgroundColor: currentChatUser.avatarColor || '#007aff' }}>
+            {baseName.substring(0, 1).toUpperCase()}
+          </div>
+        )}
       </div>
 
       <h2 className={styles['profile-name']}>{baseName}</h2>
@@ -57,10 +65,29 @@ export default function UserProfileView({
       </div>
 
       <div className={styles['info-section']}>
+
+        {currentChatUser.privacyNameFormat === 'username' && 
+         shouldShowField(currentChatUser.privacyFullName, currentChatUser.isContact) && 
+         (currentChatUser.firstName || currentChatUser.lastName) && (
+          <div className={styles['info-item']}>
+            <span className={styles['info-value']}>
+              {`${currentChatUser.firstName || ''} ${currentChatUser.lastName || ''}`.trim()}
+            </span>
+            <span className={styles['info-label']}>Настоящие Имя и Фамилия</span>
+          </div>
+        )}
+        
         <div className={styles['info-item']}>
           <span className={styles['info-value']}>@{currentChatUser.uniqueId || currentChatUser.username || 'не указан'}</span>
           <span className={styles['info-label']}>Имя пользователя</span>
         </div>
+
+        {currentChatUser.about_me && currentChatUser.about_me.trim() !== '' && (
+          <div className={styles['info-item']}>
+            <span className={styles['info-value']}>{currentChatUser.about_me}</span>
+            <span className={styles['info-label']}>О себе</span>
+          </div>
+        )}
         
         {shouldShowField(currentChatUser.privacyPhone, currentChatUser.isContact) && currentChatUser.phone && currentChatUser.phone.trim() !== '' && (
           <div className={styles['info-item']}>
@@ -73,17 +100,6 @@ export default function UserProfileView({
           <div className={styles['info-item']}>
             <span className={styles['info-value']}>{currentChatUser.email}</span>
             <span className={styles['info-label']}>Электронная почта</span>
-          </div>
-        )}
-
-        {currentChatUser.privacyNameFormat === 'username' && 
-         shouldShowField(currentChatUser.privacyFullName, currentChatUser.isContact) && 
-         (currentChatUser.firstName || currentChatUser.lastName) && (
-          <div className={styles['info-item']}>
-            <span className={styles['info-value']}>
-              {`${currentChatUser.firstName || ''} ${currentChatUser.lastName || ''}`.trim()}
-            </span>
-            <span className={styles['info-label']}>Настоящие Имя и Фамилия</span>
           </div>
         )}
 

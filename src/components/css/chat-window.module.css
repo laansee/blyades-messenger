@@ -158,14 +158,14 @@
 
 .messages-body {flex: 1; padding: 24px 16px; overflow-y: auto; display: flex; 
   flex-direction: column; gap: 10px; position: relative;}
-.messages-body::-webkit-scrollbar {/* Ширина всего элемента навигации */
+/* .messages-body::-webkit-scrollbar {
   width: 5px; }
-.messages-body::-webkit-scrollbar-track {/* Цвет дорожки */
+.messages-body::-webkit-scrollbar-track {
   background: #00000000;}
 .messages-body::-webkit-scrollbar-thumb {
   background: #525252;
   border-radius: 20px;
-  border: none;}
+  border: none;} */
 .message {display: flex; width: 100%; }
 .message-incoming {justify-content: flex-start; }
 .message-outgoing {justify-content: flex-end; }
@@ -353,10 +353,9 @@ form.chat-input-zone {
   field-sizing: content;
   max-height: 20vh;
   font-family: system-ui, -apple-system, sans-serif;}
-.main-message-input::-webkit-scrollbar {
+/* .main-message-input::-webkit-scrollbar {
   width: 0; 
-  /* margin-bottom: 50px; */
-}
+} */
 .input-action-btn { 
   background: none; border: none; font-size: 20px; cursor: pointer; color: #a0a0ab; 
   display: flex; margin: 10px 0; }

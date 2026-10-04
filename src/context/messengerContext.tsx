@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { ToastNotification, ConfirmModal } from '../components/GlobalUI'; 
-import ProfileModal from '../components/profile-modal'; 
-import CallModal from '../components/call-overlay'; 
+import ProfileModal from '../components/profile/profileModal'; 
+import CallModal from '../features/calls/callOverlay'; 
 
 // Импортируем наши изолированные хуки логики
 import { useCallsLogic } from './messenger/useCallsLogic';
@@ -15,6 +15,7 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
   const [activeTab, setActiveTab] = useState('chats');
   const [theme, setTheme] = useState('dark');
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [chatsLoading, setChatsLoading] = useState(true);
   const [chats, setChats] = useState<any[]>([]);
   const [allMessages, setAllMessages] = useState<any[]>([]);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
@@ -167,6 +168,7 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
               uniqueId: u.uniqueId,
               name: calculatedName,
               avatarColor: u.avatarColor || '#007aff',
+              avatarUrl: u.avatarUrl,
               isContact: isContact,
               isGroup: false,
               phone: u.phone || '',
@@ -185,7 +187,6 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
 
         // Б. 👥 Форматируем групповые чаты (беседы) С ЖЕЛЕЗНЫМ ВЫЧИСЛЕНИЕМ КОМНАТЫ
         const formattedGroupChats = activeGroups.map((g: any) => {
-          // 🎯 ИСПРАВЛЕНИЕ: Чат-комната группы — это строго её собственный g.id!
           const roomMessages = allMessages.filter(m => m.chatId === g.id);
           const lastMsg = roomMessages[roomMessages.length - 1];
 
@@ -201,6 +202,9 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
         });
 
         setChats([...formattedPersonalChats, ...formattedGroupChats]);
+        setChatsLoading(false);
+      } else {
+        setChatsLoading(false);
       }
     };
 
@@ -315,11 +319,10 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
         showProfileMenu, setShowProfileMenu,
         typingUser, setTypingUser,
         ctxMenu, setCtxMenu,
-        closeContextMenu,
         toast, setToast,
         confirm, setConfirm,
-        messagesEndRef,
-        showToast, showConfirm,
+        messagesEndRef, chatsLoading,
+        showToast, showConfirm, closeContextMenu,
         handleCopyMessageText, handleSendMessage,
         handleKeyDown, handleLogout,
         currentCall: calls.currentCall,

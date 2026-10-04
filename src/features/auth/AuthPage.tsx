@@ -18,6 +18,8 @@ export default function AuthPage() {
   const [showRegisterPass, setShowRegisterPass] = useState(false);
   const [toast, setToast] = useState<ToastState>({ show: false, message: '', type: 'info' });
 
+  document.title = "Авторизация | Blyades"
+
   useEffect(() => {
     if (toast.show) {
       const timer = setTimeout(() => {
@@ -210,6 +212,7 @@ export default function AuthPage() {
                       setErrorMsg(''); 
                       setShowLoginPass(false);
                       setShowRegisterPass(false);
+                      document.title = "Регистрация | Blyades"
                     }} 
                     className={styles.authSwitchLink}
                   >
@@ -305,6 +308,7 @@ export default function AuthPage() {
                       setErrorMsg(''); 
                       setShowLoginPass(false);
                       setShowRegisterPass(false);
+                      document.title = "Авторизация | Blyades"
                     }} 
                     className={styles.authSwitchLink}
                   >

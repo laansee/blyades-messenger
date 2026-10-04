@@ -166,9 +166,19 @@ export default function AdminDashboard() {
                       <td style={{ padding: '16px 20px', color: '#636366', fontWeight: 'bold' }}>#{user.id}</td>
                       <td style={{ padding: '16px 20px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: user.avatarColor || '#007aff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 'bold', fontSize: '12px' }}>
-                            {(user.username || 'U').substring(0, 1).toUpperCase()}
-                          </div>
+                          
+                          {user.avatarUrl ? (
+                            <img
+                              src={user.avatarUrl}
+                              alt="Avatar"
+                              style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}
+                            />
+                          ) : (
+                            <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: user.avatarColor || '#007aff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 'bold', fontSize: '12px' }}>
+                              {(user.username || 'U').substring(0, 1).toUpperCase()}
+                            </div>
+                          )}
+
                           <div>
                             <span style={{ color: '#fff', fontWeight: '600', display: 'block' }}>{user.username}</span>
                             <span style={{ color: '#8e8e93', fontSize: '12px' }}>{user.firstName || ''} {user.lastName || ''}</span>

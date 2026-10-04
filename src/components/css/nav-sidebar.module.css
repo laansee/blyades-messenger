@@ -1,44 +1,107 @@
-.nav-sidebar {
-  min-width: 70px;
-  width: 70px;
-  max-width: 70px;
+@media (max-width: 1024px) {
+  .navSidebar {
+    min-width: 70px;
+    width: 70px;
+    max-width: 70px;
+    background-color: var(--bg-nav-sidebar);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px 0;
+    justify-content: space-between;
+  }
+  .navLogo p, .navMenu p {display: none;}
+  .navItem.active, .navItem.active:hover {
+    background: #232327;
+    transition: none;
+  }
+  .avatarContainer {padding: 0 4px;}
+  .avatarContainer p {display: none;}
+}
+@media (min-width: 1025px) {
+  .navSidebar {width: 220px;}
+  .navItem.active, .navItem.active:hover {background: linear-gradient(90deg, #232327 33%, #23232700 94%);}
+  .navMenu p {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    line-clamp: 1;
+    -webkit-box-orient: vertical;
+    text-overflow: ellipsis;
+    padding: 0 0 3px 10px;}
+  .avatarContainer {
+    padding: 10px;
+    border-radius: 14px;}
+  .avatarContainer:hover {background-color: #232327;}
+  .avatarContainer p {
+    color: var(--text-color);
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    line-clamp: 1;
+    -webkit-box-orient: vertical;
+    text-overflow: ellipsis;
+    transition: transform 0.2s ease;}
+}
+
+.navSidebar {
   background-color: var(--bg-nav-sidebar);
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 20px 0;
-  justify-content: space-between;}
-.nav-logo { 
+  align-items: flex-start;
+  padding: 20px 10px;
+  justify-content: space-between;
+  transition: all 200ms ease;}
+.navLogo { 
   font-size: 24px; 
   margin-bottom: 20px; 
-  user-select: none;}
-.nav-menu { 
+  user-select: none;
+  display: inline-flex;
+  padding: 0 10px;
+  gap: 5px;
+  font-family: "Raleway", sans-serif;}
+.navMenu { 
   display: flex; 
   flex-direction: column; 
   gap: 20px; 
   width: 100%; 
-  align-items: center; }
-.nav-item {
+  align-items: flex-start;}
+.navMenu svg { min-width: 30px; min-height: 30px;}
+.navItem {
   background: none; 
   border: none; 
   font-size: 20px; 
   cursor: pointer;
-  padding: 6px; 
-  width: 50px; 
+  padding: 10px;
+  width: stretch;
   height: 50px; 
   border-radius: 14px;
   display: flex; 
   align-items: center; 
-  justify-content: center; 
+  justify-content: flex-start;
   transition: background 0.2s;}
-.nav-item.active, .nav-item:hover { background-color: #232327; }
-a.nav-item {
+.navItem:hover, .navItem:focus-within { background-color: #232327; }
+a.navItem {
   text-decoration: none;
   box-sizing: border-box;
   user-select: none;
   cursor: default;}
-.nav-avatar {
+.avatarContainer {
+  user-select: none;
+  position: relative;
+  margin-top: auto; /* Прижимает всю конструкцию к низу сайдбара */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+}
+
+.avatarContainer:hover > .navAvatar {transform: scale(1.08); box-shadow: 0 0 12px rgba(255, 255, 255, 0.15);}
+.avatarContainer:active > .navAvatar {transform: scale(0.95);}
+.navAvatar {
+  min-width: 38px;
   width: 38px;
   height: 38px;
   border-radius: 50%; /* Делаем идеальный круг */
@@ -49,25 +112,18 @@ a.nav-item {
   font-weight: 700;
   font-size: 15px;
   cursor: pointer;
-  margin-top: auto; /* Прижимает аватарку к самому низу меню */
+  /* margin: 0 6px; */
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   user-select: none;
   cursor: default;}
 
-.nav-avatar:hover {
-  transform: scale(1.08);
-  box-shadow: 0 0 12px rgba(255, 255, 255, 0.15);}
-.nav-avatar:active {transform: scale(0.95);}
-
 /* Контейнер-обертка */
-.avatar-container {
-  position: relative;
-  margin-top: auto; /* Прижимает всю конструкцию к низу сайдбара */
-  display: flex;
-  justify-content: center;}
+
+/* .avatarContainer:hover > p {font-weight: 500;}
+.avatarContainer:active > p {} */
 
 /* Всплывающее окошко профиля */
-.profile-popup {
+.profilePopup {
   position: absolute;
   bottom: 50px; /* Приподнимаем над нижней аватаркой */
   left: 10px;   /* Легкий отступ от края экрана */
@@ -89,7 +145,7 @@ a.nav-item {
   100% { transform: translateY(0); opacity: 1; }}
 
 /* Большой аватар внутри окошка */
-.profile-popup-avatar {
+.profilePopupAvatar {
   width: 50px;
   height: 50px;
   border-radius: 50%;
@@ -104,7 +160,7 @@ a.nav-item {
   user-select: none;}
 
 /* Стиль имени пользователя */
-.profile-popup-name {
+.profilePopupName {
   color: #f9fafb;
   font-weight: 600;
   font-size: 15px;
@@ -117,14 +173,14 @@ a.nav-item {
   user-select: none;}
 
 /* Разделительная линия */
-.profile-popup-divider {
+.profilePopupDivider {
   width: 100%;
   height: 1px;
   background-color: #383842;
   margin-bottom: 12px;}
 
 /* Кнопка "Выйти" */
-.profile-logout-btn {
+.profileLogoutBtn {
   width: 100%;
   background: none;
   border: none;
@@ -143,5 +199,5 @@ a.nav-item {
   cursor: default;}
 
 /* Эффект наведения на кнопку выхода */
-.profile-logout-btn:hover {
+.profileLogoutBtn:hover {
   background-color: rgba(239, 68, 68, 0.1); /* Легкий красный фон */}

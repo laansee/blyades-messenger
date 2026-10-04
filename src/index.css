@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,100..900;1,100..900&display=swap');
 
 :root {
   /* --text: #6b6375;
@@ -49,6 +50,15 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+*::-webkit-scrollbar {/* Ширина всего элемента навигации */
+  width: 5px; }
+*::-webkit-scrollbar-track {/* Цвет дорожки */
+  background: #00000000;}
+*::-webkit-scrollbar-thumb {
+  background: #525252;
+  border-radius: 20px;
+  border: none;}
 
 h1, h2, h3 {
   font-family: var(--heading);
@@ -104,3 +114,25 @@ code {
 /* Фикс для элементов списков внутри сообщений, чтобы они тоже не раздувались */
 .message-text ul, .message-text li {
   line-height: 1.25 !important;}
+
+/* 🚀 УЛЬТИМАТИВНЫЙ НЕОНОВЫЙ ФОН ИЗ СКРИНШОТА */
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  /* Базовый глубокий тёмно-синий цвет, чтобы при загрузке не было вспышек */
+  background-color: #0e1017; 
+  
+  /* 🎨 Сложная многослойная сетка градиентов для воссоздания переливов:
+     1. Синее свечение сверху слева
+     2. Багрово-красный закат в правом нижнем углу
+     3. Тёмная подложка, чтобы текст оставался идеально читаемым */
+  background-image: 
+    radial-gradient(circle at 10% 20%, rgba(16, 37, 68, 0.85) 0%, transparent 50%),
+    radial-gradient(circle at 90% 80%, rgba(61, 14, 30, 0.7) 0%, transparent 60%),
+    radial-gradient(circle at 50% 50%, rgba(14, 16, 23, 1) 0%, #090a0f 100%);
+  
+  background-attachment: fixed;
+  color: #ffffff;
+  font-family: sans-serif;
+}

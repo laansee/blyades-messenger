@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import styles from '../../components/css/sidebar.module.css';
 import { Check, CheckCheck, Search, SquarePen, Users, Megaphone, PhoneCall } from 'lucide-react';
 import useMessengerContext from '../../context/messengerContext';
-import DropdownMenu from '../../components/dropdown-menu'; 
+import DropdownMenu from '../../components/dropdownMenu'; 
 
 export default function ChatsSidebar({ onOpenCreateGroup }: { onOpenCreateGroup: () => void }) {
   const ctx = useMessengerContext();
@@ -185,7 +185,27 @@ export default function ChatsSidebar({ onOpenCreateGroup }: { onOpenCreateGroup:
       </div>
 
       <div className={styles['chats-list']}>
-        {visibleChats.length === 0 ? (
+        {ctx.chatsLoading ? (
+          Array.from({ length: 5 }).map((_, i) => (
+            <div key={`skeleton-${i}`} className={styles['chat-preview-card']} style={{ pointerEvents: 'none', opacity: 0.5, display: 'flex', alignItems: 'center', gap: '12px', padding: '10px' }}>
+              <div className={styles['avatar-wrapper']}>
+                <div className="skeleton-blink" style={{ width: '44px', height: '44px', borderRadius: '50%', backgroundColor: '#2b2d31' }} />
+              </div>
+              <div className={styles['chat-info']} style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1 }}>
+                <div className="skeleton-blink" style={{ width: '40%', height: '14px', backgroundColor: '#2b2d31', borderRadius: '4px' }} />
+                <div className="skeleton-blink" style={{ width: '75%', height: '11px', backgroundColor: '#1e1f22', borderRadius: '4px' }} />
+              </div>
+            </div>
+          ))
+        ) : 
+        ctx.chats.length === 0 ? (
+          <div style={{ color: '#636366', textAlign: 'center', marginTop: '60px', padding: '0 20px', fontSize: '14px', fontFamily: 'sans-serif', lineHeight: 1.5 }}>
+            <p style={{ fontSize: '24px', margin: '0 0 10px 0' }}>🤷‍♂️</p>
+            <strong>У вас пока нет активных чатов</strong>
+            <p style={{ fontSize: '12px', color: '#48484a', margin: '4px 0 0 0' }}>Нажмите на иконку блокнота сверху, чтобы начать беседу с кем-нибудь.</p>
+          </div>
+        ) : 
+        visibleChats.length === 0 ? (
           <div style={{ color: '#636366', textAlign: 'center', marginTop: '40px', fontSize: '14px' }}>
             {activeTab === 'all' && 'Чаты не найдены'}
             {activeTab === 'unread' && 'Нет непрочитанных сообщений'}
@@ -217,9 +237,20 @@ export default function ChatsSidebar({ onOpenCreateGroup }: { onOpenCreateGroup:
             return (
               <div key={chat.id} className={`${styles['chat-preview-card']} ${ctx.activeChatId === chat.id ? styles.active : ''}`} onClick={() => ctx.setActiveChatId(chat.id)}>
                 <div className={styles['avatar-wrapper']}>
+                {chat.avatarUrl ? (
+                  <img
+                    src={chat.avatarUrl}
+                    alt="Avatar"
+                    style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}
+                  />
+                ) : (
                   <div className={styles['chat-avatar']} style={{ backgroundColor: chat.avatarColor }}>
                     {chat.name.substring(0, 1).toUpperCase()}
                   </div>
+                )}
+                {/* <div className={styles['chat-avatar']} style={{ backgroundColor: chat.avatarColor }}>
+                  {chat.name.substring(0, 1).toUpperCase()}
+                </div> */}
                 </div>
                 <div className={styles['chat-info']}>
                   <div className={styles['chat-meta']}>

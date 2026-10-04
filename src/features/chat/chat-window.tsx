@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import styles from '../../components/css/chat-window.module.css';
-import ContextMenu from '../../components/context-menu';
+import ContextMenu from '../../components/contextMenu';
 import useMessengerContext from '../../context/messengerContext';
-import DropdownMenu from '../../components/dropdown-menu';
+import DropdownMenu from '../../components/dropdownMenu';
 import { supabase } from '../../services/supabaseClient';
 import { Search, EllipsisVertical, X, Check, CheckCheck, Pencil, Paperclip, 
   Send, FaceSlightlySmiling, ArrowUp, ArrowDown, User, 
@@ -171,12 +171,17 @@ export default function ChatWindow() {
           onClick={() => ctx.setShowUserModal(true)}
         >
           {/* Подстраховали вывод аватарки и имени через безопасный оператор ?. */}
-          <div 
-            className={styles['chat-avatar']} 
-            style={{ backgroundColor: currentChatUser?.avatarColor || '#5865F2' }}
-          >
-            {currentChatUser?.name?.substring(0, 1).toUpperCase() || '?'}
-          </div>
+          {currentChatUser?.avatarUrl ? (
+            <img
+              src={currentChatUser?.avatarUrl}
+              alt="Avatar"
+              style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}
+            />
+          ) : (
+            <div className={styles['chat-avatar']} style={{ backgroundColor: currentChatUser?.avatarColor }}>
+              {currentChatUser?.name.substring(0, 1).toUpperCase()}
+            </div>
+          )}
           <div>
             <h3 className={styles['chat-header-user-name']}>
               {currentChatUser?.name || currentChatUser?.username || 'Загрузка...'}
@@ -450,7 +455,15 @@ export default function ChatWindow() {
                             style={{ backgroundColor: senderAvatarColor, cursor: 'pointer' }}
                             onClick={() => ctx.setShowUserModal(String(msg.senderId))}
                           >
-                            {senderDisplayName.substring(0, 1).toUpperCase()}
+                            {senderUserObj?.avatarUrl ? (
+                              <img 
+                                src={senderUserObj.avatarUrl} 
+                                alt="Avatar" 
+                                style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
+                              />
+                            ) : (
+                              senderDisplayName.substring(0, 1).toUpperCase()
+                            )}
                           </div>
                         ) : (
                           <div style={{ width: '32px', flexShrink: 0 }} />

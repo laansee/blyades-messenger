@@ -26,80 +26,114 @@ export default function NavSidebar() {
 
 
   return (
-    <aside className={styles['nav-sidebar']}>
-      <div className={styles['nav-logo']}>💬</div>
-      <nav className={styles['nav-menu']}>
+    <aside className={styles.navSidebar}>
+      <div className={styles.navLogo}>
+        💬
+        <p>Blyades</p>
+      </div>
+      <nav className={styles.navMenu}>
         <NavLink 
           to="/chat" 
-          className={({ isActive }) => `${styles['nav-item']} ${isActive ? styles.active : ''}`} 
+          className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`} 
           onClick={() => ctx.setActiveTab('chats')} 
           title="Чаты"
+          tabIndex={10}
         >
           <User strokeWidth="2" color='#aaa8a8' size={30}/>
+          <p>Чаты</p>
         </NavLink>
         <NavLink 
           to="/contacts" 
-          className={({ isActive }) => `${styles['nav-item']} ${isActive ? styles.active : ''}`} 
+          className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`} 
           onClick={() => {
             ctx.setActiveTab('contacts');
             ctx.setActiveChatId(null);
             ctx.setSearchQuery('');
           }} 
           title="Контакты"
+          tabIndex={10}
         >
           <Users strokeWidth="2" color='#aaa8a8' size={30}/>
+          <p>Контакты</p>
         </NavLink>
         <NavLink 
           to="/calls" 
-          className={({ isActive }) => `${styles['nav-item']} ${isActive ? styles.active : ''}`} 
+          className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`} 
           onClick={() => {
             ctx.setActiveTab('calls');
             ctx.setActiveChatId(null);
           }} 
           title='Звонки'
+          tabIndex={10}
         >
           <Phone strokeWidth="2" color='#aaa8a8' size={30}/>
+          <p>Звонки</p>
         </NavLink>
         {ctx.currentUser?.isAdmin && (
           <NavLink 
             to="/admin" 
-            className={({ isActive }) => `${styles['nav-item']} ${isActive ? styles.active : ''}`} 
+            className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`} 
             onClick={() => ctx.setActiveTab('admin')}
             title="Панель администратора"
+            tabIndex={10}
           >
             <ShieldAlert strokeWidth="2" color='#ffcc00' size={30}/>
+          <p>Админ панель</p>
           </NavLink>
         )}
         <NavLink 
           to="/settings" 
-          className={({ isActive }) => `${styles['nav-item']} ${isActive ? styles.active : ''}`} 
+          className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`} 
           onClick={() => ctx.setActiveTab('settings')}
           title="Настройки"
+          tabIndex={10}
         >
           <Settings strokeWidth="2" color='#aaa8a8' size={30}/>
+          <p>Настройки</p>
         </NavLink>
       </nav>
-      <div ref={profileMenuRef} className={styles['avatar-container']}>
+      <div 
+        ref={profileMenuRef} 
+        className={styles.avatarContainer}
+        onClick={() => ctx.setShowProfileMenu(!ctx.showProfileMenu)}
+        tabIndex={11}
+      >
         {ctx.showProfileMenu && (
-          <div className={styles['profile-popup']}>
-            <div className={styles['profile-popup-avatar']} style={{ backgroundColor: ctx.currentUser?.avatarColor || '#2b2d31' }}>
-              {ctx.currentUser ? myAccountDisplayName.substring(0, 1).toUpperCase() : ''}
-            </div>
-            <div className={styles['profile-popup-name']}>{myAccountDisplayName}</div>
-            <div className={styles['profile-popup-divider']}></div>
-            <button className={styles['profile-logout-btn']} onClick={ctx.handleLogout}>
+          <div className={styles.profilePopup}>
+            {ctx.currentUser.avatarUrl ? (
+              <img
+                src={ctx.currentUser.avatarUrl}
+                alt="Avatar"
+                style={{ width: '90px', height: '90px', borderRadius: '50%', objectFit: 'cover', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}
+              />
+            ) : (
+              <div className={styles.profilePopupAvatar} style={{ backgroundColor: ctx.currentUser?.avatarColor || '#2b2d31' }}>
+                {ctx.currentUser ? myAccountDisplayName.substring(0, 1).toUpperCase() : ''}
+              </div>
+            )}
+            <div className={styles.profilePopupName}>{myAccountDisplayName}</div>
+            <div className={styles.profilePopupDivider}></div>
+            <button className={styles.profileLogoutBtn} onClick={ctx.handleLogout}>
               <LogOut size={14}/>
               Выйти
             </button>
           </div>
         )}
-        <div 
-          className={styles['nav-avatar']} 
-          style={{ backgroundColor: ctx.currentUser?.avatarColor || '#2b2d31' }} 
-          onClick={() => ctx.setShowProfileMenu(!ctx.showProfileMenu)}
-        >
-          {ctx.currentUser ? myAccountDisplayName.substring(0, 1).toUpperCase() : ''}
-        </div>
+        {ctx.currentUser.avatarUrl ? (
+          <img
+            src={ctx.currentUser.avatarUrl}
+            alt="Avatar"
+            style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}
+          />
+        ) : (
+          <div 
+            className={styles.navAvatar} 
+            style={{ backgroundColor: ctx.currentUser?.avatarColor || '#2b2d31' }} 
+          >
+            {ctx.currentUser ? myAccountDisplayName.substring(0, 1).toUpperCase() : ''}
+          </div>
+        )}
+        <p>{myAccountDisplayName}</p>
       </div>
     </aside>
   );

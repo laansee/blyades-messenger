@@ -1,6 +1,6 @@
 import React from 'react';
-import useMessengerContext from '../context/messengerContext';
-import { useWebRTCCalls } from '../hooks/useWebRTCCalls'; // 🚀 Импортируем наш вынесенный WebRTC-движок
+import useMessengerContext from '../../context/messengerContext';
+import { useWebRTCCalls } from '../../hooks/useWebRTCCalls'; // 🚀 Импортируем наш вынесенный WebRTC-движок
 import { Phone, PhoneOff, Volume2, Mic, MicOff, Users } from 'lucide-react';
 
 export default function CallOverlay() {
@@ -24,6 +24,7 @@ export default function CallOverlay() {
 
   const myName = ctx.currentUser?.username || 'Вы';
   const myAvatarColor = ctx.currentUser?.avatarColor || '#007aff';
+  const myAvatarUrl = ctx.currentUser?.avatarUrl || '';
 
   // Вычисляем динамическую высоту полосок частот на основе живого стейта из хука
   const liveHeight1 = isMuted ? '3px' : `${Math.max(15, Math.min(100, myVolume * 1.8))}%`;
@@ -73,7 +74,22 @@ export default function CallOverlay() {
           <div style={{ display: 'flex', gap: '24px', justifyContent: 'center', width: '100%', flexWrap: 'wrap' }}>
             {/* КАРТОЧКА 1: ВЫ (Всегда первая) */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px', backgroundColor: '#1e1f22', border: '2px solid #2b2d31', borderRadius: '16px', padding: '28px', minWidth: '160px', boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}>
-              <div style={{ width: '84px', height: '84px', borderRadius: '50%', backgroundColor: myAvatarColor, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '32px', fontWeight: 'bold', boxShadow: isMuted ? 'none' : `0 0 0 ${Math.max(2, myVolume / 6)}px #2ec761`, transition: 'box-shadow 0.05s ease' }}>{myName.substring(0, 1).toUpperCase()}</div>
+              
+              {/* <div style={{ width: '84px', height: '84px', borderRadius: '50%', backgroundColor: myAvatarColor, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '32px', fontWeight: 'bold', boxShadow: isMuted ? 'none' : `0 0 0 ${Math.max(2, myVolume / 6)}px #2ec761`, transition: 'box-shadow 0.05s ease' }}>
+                {myName.substring(0, 1).toUpperCase()}
+              </div> */}
+              {myAvatarUrl ? (
+                <img
+                  src={myAvatarUrl}
+                  alt="Avatar"
+                  style={{ width: '84px', height: '84px', borderRadius: '50%', objectFit: 'cover', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}
+                />
+              ) : (
+                <div style={{ width: '84px', height: '84px', borderRadius: '50%', backgroundColor: myAvatarColor, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '32px', fontWeight: 'bold', boxShadow: isMuted ? 'none' : `0 0 0 ${Math.max(2, myVolume / 6)}px #2ec761`, transition: 'box-shadow 0.05s ease' }}>
+                  {myName.substring(0, 1).toUpperCase()}
+                </div>
+              )}
+
               <span style={{ fontSize: '15px', fontWeight: '600', color: '#fff' }}>{myName} (Вы)</span>
               <div style={{ display: 'flex', gap: '3px', height: '16px', alignItems: 'flex-end', marginTop: '2px' }}>
                 <div style={{ width: '3px', height: liveHeight1, backgroundColor: '#2ec761', borderRadius: '2px' }} />
@@ -90,7 +106,19 @@ export default function CallOverlay() {
                 const memberNameText = `${member.firstName || ''} ${member.lastName || ''}`.trim() || member.username;
                 return (
                   <div key={member.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px', backgroundColor: '#1e1f22', border: '2px solid #2b2d31', borderRadius: '16px', padding: '28px', minWidth: '160px', boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}>
-                    <div style={{ width: '84px', height: '84px', borderRadius: '50%', backgroundColor: member.avatarColor || '#5865F2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '32px', fontWeight: 'bold', boxShadow: `0 0 0 4px #2ec761`, animation: 'voice-pulse 1.4s infinite alternate' }}>{memberNameText.substring(0, 1).toUpperCase()}</div>
+                    
+                    {member.avatarUrl ? (
+                      <img
+                        src={member.avatarUrl}
+                        alt="Avatar"
+                        style={{ width: '84px', height: '84px', borderRadius: '50%', objectFit: 'cover', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}
+                      />
+                    ) : (
+                      <div style={{ width: '84px', height: '84px', borderRadius: '50%', backgroundColor: member.avatarColor || '#5865F2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '32px', fontWeight: 'bold', boxShadow: `0 0 0 4px #2ec761`, animation: 'voice-pulse 1.4s infinite alternate' }}>
+                        {memberNameText.substring(0, 1).toUpperCase()}
+                      </div>
+                    )}
+
                     <span style={{ fontSize: '15px', fontWeight: '600', color: '#fff' }}>{memberNameText}</span>
                     <div style={{ display: 'flex', gap: '3px', height: '16px', alignItems: 'flex-end', marginTop: '2px' }}>
                       <div style={{ width: '3px', height: liveHeight3, backgroundColor: '#2ec761', borderRadius: '2px' }} />

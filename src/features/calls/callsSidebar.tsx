@@ -3,7 +3,7 @@ import { Phone, PhoneMissed, PhoneIncoming, PhoneOutgoing, Search } from 'lucide
 import useMessengerContext from '../../context/messengerContext';
 import styles from '../../components/css/sidebar.module.css'; 
 // 🚀 Импортируем наш готовый компонент контекстного меню
-import ContextMenu from '../../components/context-menu'; 
+import ContextMenu from '../../components/contextMenu'; 
 import { supabase } from '../../services/supabaseClient';
 
 export default function CallsSidebar({ callsHistory }: { callsHistory: any[] }) {
@@ -58,7 +58,8 @@ export default function CallsSidebar({ callsHistory }: { callsHistory: any[] }) 
       name: partnerName,
       type: callType,
       statusText: statusText,
-      avatarColor: partnerUser?.avatarColor || '#7a7aff'
+      avatarColor: partnerUser?.avatarColor || '#7a7aff',
+      avatarUrl: partnerUser?.avatarUrl || null 
     };
   });
 
@@ -135,9 +136,17 @@ export default function CallsSidebar({ callsHistory }: { callsHistory: any[] }) 
                 }}
               >
                 <div className={styles['avatar-wrapper']}>
-                  <div className={styles['chat-avatar']} style={{ backgroundColor: call.avatarColor }}>
-                    {call.name.substring(0, 1).toUpperCase()}
-                  </div>
+                  {call.avatarUrl ? (
+                    <img
+                      src={call.avatarUrl}
+                      alt="Avatar"
+                      style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}
+                    />
+                  ) : (
+                    <div className={styles['chat-avatar']} style={{ backgroundColor: call.avatarColor }}>
+                      {call.name.substring(0, 1).toUpperCase()}
+                    </div>
+                  )}
                 </div>
 
                 <div className={styles['chat-info']}>

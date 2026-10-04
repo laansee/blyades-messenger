@@ -4,10 +4,85 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>blyades-messenger</title>
+    <title>Blyades Messenger</title>
+
+    <!-- 🔮 МЕТАДАННЫЕ ПРЕДПРОСМОТРА (Open Graph / Rich Previews) -->
+    <meta 
+      name="description" 
+      content="Этой хуйни боялся весь азовсталь!!!"
+    />
+
+    <!-- Open Graph / Facebook / Telegram / Discord -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://blyades.app" />
+    <meta 
+      property="og:title" 
+      content="Blyades Messenger" />
+    <meta 
+      property="og:description" 
+      content="Этой хуйни боялся весь азовсталь!!!" 
+    />
+    <meta property="og:image" content="https://github.io" />
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://blyades.app" />
+    <meta property="twitter:title" content="Blyades Messenger" />
+    <meta 
+      property="twitter:description" 
+      content="Этой хуйни боялся весь азовсталь!!!" 
+    />
+    <meta property="twitter:image" content="https://github.io" />
+
+    <style>
+      body {
+        margin: 0;
+        background-color: #0e0f11;
+      }
+      .html-loader-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background-color: #0e0f11;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 999999;
+        font-family: sans-serif;
+        color: #fff;
+      }
+      .html-spinner {
+        width: 48px;
+        height: 48px;
+        border: 4px solid rgba(255, 255, 255, 0.1);
+        border-radius: 50%;
+        border-top-color: #007aff;
+        animation: html-spin 1s ease-in-out infinite;
+        box-shadow: 0 0 15px rgba(0, 122, 255, 0.2);
+      }
+      .html-loader-text {
+        margin-top: 16px;
+        font-size: 15px;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        color: #9ca3af;
+      }
+      @keyframes html-spin {
+        to { transform: rotate(360deg); }
+      }
+    </style>
+    
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="html-loader-overlay">
+        <div class="html-spinner"></div>
+        <div class="html-loader-text">Загрузка...</div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

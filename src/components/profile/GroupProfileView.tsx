@@ -30,7 +30,7 @@ export default function GroupProfileView({ currentChatUser, baseName, onEditTogg
           // 🚀 ИСПРАВЛЕНИЕ: Выкачиваем ВСЕ поля приватности и правильный uniqueId из таблицы users!
           const { data: usersData, error: uError } = await supabase
             .from('users')
-            .select('id, username, uniqueId, firstName, lastName, avatarColor, privacyNameFormat, privacyFullName')
+            .select('id, username, uniqueId, firstName, lastName, avatarColor, avatarUrl, privacyNameFormat, privacyFullName')
             .in('id', userIds);
 
           if (!uError && usersData) {
@@ -131,9 +131,17 @@ export default function GroupProfileView({ currentChatUser, baseName, onEditTogg
 
                 return (
                   <div key={member.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '4px 0' }}>
-                    <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: member.avatarColor || '#007aff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 'bold', fontSize: '13px' }}>
-                      {displayName.substring(0, 1).toUpperCase()}
-                    </div>
+                    {member.avatarUrl ? (
+                      <img
+                        src={member.avatarUrl}
+                        alt="Avatar"
+                        style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}
+                      />
+                    ) : (
+                      <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: member.avatarColor || '#007aff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 'bold', fontSize: '13px' }}>
+                        {displayName.substring(0, 1).toUpperCase()}
+                      </div>
+                    )}
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                       {/* Настоящее отображаемое имя */}
                       <span style={{ color: '#fff', fontSize: '14px', fontWeight: '500' }}>{displayName}</span>

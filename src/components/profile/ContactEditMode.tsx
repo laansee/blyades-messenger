@@ -33,9 +33,20 @@ export default function ContactEditMode({
       </h3>
 
       <div className={styles['tg-edit-header']}>
-        <div className={styles['tg-edit-avatar']} style={{ backgroundColor: currentChatUser.avatarColor }}>
+        {currentChatUser.avatarUrl ? (
+          <img
+            src={currentChatUser.avatarUrl}
+            alt="Avatar"
+            style={{ width: '54px', height: '54px', borderRadius: '50%', objectFit: 'cover', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}
+          />
+        ) : (
+          <div className={styles['tg-edit-avatar']} style={{ backgroundColor: currentChatUser.avatarColor }}>
+            {editFirstName.substring(0, 1).toUpperCase() || '?'}
+          </div>
+        )}
+        {/* <div className={styles['tg-edit-avatar']} style={{ backgroundColor: currentChatUser.avatarColor }}>
           {editFirstName.substring(0, 1).toUpperCase() || '?'}
-        </div>
+        </div> */}
         <div className={styles['tg-edit-user-meta']}>
           <div className={styles['tg-meta-name']}>{editFirstName} {editLastName}</div>
           <div className={styles['tg-meta-phone']}>@{currentChatUser.uniqueId || currentChatUser.username}</div>

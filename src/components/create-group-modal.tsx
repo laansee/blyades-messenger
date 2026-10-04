@@ -16,7 +16,6 @@ export default function CreateGroupModal({ show, onClose }: CreateGroupModalProp
 
   if (!show) return null;
 
-  // Функция переключения галочки у пользователя
   const toggleUserSelection = (userId: string) => {
     setSelectedUserIds((prev) =>
       prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
@@ -31,9 +30,7 @@ export default function CreateGroupModal({ show, onClose }: CreateGroupModalProp
     }
 
     if (ctx.handleCreateGroupChat) {
-      // Передаем название и массив только ВЫБРАННЫХ пользователей в контекст
       await ctx.handleCreateGroupChat(groupName, selectedUsers);
-      // Очищаем стейты и закрываем окно
       setGroupName('');
       setSelectedUserIds([]);
       onClose();

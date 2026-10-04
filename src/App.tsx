@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router';
+// import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { type User } from '@supabase/supabase-js';
-import { PageLoader } from './components/PageLoader';
+// import { PageLoader } from './components/PageLoader';
 import AuthPage from './features/auth/AuthPage';
 import ChatLayout from './features/chat/chatLayout';
 import SettingsPage from './features/settings/settingsPage';
 import ContactsPage from './features/contacts/contactsPage';
 import CallsPage from './features/calls/callsPage';
 import AdminDashboard from './features/admin/admin-dashboard';
+import LandingPage from './components/LandingPage';
 import useMessengerContext, { MessengerProvider } from './context/messengerContext';
 
 function AppContent() {
@@ -23,11 +25,12 @@ function AppContent() {
     setLoading(false);
   }, []);
 
-  if (loading) return <PageLoader />;
+  // if (loading) return <PageLoader />;
 
   return (
     <Router>
       <Routes>
+        <Route path="/" element={<LandingPage />} />
         {!ctx.currentUser ? (
           <>
             <Route path="/auth" element={<AuthPage />} />

@@ -32,7 +32,7 @@ export function useWebRTCCalls(ctx: any) {
           const activeUserIds = activeSessions.map(s => String(s.userId));
           const { data: usersData } = await supabase
             .from('users')
-            .select('id, username, avatarColor, firstName, lastName')
+            .select('id, username, avatarColor, avatarUrl, firstName, lastName')
             .in('id', activeUserIds);
           
           if (usersData) {

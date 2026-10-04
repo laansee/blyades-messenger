@@ -1,3 +1,54 @@
+@media (max-width: 480px) {
+  .setSidebar {width:calc(100% - 70px);}
+}
+@media (min-width: 481px) and (max-width: 739px) {
+  .setSidebar {width:calc(100% - 70px);}
+}
+@media (min-width: 740px) {
+  .setSidebar {width: 320px;}
+}
+.setSidebar {
+  background-color: var(--bg-main);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;}
+.setSidebarHeader {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;}
+.setSidebarHeader h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;}
+.setSidebarList {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 10px;}
+.setSidebarItem {
+  display: flex;
+  gap: 12px;
+  padding: 8px;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-bottom: 4px;
+  cursor: default;}
+.setSidebarItem:hover {background-color: #232327;}
+.setSidebarItem[aria-disabled=true] {color: #707579; cursor: not-allowed;}
+.setSidebarItem[aria-disabled=true]:hover {background-color: #00000000;}
+.setSidebarItem[aria-exit=true] {color: #ef4444;}
+.setSidebarItem[aria-exit=true]:hover {background-color: #ef44441f;}
+.setSidebarItem.active {
+  background-color: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  /* font-weight: 600; */
+}
+
+
 .settingsContainer {
   flex: 1;
   background-color: #121216;
@@ -43,20 +94,24 @@
 .settingsFormCard {
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
   gap: 16px;
-  background: #1e1e24;
-  padding: 24px;
-  border-radius: 12px;
-  border: 1px solid #383842;}
+  /* background: #1e1e24; */
+  padding: 20px;
+  /* border-radius: 12px; */
+  /* border: 1px solid #383842; */
+  overflow: auto;
+}
 .settingsFormTitle {
   color: #ffffff;
   margin: 0 0 4px 0;
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 500;}
 .settingsInputField {
   display: flex;
   flex-direction: column;
-  gap: 6px;}
+  gap: 6px;
+  flex: 1}
 .settingsLabel {
   font-size: 13px;
   color: #9ca3af;

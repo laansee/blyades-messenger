@@ -73,9 +73,17 @@ export default function ContactsSidebar() {
                 onClick={() => ctx.setActiveChatId(contact.id)}
               >
                 <div className={styles['avatar-wrapper']}>
-                  <div className={styles['chat-avatar']} style={{ backgroundColor: contact.avatarColor }}>
-                    {displayName.substring(0, 1).toUpperCase()}
-                  </div>
+                  {contact.avatarUrl ? (
+                    <img
+                      src={contact.avatarUrl}
+                      alt="Avatar"
+                      style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}
+                    />
+                  ) : (
+                    <div className={styles['chat-avatar']} style={{ backgroundColor: contact.avatarColor }}>
+                      {displayName.substring(0, 1).toUpperCase()}
+                    </div>
+                  )}
                   {contact.online && <span className={styles['online-badge']} />}
                 </div>
                 <div className={styles['chat-info']}>

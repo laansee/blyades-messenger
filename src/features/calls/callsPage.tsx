@@ -3,8 +3,8 @@ import mainStyle from '../../components/css/main.module.css';
 import useMessengerContext from '../../context/messengerContext';
 import { supabase } from '../../services/supabaseClient';
 import NavSidebar from '../channels/nav-sidebar';
-import CallsSidebar from './calls-sidebar';
-import CallsWindow from './calls-window';
+import CallsSidebar from './callsSidebar';
+import CallsWindow from './callsWindow';
 
 export default function CallsPage() {
   const ctx = useMessengerContext();
@@ -24,7 +24,7 @@ export default function CallsPage() {
   };
       
   useEffect(() => {
-    document.title = 'Звонки';
+    document.title = 'Звонки | Blyades';
   }, []);
 
   useEffect(() => {

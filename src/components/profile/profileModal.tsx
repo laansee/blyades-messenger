@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import styles from './css/chat-window.module.css'; 
-import useMessengerContext from '../context/messengerContext';
-import { supabase } from '../services/supabaseClient';
+import styles from '../css/chat-window.module.css'; 
+import useMessengerContext from '../../context/messengerContext';
+import { supabase } from '../../services/supabaseClient';
 import { X } from 'lucide-react';
 
 // ИМПОРТИРУЕМ НАШИ НОВЫЕ ПОД-ФАЙЛЫ
-import UserProfileView from './profile/UserProfileView';
-import GroupProfileView from './profile/GroupProfileView';
-import ContactEditMode from './profile/ContactEditMode';
+import UserProfileView from './UserProfileView';
+import GroupProfileView from './GroupProfileView';
+import ContactEditMode from './ContactEditMode';
 
 export default function ProfileModal() {
   const ctx = useMessengerContext();
