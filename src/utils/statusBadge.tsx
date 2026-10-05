@@ -1,7 +1,7 @@
 import React from 'react';
 
 const TESTER_LOGINS = ['qwe', 'mmd', 'test', 'zxczxc'];
-const DEVELOPER_LOGINS = ['laansee'];
+const DEVELOPER_LOGINS = ['laansee', 'lonbloods'];
 
 // 🚀 ХЕЛПЕР ЗНАЧКОВ СТАТУСА С ВСПЛЫВАЮЩИМИ ПОДСКАЗКАМИ
 export function renderUserStatusBadge(userObj: any) {
