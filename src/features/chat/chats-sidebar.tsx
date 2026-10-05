@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import styles from '../../components/css/sidebar.module.css';
 import { Check, CheckCheck, Search, SquarePen, Users, Megaphone, PhoneCall } from 'lucide-react';
 import useMessengerContext from '../../context/messengerContext';
+import { renderUserStatusBadge } from '../../utils/statusBadge';
 import DropdownMenu from '../../components/dropdownMenu'; 
 
 export default function ChatsSidebar({ onOpenCreateGroup }: { onOpenCreateGroup: () => void }) {
@@ -254,7 +255,10 @@ export default function ChatsSidebar({ onOpenCreateGroup }: { onOpenCreateGroup:
                 </div>
                 <div className={styles['chat-info']}>
                   <div className={styles['chat-meta']}>
-                    <span className={styles['chat-name']}>{chat.name}</span>
+                    <span className={styles['chat-name']}>
+                      {renderUserStatusBadge(chat)}
+                      {chat.name}
+                    </span>
                     <span className={styles['chat-time']}>{formatMessageTimeOrDate(lastMessage?.createdAt)}</span>
                   </div>
                   <div className={styles['chat-last-message']}>

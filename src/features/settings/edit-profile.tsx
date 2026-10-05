@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import styles from '../../components/css/settings.module.css'; // Твои оригинальные стили
 import chatStyles from '../../components/css/chat-window.module.css'; 
 import useMessengerContext from '../../context/messengerContext';
+import { renderUserStatusBadge } from '../../utils/statusBadge';
 import { supabase } from '../../services/supabaseClient';
 
 interface EditProfileProps {
@@ -318,6 +319,7 @@ export default function EditProfile({ onBack }: { onBack: () => void }) {
               )}
             </div>
             <h2 className={chatStyles['profile-name']}>
+              {renderUserStatusBadge(currentUser)}
               {previewDisplayName}
             </h2>
             <span className={chatStyles['profile-status']} style={{ color: shouldShowFieldInPreview(privacyOnline) ? '#2ec761' : '#707579' }}>

@@ -4,6 +4,7 @@ import ContextMenu from '../../components/contextMenu';
 import useMessengerContext from '../../context/messengerContext';
 import DropdownMenu from '../../components/dropdownMenu';
 import { supabase } from '../../services/supabaseClient';
+import { renderUserStatusBadge } from '../../utils/statusBadge';
 import { Search, EllipsisVertical, X, Check, CheckCheck, Pencil, Paperclip, 
   Send, FaceSlightlySmiling, ArrowUp, ArrowDown, User, 
   BellOff, MessageSquare, Trash, Phone, Clock, 
@@ -184,6 +185,7 @@ export default function ChatWindow() {
           )}
           <div>
             <h3 className={styles['chat-header-user-name']}>
+              {renderUserStatusBadge(currentChatUser)} 
               {currentChatUser?.name || currentChatUser?.username || 'Загрузка...'}
             </h3>
             <span style={{ color: '#9ca3af', fontSize: '12px' }}>
@@ -420,6 +422,7 @@ export default function ChatWindow() {
                                 ctx.setShowUserModal(String(msg.senderId)); // Передаем ID конкретного человека!
                               }}
                             >
+                              {renderUserStatusBadge(senderUserObj)}
                               {senderDisplayName}
                             </span>
                           )}

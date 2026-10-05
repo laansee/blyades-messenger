@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styles from '../../components/css/sidebar.module.css';
 import useMessengerContext from '../../context/messengerContext';
 import { supabase } from '../../services/supabaseClient';
+import { renderUserStatusBadge } from '../../utils/statusBadge';
 import { Search } from 'lucide-react';
 
 export default function ContactsSidebar() {
@@ -87,7 +88,10 @@ export default function ContactsSidebar() {
                   {contact.online && <span className={styles['online-badge']} />}
                 </div>
                 <div className={styles['chat-info']}>
-                  <span className={styles['chat-name']}>{displayName}</span>
+                  <span className={styles['chat-name']}>
+                    {renderUserStatusBadge(contact)} 
+                    {displayName}
+                  </span>
                   <span style={{ fontSize: '12px', color: contact.online ? '#2ec761' : '#9ca3af' }}>
                     {contact.online ? 'в сети' : 'офлайн'}
                   </span>

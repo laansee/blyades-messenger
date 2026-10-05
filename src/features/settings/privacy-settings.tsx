@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styles from '../../components/css/settings.module.css';
 import chatStyles from '../../components/css/chat-window.module.css';
 import useMessengerContext from '../../context/messengerContext';
+import { renderUserStatusBadge } from '../../utils/statusBadge';
 import { supabase } from '../../services/supabaseClient';
 
 export default function PrivacySettings({ onBack }: { onBack: () => void }) {
@@ -19,6 +20,7 @@ export default function PrivacySettings({ onBack }: { onBack: () => void }) {
   const [email, setEmail] = useState(currentUser?.email || '');
   const [phone, setPhone] = useState(currentUser?.phone || '');
   const [avatarColor, setAvatarColor] = useState(currentUser?.avatarColor || '#007aff');
+  const [avatarUrl, setAvatarUrl] = useState(currentUser?.avatarUrl || null);
   const [privacyPhone, setPrivacyPhone] = useState(currentUser?.privacyPhone || 'all');
   const [privacyEmail, setPrivacyEmail] = useState(currentUser?.privacyEmail || 'all');
   const [privacyOnline, setPrivacyOnline] = useState(currentUser?.privacyOnline || 'all');
@@ -286,11 +288,21 @@ export default function PrivacySettings({ onBack }: { onBack: () => void }) {
             style={{ width: '380px', boxShadow: '0 8px 32px rgba(0,0,0,0.4)', animation: 'none' }}
           >
             <div className={chatStyles['profile-avatar-wrapper']}>
-              <div className={chatStyles['profile-avatar']} style={{ backgroundColor: avatarColor }}>
-                {previewDisplayName.substring(0, 1).toUpperCase()}
-              </div>
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt="Avatar"
+                  style={{ width: '90px', height: '90px', borderRadius: '50%', objectFit: 'cover', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}
+                />
+              ) : (
+                <div className={chatStyles['profile-avatar']} style={{ backgroundColor: avatarColor }}>
+                  {previewDisplayName.substring(0, 1).toUpperCase()}
+                </div>
+              )}
+
             </div>
             <h2 className={chatStyles['profile-name']}>
+              {renderUserStatusBadge(currentUser)}
               {previewDisplayName}
             </h2>
             <span className={chatStyles['profile-status']} style={{ color: shouldShowFieldInPreview(privacyOnline) ? '#2ec761' : '#707579' }}>
