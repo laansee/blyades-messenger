@@ -387,3 +387,238 @@ export function CreateGroupModal({ show, onClose }: CreateGroupModalProps) {
     document.body
   );
 }
+
+// ========================================================
+// 📝 6. УНИВЕРСАЛЬНАЯ МОДАЛКА РЕДАКТИРОВАНИЯ (EditorModal)
+// ========================================================
+export interface EditorInputField {
+  key: string;
+  label: string;
+  placeholder?: string;
+  type?: 'text' | 'email' | 'tel' | 'textarea';
+  maxLength?: number;
+}
+
+interface EditorModalProps {
+  show: boolean;
+  title: string;
+  fields: EditorInputField[];
+  initialValues: Record<string, string>;
+  onClose: () => void;
+  onSave: (values: Record<string, string>) => Promise<void>;
+}
+
+export function EditorModal({ show, title, fields, initialValues, onClose, onSave }: EditorModalProps) {
+  const [values, setValues] = useState<Record<string, string>>({});
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Синхронизируем начальные значения при открытии модалки
+  useEffect(() => {
+    if (show) {
+      setValues(initialValues || {});
+      setIsSaving(false);
+    }
+  }, [show, initialValues]);
+
+  if (!show) return null;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+    try {
+      await onSave(values);
+      onClose();
+    } catch (err) {
+      console.error('Ошибка сохранения в EditorModal:', err);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return createPortal(
+    <div 
+      onClick={onClose}
+      style={{
+        position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+        backgroundColor: 'rgba(0, 0, 0, 0.65)', backdropFilter: 'blur(4px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999999
+      }}
+    >
+      <div 
+        onClick={e => e.stopPropagation()}
+        style={{
+          backgroundColor: '#23232e', border: '1px solid #383842', padding: '24px',
+          borderRadius: '14px', width: '100%', maxWidth: '360px',
+          boxShadow: '0 12px 40px rgba(0, 0, 0, 0.6)', color: '#fff',
+          fontFamily: 'sans-serif', display: 'flex', flexDirection: 'column', gap: '20px',
+          animation: 'scaleInCard 0.18s cubic-bezier(0.34, 1.56, 0.64, 1) forwards'
+        }}
+      >
+        <h3 style={{ fontSize: '18px', margin: 0, fontWeight: '700', letterSpacing: '0.3px' }}>{title}</h3>
+        
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {fields.map((field) => {
+            const isTextarea = field.type === 'textarea';
+            const currentValue = values[field.key] || '';
+
+            return (
+              <div key={field.key} style={{ display: 'flex', flexDirection: 'column', gap: '6px', position: 'relative' }}>
+                <label style={{ fontSize: '12px', color: '#a2a2b5', fontWeight: '600' }}>{field.label}</label>
+                
+                {isTextarea ? (
+                  <textarea
+                    placeholder={field.placeholder}
+                    maxLength={field.maxLength}
+                    value={currentValue}
+                    onChange={e => setValues(prev => ({ ...prev, [field.key]: e.target.value }))}
+                    style={{ width: '100%', backgroundColor: '#18181e', color: '#fff', border: 'none', borderBottom: '2px solid #5856d6', padding: '10px 0', fontSize: '15px', outline: 'none', resize: 'none', minHeight: '60px', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                  />
+                ) : (
+                  <input
+                    type={field.type || 'text'}
+                    placeholder={field.placeholder}
+                    maxLength={field.maxLength}
+                    value={currentValue}
+                    onChange={e => setValues(prev => ({ ...prev, [field.key]: e.target.value }))}
+                    style={{ width: '100%', backgroundColor: '#18181e', color: '#fff', border: 'none', borderBottom: '2px solid #5856d6', padding: '10px 0', fontSize: '15px', outline: 'none', boxSizing: 'border-box' }}
+                    autoComplete="off"
+                  />
+                )}
+
+                {/* Счётчик лимита символов (для био "О себе") */}
+                {field.maxLength && (
+                  <span style={{ position: 'absolute', bottom: '-16px', right: 0, fontSize: '10px', color: '#636366' }}>
+                    {field.maxLength - currentValue.length}
+                  </span>
+                )}
+              </div>
+            );
+          })}
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '16px', marginTop: '14px' }}>
+            <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', color: '#b0b0b8', cursor: 'pointer', fontSize: '14px', fontWeight: '600' }}>
+              Отмена
+            </button>
+            <button type="submit" disabled={isSaving} style={{ background: 'none', border: 'none', color: '#9d7bf6', cursor: 'pointer', fontSize: '14px', fontWeight: '700' }}>
+              {isSaving ? 'Сохранение...' : 'Сохранить'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+// ========================================================
+// 🔒 7. МОДАЛКА ВЫБОРА НАСТРОЕК ПРИВАТНОСТИ (PrivacySelectorModal)
+// ========================================================
+export interface PrivacyOption {
+  value: string;
+  label: string;
+}
+
+interface PrivacySelectorModalProps {
+  show: boolean;
+  title: string;
+  subtitle?: string;
+  options: PrivacyOption[];
+  selectedValue: string;
+  onClose: () => void;
+  onSelect: (value: string) => Promise<void>;
+}
+
+export function PrivacySelectorModal({ show, title, subtitle, options, selectedValue, onClose, onSelect }: PrivacySelectorModalProps) {
+  const [localValue, setLocalValue] = useState(selectedValue);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (show) {
+      setLocalValue(selectedValue);
+      setIsSaving(false);
+    }
+  }, [show, selectedValue]);
+
+  if (!show) return null;
+
+  const handleRadioClick = async (val: string) => {
+    setLocalValue(val);
+    setIsSaving(true);
+    try {
+      await onSelect(val);
+      onClose();
+    } catch (err) {
+      console.error('Ошибка сохранения приватности:', err);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return createPortal(
+    <div 
+      onClick={onClose}
+      style={{
+        position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+        backgroundColor: 'rgba(0, 0, 0, 0.65)', backdropFilter: 'blur(4px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999999
+      }}
+    >
+      <div 
+        onClick={e => e.stopPropagation()}
+        style={{
+          backgroundColor: '#23232e', border: '1px solid #383842', padding: '24px',
+          borderRadius: '14px', width: '100%', maxWidth: '360px',
+          boxShadow: '0 12px 40px rgba(0, 0, 0, 0.6)', color: '#fff',
+          fontFamily: 'sans-serif', display: 'flex', flexDirection: 'column', gap: '16px',
+          animation: 'scaleInCard 0.18s cubic-bezier(0.34, 1.56, 0.64, 1) forwards'
+        }}
+      >
+        <div>
+          <h3 style={{ fontSize: '18px', margin: 0, fontWeight: '700', letterSpacing: '0.3px' }}>{title}</h3>
+          {subtitle && <p style={{ fontSize: '12px', color: '#9d7bf6', margin: '6px 0 0 0', fontWeight: '600' }}>{subtitle}</p>}
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '8px' }}>
+          {options.map((opt) => {
+            const isSelected = localValue === opt.value;
+            return (
+              <div
+                key={opt.value}
+                onClick={() => !isSaving && handleRadioClick(opt.value)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '14px', padding: '12px 10px',
+                  borderRadius: '8px', cursor: isSaving ? 'not-allowed' : 'pointer',
+                  transition: 'background 0.2s ease', backgroundColor: isSelected ? 'rgba(157, 123, 246, 0.05)' : 'transparent'
+                }}
+                onMouseEnter={e => !isSelected && (e.currentTarget.style.backgroundColor = '#18181e')}
+                onMouseLeave={e => !isSelected && (e.currentTarget.style.backgroundColor = 'transparent')}
+              >
+                {/* Кастомная круглая радио-кнопка */}
+                <div style={{
+                  width: '20px', height: '20px', borderRadius: '50%',
+                  border: isSelected ? '2px solid #9d7bf6' : '2px solid #636366',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  boxSizing: 'border-box', transition: 'all 0.15s ease'
+                }}>
+                  {isSelected && (
+                    <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#9d7bf6' }} />
+                  )}
+                </div>
+                <span style={{ fontSize: '15px', fontWeight: isSelected ? '600' : '500', color: isSelected ? '#fff' : '#dbdee1' }}>
+                  {opt.label}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
+          <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', color: '#b0b0b8', cursor: 'pointer', fontSize: '14px', fontWeight: '600' }}>
+            Закрыть
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}

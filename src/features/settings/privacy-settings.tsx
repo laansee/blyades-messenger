@@ -1,352 +1,408 @@
 import React, { useState, useEffect } from 'react';
 import styles from '../../components/css/settings.module.css';
-import chatStyles from '../../components/css/chat-window.module.css';
 import useMessengerContext from '../../context/messengerContext';
-import { renderUserStatusBadge } from '../../utils/statusBadge';
 import { supabase } from '../../services/supabaseClient';
+import { PrivacySelectorModal, PrivacyOption } from '../../components/GlobalUI';
+import { Lock } from 'lucide-react';
 
-export default function PrivacySettings({ onBack }: { onBack: () => void }) {
+export default function PrivacySettings({ onBack, state, setters }: any) {
   const ctx = useMessengerContext();
   const currentUser = ctx.currentUser;
-
   const [isSaving, setIsSaving] = useState(false);
-  const [previewRole, setPreviewRole] = useState<'contact' | 'stranger'>('contact');
 
-  // Локальные стейты приватности
-  const [uniqueId, setUniqueId] = useState(currentUser?.uniqueId || '');
-  const [username, setUsername] = useState(currentUser?.username || '');
-  const [firstName, setFirstName] = useState(currentUser?.firstName || '');
-  const [lastName, setLastName] = useState(currentUser?.lastName || '');
-  const [email, setEmail] = useState(currentUser?.email || '');
-  const [phone, setPhone] = useState(currentUser?.phone || '');
-  const [avatarColor, setAvatarColor] = useState(currentUser?.avatarColor || '#007aff');
-  const [avatarUrl, setAvatarUrl] = useState(currentUser?.avatarUrl || null);
-  const [privacyPhone, setPrivacyPhone] = useState(currentUser?.privacyPhone || 'all');
-  const [privacyEmail, setPrivacyEmail] = useState(currentUser?.privacyEmail || 'all');
-  const [privacyOnline, setPrivacyOnline] = useState(currentUser?.privacyOnline || 'all');
-  const [privacyNameFormat, setPrivacyNameFormat] = useState(currentUser?.privacyNameFormat || 'username');
-  const [privacyFullName, setPrivacyFullName] = useState(currentUser?.privacyFullName || 'all');
-  const [privacySearch, setPrivacySearch] = useState(currentUser?.privacySearch || 'all');
+  const {privacyPhone, privacyEmail, privacyOnline, privacyNameFormat, privacyFullName, privacySearch}  = state;
+  const {setPrivacyPhone, setPrivacyEmail, setPrivacyOnline, setPrivacyNameFormat, setPrivacyFullName, setPrivacySearch}  = setters;
 
-  const handlePrivacySubmit = async (e: React.FormEvent) => {
-    if (e) e.preventDefault();
-    setIsSaving(true);
-    try {
-      const { error } = await supabase
-        .from('users')
-        .update({ privacyPhone, privacyEmail, privacyOnline, privacyNameFormat, privacyFullName, privacySearch, updatedAt: new Date().toISOString() })
-        .eq('id', currentUser.id);
+  // Локальный стейт конфигурации модального окна выбора
+  const [modalConfig, setModalConfig] = useState<{
+    show: boolean;
+    title: string;
+    subtitle: string;
+    options: PrivacyOption[];
+    selectedValue: string;
+    onSelect: (value: string) => Promise<void>;
+  }>({
+    show: false,
+    title: '',
+    subtitle: '',
+    options: [],
+    selectedValue: '',
+    onSelect: async () => {}
+  });
 
-      if (!error) {
-        ctx.setCurrentUser({ ...currentUser, privacyPhone, privacyEmail, privacyOnline, privacyNameFormat, privacyFullName, privacySearch });
-        ctx.showToast('Настройки приватности сохранены! 🔒', 'success');
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsSaving(false);
+  const getLabelByValue = (keyType: 'default' | 'nameFormat' | 'search', value: string) => {
+    if (keyType === 'nameFormat') {
+      return value === 'full_name' ? 'Имя и Фамилия' : 'Псевдоним (никнейм)';
     }
+    if (keyType === 'search') {
+      return value === 'none' ? 'Скрыть из поиска' : 'Глобальный поиск';
+    }
+    // Дефолтная троица для телефона, почты и онлайна
+    if (value === 'all') return 'Все';
+    if (value === 'contacts') return 'Мои контакты';
+    if (value === 'none') return 'Никто';
+    return value;
   };
 
-  const shouldShowFieldInPreview = (setting: string) => {
-    if (setting === 'all') return true;
-    if (setting === 'none') return false;
-    return setting === 'contacts' ? previewRole === 'contact' : true;
-  };
+  // Базовые опции выбора (Все / Мои контакты / Никто)
+  const defaultPrivacyOptions: PrivacyOption[] = [
+    { value: 'all', label: 'Все' },
+    { value: 'contacts', label: 'Мои контакты' },
+    { value: 'none', label: 'Никто' }
+  ];
 
-  const previewDisplayName = privacyNameFormat === 'full_name' && (currentUser?.firstName || currentUser?.lastName)
-    ? `${currentUser?.firstName || ''} ${currentUser?.lastName || ''}`.trim()
-    : (currentUser?.username || `@${currentUser?.uniqueId}`);
+  const openPrivacySelector = (type: 'phone' | 'online' | 'email' | 'nameFormat' | 'fullName' | 'search') => {
+    let title = '';
+    let subtitle = '';
+    let options = defaultPrivacyOptions;
+    let selectedValue = '';
+    let onSelectAction = async (val: string) => {};
+
+    if (type === 'phone') {
+      title = 'Номер телефона';
+      subtitle = 'Кто видит мой номер телефона';
+      selectedValue = privacyPhone;
+      onSelectAction = async (val) => {
+        const { error } = await supabase.from('users').update({ privacyPhone: val, updatedAt: new Date().toISOString() }).eq('id', currentUser.id);
+        if (!error) {
+          setPrivacyPhone(val);
+          ctx.setCurrentUser({ ...currentUser, privacyPhone: val });
+          ctx.showToast('Настройки видимости телефона обновлены', 'success');
+        }
+      };
+    } else if (type === 'online') {
+      title = 'Статус «В сети»';
+      subtitle = 'Кто видит, что я в сети';
+      selectedValue = privacyOnline;
+      onSelectAction = async (val) => {
+        const { error } = await supabase.from('users').update({ privacyOnline: val, updatedAt: new Date().toISOString() }).eq('id', currentUser.id);
+        if (!error) {
+          setPrivacyOnline(val);
+          ctx.setCurrentUser({ ...currentUser, privacyOnline: val });
+          ctx.showToast('Видимость онлайна успешно изменена', 'success');
+        }
+      };
+    } else if (type === 'email') {
+      title = 'Электронная почта';
+      subtitle = 'Кто видит мою эл. почту';
+      selectedValue = privacyEmail;
+      onSelectAction = async (val) => {
+        const { error } = await supabase.from('users').update({ privacyEmail: val, updatedAt: new Date().toISOString() }).eq('id', currentUser.id);
+        if (!error) {
+          setPrivacyEmail(val);
+          ctx.setCurrentUser({ ...currentUser, privacyEmail: val });
+          ctx.showToast('Приватность электронной почты сохранена', 'success');
+        }
+      };
+    } else if (type === 'nameFormat') {
+      title = 'Отображение имени';
+      subtitle = 'Как выводить моё имя в чатах и беседах';
+      options = [
+        { value: 'username', label: 'Показывать псевдоним (никнейм)' },
+        { value: 'full_name', label: 'Показывать Имя и Фамилию' }
+      ];
+      selectedValue = privacyNameFormat;
+      onSelectAction = async (val) => {
+        const { error } = await supabase.from('users').update({ privacyNameFormat: val, updatedAt: new Date().toISOString() }).eq('id', currentUser.id);
+        if (!error) {
+          setPrivacyNameFormat(val);
+          ctx.setCurrentUser({ ...currentUser, privacyNameFormat: val });
+          ctx.showToast('Формат отображения имён обновлен', 'success');
+        }
+      };
+    } else if (type === 'fullName') {
+      title = 'Имя и фамилия';
+      subtitle = 'Кто видит моё имя и фамилию';
+      selectedValue = privacyFullName;
+      onSelectAction = async (val) => {
+        const { error } = await supabase.from('users').update({ privacyFullName: val, updatedAt: new Date().toISOString() }).eq('id', currentUser.id);
+        if (!error) {
+          setPrivacyFullName(val);
+          ctx.setCurrentUser({ ...currentUser, privacyFullName: val });
+          ctx.showToast('Видимость личных имён изменена', 'success');
+        }
+      };
+    } else if (type === 'search') {
+      // 🚀 КАСТОМНЫЕ НАСТРОЙКИ ДЛЯ СЕЛЕКТОРА ГЛОБАЛЬНОГО ПОИСКА
+      title = 'Поиск аккаунта';
+      subtitle = 'Кто может найти меня по поиску';
+      options = [
+        { value: 'all', label: 'Глобальный поиск (находят все)' },
+        { value: 'none', label: 'Скрыть из поиска (полный инкогнито)' }
+      ];
+      selectedValue = privacySearch || 'all';
+      onSelectAction = async (val) => {
+        const { error } = await supabase.from('users').update({ privacySearch: val, updatedAt: new Date().toISOString() }).eq('id', currentUser.id);
+        if (!error) {
+          setPrivacySearch(val);
+          ctx.setCurrentUser({ ...currentUser, privacySearch: val });
+          ctx.showToast('Настройки обнаружимости аккаунта изменены', 'success');
+        }
+      };
+    }
+
+    setModalConfig({ show: true, title, subtitle, options, selectedValue, onSelect: onSelectAction });
+  };
 
   return (
     <>
-      {/* <div className={styles.settingsInputField} style={{ gap: '16px' }}> */}
-        {/* <button onClick={onBack} className={styles.settingsBackBtn}>
-          ⬅ Назад к списку
-        </button> */}
-        
-        <form onSubmit={handlePrivacySubmit} className={styles.settingsFormCard} style={{ gap: '20px' }}>
-          <h3 className={styles.settingsFormTitle}>🔒 Конфиденциальность</h3>
+
+      <form className={styles.settingsFormCard} style={{ gap: '20px', width: 'stretch' }}>
+        <h3 className={styles.settingsFormTitle}>
+          <Lock />
+          Приватность
+        </h3> 
+
+        <div style={{ display: 'flex', flexDirection: 'column', width: '100%', gap: '24px', boxSizing: 'border-box', fontFamily: 'sans-serif' }}>
           
-          <div className={styles.privacyItemRow}>
-            <div className={styles.privacyTextInfo}>
-              <span className={styles.privacyTextTitle}>Кто видит мой номер телефона:</span>
-              <span className={styles.privacyTextSubtitle}>Скрывает ваш номер в модальном окне профиля.</span>
+          {/* 🛡️ ГЛАВНЫЙ БЛОК ТАБЛИЦЫ КОНФИДЕНЦИАЛЬНОСТИ */}
+          <div style={{ backgroundColor: '#1c1c24', border: '1px solid #2b2d31', borderRadius: '14px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            
+            {/* Строка 1: Видимость телефона */}
+            <div onClick={() => openPrivacySelector('phone')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid #2b2d31', cursor: 'pointer', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = '#23232e'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <span style={{ fontSize: '15px', color: '#fff', fontWeight: '600' }}>Кто видит мой номер телефона:</span>
+                <span style={{ fontSize: '13px', color: '#a2a2b5' }}>Скрывает ваш номер в модальном окне профиля.</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span style={{ fontSize: '14px', color: '#9d7bf6', fontWeight: '600' }}>{getLabelByValue('default', privacyPhone)}</span>
+                <span style={{ color: '#636366', fontSize: '14px' }}>▶</span>
+              </div>
             </div>
-            <select 
-              value={privacyPhone} 
-              id='privacyPhone'
-              onChange={e => setPrivacyPhone(e.target.value)} 
-              className={styles.privacySelectInput}
-            >
-              <option value="all">Все пользователи</option>
-              <option value="contacts">Только мои контакты</option>
-              <option value="none">Никто</option>
-            </select>
+
+            {/* Строка 2: Видимость онлайна */}
+            <div onClick={() => openPrivacySelector('online')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid #2b2d31', cursor: 'pointer', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = '#23232e'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <span style={{ fontSize: '15px', color: '#fff', fontWeight: '600' }}>Кто видит, что я в сети:</span>
+                <span style={{ fontSize: '13px', color: '#a2a2b5' }}>Отключает отображение зелёного индикатора онлайна.</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span style={{ fontSize: '14px', color: '#9d7bf6', fontWeight: '600' }}>{getLabelByValue('default', privacyOnline)}</span>
+                <span style={{ color: '#636366', fontSize: '14px' }}>▶</span>
+              </div>
+            </div>
+
+            {/* Строка 3: Видимость почты */}
+            <div onClick={() => openPrivacySelector('email')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid #2b2d31', cursor: 'pointer', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = '#23232e'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <span style={{ fontSize: '15px', color: '#fff', fontWeight: '600' }}>Кто видит мою эл. почту:</span>
+                <span style={{ fontSize: '13px', color: '#a2a2b5' }}>Скрывает email в карточке вашего профиля.</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span style={{ fontSize: '14px', color: '#9d7bf6', fontWeight: '600' }}>{getLabelByValue('default', privacyEmail)}</span>
+                <span style={{ color: '#636366', fontSize: '14px' }}>▶</span>
+              </div>
+            </div>
+
+            {/* Строка 4: Формат вывода имён */}
+            <div onClick={() => openPrivacySelector('nameFormat')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid #2b2d31', cursor: 'pointer', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = '#23232e'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <span style={{ fontSize: '15px', color: '#fff', fontWeight: '600' }}>Отображение имени в чатах:</span>
+                <span style={{ fontSize: '13px', color: '#a2a2b5' }}>Выбор между выводом юзернейма или реального ФИО в заголовках.</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span style={{ fontSize: '14px', color: '#9d7bf6', fontWeight: '600' }}>{getLabelByValue('nameFormat', privacyNameFormat)}</span>
+                <span style={{ color: '#636366', fontSize: '14px' }}>▶</span>
+              </div>
+            </div>
+
+            {/* Строка 5: Видимость ФИО */}
+            <div onClick={() => openPrivacySelector('fullName')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid #2b2d31', cursor: 'pointer', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = '#23232e'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <span style={{ fontSize: '15px', color: '#fff', fontWeight: '600' }}>Кто видит моё имя и фамилию:</span>
+                <span style={{ fontSize: '13px', color: '#a2a2b5' }}>Скрывает строку настоящих имён, если выбран вывод псевдонима.</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span style={{ fontSize: '14px', color: '#9d7bf6', fontWeight: '600' }}>{getLabelByValue('default', privacyFullName)}</span>
+                <span style={{ color: '#636366', fontSize: '14px' }}>▶</span>
+              </div>
+            </div>
+
+            {/* Строка 6: Глобальный поиск */}
+            <div onClick={() => openPrivacySelector('search')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', cursor: 'pointer', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = '#23232e'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <span style={{ fontSize: '15px', color: '#fff', fontWeight: '600' }}>Кто может найти меня по поиску:</span>
+                <span style={{ fontSize: '13px', color: '#a2a2b5' }}>Позволяет полностью скрыться из глобального поиска контактов мессенджера.</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span style={{ fontSize: '14px', color: '#9d7bf6', fontWeight: '600' }}>{getLabelByValue('search', privacySearch || 'all')}</span>
+                <span style={{ color: '#636366', fontSize: '14px' }}>▶</span>
+              </div>
+            </div>
+
           </div>
 
-          <div className={styles.privacyItemRow}>
-            <div className={styles.privacyTextInfo}>
-              <span className={styles.privacyTextTitle}>Кто видит, что я в сети:</span>
-              <span className={styles.privacyTextSubtitle}>Отключает отображение зеленого индикатора онлайна.</span>
-            </div>
-            <select 
-              value={privacyOnline}
-              id='privacyOnline' 
-              onChange={e => setPrivacyOnline(e.target.value)} 
-              className={styles.privacySelectInput}
-            >
-              <option value="all">Все пользователи</option>
-              <option value="contacts">Только мои контакты</option>
-              <option value="none">Никто</option>
-            </select>
+          {/* 🚀 ИНТЕРАКТИВНЫЙ РАДИО-СЕЛЕКТОР В ДЕЙСТВИИ */}
+          <PrivacySelectorModal
+            show={modalConfig.show}
+            title={modalConfig.title}
+            subtitle={modalConfig.subtitle}
+            options={modalConfig.options}
+            selectedValue={modalConfig.selectedValue}
+            onClose={() => setModalConfig(prev => ({ ...prev, show: false }))}
+            onSelect={modalConfig.onSelect}
+          />
+        </div>
+        
+        {/* <div className={styles.privacyItemRow}>
+          <div className={styles.privacyTextInfo}>
+            <span className={styles.privacyTextTitle}>Кто видит мой номер телефона:</span>
+            <span className={styles.privacyTextSubtitle}>Скрывает ваш номер в модальном окне профиля.</span>
           </div>
+          <select 
+            value={privacyPhone} 
+            id='privacyPhone'
+            onChange={e => setPrivacyPhone(e.target.value)} 
+            className={styles.privacySelectInput}
+          >
+            <option value="all">Все пользователи</option>
+            <option value="contacts">Только мои контакты</option>
+            <option value="none">Никто</option>
+          </select>
+        </div>
 
-          <div className={styles.privacyItemRow}>
-            <div className={styles.privacyTextInfo}>
-              <span className={styles.privacyTextTitle}>Кто видит мою эл. почту:</span>
-              <span className={styles.privacyTextSubtitle}>Скрывает email в карточке вашего профиля.</span>
-            </div>
-            <select 
-              value={privacyEmail} 
-              id='privacyEmail'
-              onChange={e => setPrivacyEmail(e.target.value)} 
-              className={styles.privacySelectInput}
-            >
-              <option value="all">Все пользователи</option>
-              <option value="contacts">Только мои контакты</option>
-              <option value="none">Никто</option>
-            </select>
+        <div className={styles.privacyItemRow}>
+          <div className={styles.privacyTextInfo}>
+            <span className={styles.privacyTextTitle}>Кто видит, что я в сети:</span>
+            <span className={styles.privacyTextSubtitle}>Отключает отображение зеленого индикатора онлайна.</span>
           </div>
+          <select 
+            value={privacyOnline}
+            id='privacyOnline' 
+            onChange={e => setPrivacyOnline(e.target.value)} 
+            className={styles.privacySelectInput}
+          >
+            <option value="all">Все пользователи</option>
+            <option value="contacts">Только мои контакты</option>
+            <option value="none">Никто</option>
+          </select>
+        </div>
 
-          <div className={`${styles.privacyItemRow} ${styles.privacyNoBorder}`}>
-            <div className={styles.privacyTextInfo}>
-              <span className={styles.privacyTextTitle}>Отображение имени в чатах:</span>
-              <span className={styles.privacyTextSubtitle}>
-                Выбирает, что увидят пользователи в заголовках и списках диалогов — ваш логин или настоящее имя.
-                {/* 💡 Динамические подсказки для пользователя */}
-                {(!currentUser?.username || currentUser?.username.trim() === '' || currentUser?.username === 'NULL') && (
-                  <b style={{ color: '#ef4444', display: 'block', marginTop: '4px' }}>⚠️ Заблокировано: у вас не заполнен никнейм в профиле.</b>
-                )}
-                {((!currentUser?.firstName || currentUser?.firstName.trim() === '' || currentUser?.firstName === 'NULL') &&
-                  (!currentUser?.lastName || currentUser?.lastName.trim() === '' || currentUser?.lastName === 'NULL')) && (
-                  <b style={{ color: '#ef4444', display: 'block', marginTop: '4px' }}>⚠️ Заблокировано: у вас не заполнены имя и фамилия в профиле.</b>
-                )}
-              </span>
-            </div>
-            <select 
-              value={privacyNameFormat} 
-              onChange={e => handleNameFormatChange(e.target.value)} 
-              className={styles.privacySelectInput}
-              disabled={
+        <div className={styles.privacyItemRow}>
+          <div className={styles.privacyTextInfo}>
+            <span className={styles.privacyTextTitle}>Кто видит мою эл. почту:</span>
+            <span className={styles.privacyTextSubtitle}>Скрывает email в карточке вашего профиля.</span>
+          </div>
+          <select 
+            value={privacyEmail} 
+            id='privacyEmail'
+            onChange={e => setPrivacyEmail(e.target.value)} 
+            className={styles.privacySelectInput}
+          >
+            <option value="all">Все пользователи</option>
+            <option value="contacts">Только мои контакты</option>
+            <option value="none">Никто</option>
+          </select>
+        </div>
+
+        <div className={`${styles.privacyItemRow} ${styles.privacyNoBorder}`}>
+          <div className={styles.privacyTextInfo}>
+            <span className={styles.privacyTextTitle}>Отображение имени в чатах:</span>
+            <span className={styles.privacyTextSubtitle}>
+              Выбирает, что увидят пользователи в заголовках и списках диалогов — ваш логин или настоящее имя.
+              {(!currentUser?.username || currentUser?.username.trim() === '' || currentUser?.username === 'NULL') && (
+                <b style={{ color: '#ef4444', display: 'block', marginTop: '4px' }}>⚠️ Заблокировано: у вас не заполнен никнейм в профиле.</b>
+              )}
+              {((!currentUser?.firstName || currentUser?.firstName.trim() === '' || currentUser?.firstName === 'NULL') &&
+                (!currentUser?.lastName || currentUser?.lastName.trim() === '' || currentUser?.lastName === 'NULL')) && (
+                <b style={{ color: '#ef4444', display: 'block', marginTop: '4px' }}>⚠️ Заблокировано: у вас не заполнены имя и фамилия в профиле.</b>
+              )}
+            </span>
+          </div>
+          <select 
+            value={privacyNameFormat} 
+            onChange={e => handleNameFormatChange(e.target.value)} 
+            className={styles.privacySelectInput}
+            disabled={
+              (!currentUser?.username || currentUser?.username.trim() === '' || currentUser?.username === 'NULL') ||
+              ((!currentUser?.firstName || currentUser?.firstName.trim() === '' || currentUser?.firstName === 'NULL') &&
+              (!currentUser?.lastName || currentUser?.lastName.trim() === '' || currentUser?.lastName === 'NULL'))
+            }
+            style={{
+              opacity: (
                 (!currentUser?.username || currentUser?.username.trim() === '' || currentUser?.username === 'NULL') ||
                 ((!currentUser?.firstName || currentUser?.firstName.trim() === '' || currentUser?.firstName === 'NULL') &&
                 (!currentUser?.lastName || currentUser?.lastName.trim() === '' || currentUser?.lastName === 'NULL'))
-              }
-              style={{
-                opacity: (
-                  (!currentUser?.username || currentUser?.username.trim() === '' || currentUser?.username === 'NULL') ||
-                  ((!currentUser?.firstName || currentUser?.firstName.trim() === '' || currentUser?.firstName === 'NULL') &&
-                  (!currentUser?.lastName || currentUser?.lastName.trim() === '' || currentUser?.lastName === 'NULL'))
-                ) ? 0.4 : 1,
-                cursor: (
-                  (!currentUser?.username || currentUser?.username.trim() === '' || currentUser?.username === 'NULL') ||
-                  ((!currentUser?.firstName || currentUser?.firstName.trim() === '' || currentUser?.firstName === 'NULL') &&
-                  (!currentUser?.lastName || currentUser?.lastName.trim() === '' || currentUser?.lastName === 'NULL'))
-                ) ? 'not-allowed' : 'pointer',
-                transition: 'opacity 0.2s ease'
-              }}
-            >
-              <option value="username">Показывать никнейм</option>
-              <option value="full_name">Показывать имя и фамилию</option>
-            </select>
-          </div>
-
-          {/* 🚀 ДИНАМИЧЕСКИЙ ПРЕВЬЮ-БЛОК В СТИЛЕ ТЕЛЕГРАМА */}
-          {/* <div className={`${styles.privacyItemRow} ${styles.privacyPreviewNick}`} >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '100%' }}>
-              <div style={{
-                width: '40px', height: '40px', borderRadius: '50%',
-                backgroundColor: currentUser?.avatarColor || '#007aff',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 'bold', fontSize: '14px'
-              }}>
-                {privacyNameFormat === 'full_name' && (currentUser?.firstName || currentUser?.lastName)
-                  ? (currentUser?.firstName || currentUser?.lastName).substring(0, 1).toUpperCase()
-                  : (currentUser?.username || currentUser?.uniqueId || 'U').substring(0, 1).toUpperCase()}
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-                <span style={{ fontSize: '12px', color: '#a2a2b5', fontWeight: '500', marginBottom: '2px' }}>
-                  👀 Так вас увидят другие пользователи:
-                </span>
-                <span style={{ fontSize: '15px', color: '#fff', fontWeight: 'bold' }}>
-                  {privacyNameFormat === 'full_name'
-                    ? (`${currentUser?.firstName || ''} ${currentUser?.lastName || ''}`.trim() || currentUser?.username)
-                    : (currentUser?.username || `@${currentUser?.uniqueId}`)}
-                </span>
-                <span style={{ fontSize: '13px', color: '#8e8e93', marginTop: '2px' }}>
-                  Привет! Я использую этот мессенджер...
-                </span>
-              </div>
-              <span style={{ fontSize: '12px', color: '#636366', alignSelf: 'flex-start' }}>23:13</span>
-            </div>
-          </div> */}
-
-          <div className={`${styles.privacyItemRow} ${styles.privacyBothBorder}`}>
-            <div className={styles.privacyTextInfo}>
-              <span className={styles.privacyTextTitle}>Кто видит моё имя и фамилию:</span>
-              <span className={styles.privacyTextSubtitle}>Скрывает или показывает реальное имя и фамилию в модальном окне вашего профиля.</span>
-            </div>
-            <select 
-              value={privacyFullName} 
-              id='privacyFullName'
-              onChange={e => setPrivacyFullName(e.target.value)} 
-              className={styles.privacySelectInput}
-              disabled={privacyNameFormat === 'full_name'}
-              style={{
-                opacity: privacyNameFormat === 'full_name' ? 0.4 : 1,
-                cursor: privacyNameFormat === 'full_name' ? 'not-allowed' : 'pointer',
-                transition: 'opacity 0.2s ease'
-              }}
-            >
-              <option value="all">Все пользователи</option>
-              <option value="contacts">Только мои контакты</option>
-              <option value="none">Никто</option>
-            </select>
-          </div>
-          
-          <div className={styles.privacyItemRow}>
-            <div className={styles.privacyTextInfo}>
-              <span className={styles.privacyTextTitle}>Кто может найти меня по поиску:</span>
-              <span className={styles.privacyTextSubtitle}>Разрешает или запрещает незнакомцам находить ваш аккаунт по логину во вкладке контактов.</span>
-            </div>
-            <select 
-              value={privacySearch} 
-              id='privacySearch'
-              onChange={e => setPrivacySearch(e.target.value)} 
-              className={styles.privacySelectInput}
-            >
-              <option value="all">Глобальный поиск</option>
-              <option value="none">Скрыть из поиска</option>
-            </select>
-          </div>
-
-          <div className={styles.privacyItemRow}>
-            <div className={styles.privacyTextInfo}>
-              <span className={styles.privacyTextTitle}>Кто видит фото профиля:</span>
-              <span className={styles.privacyTextSubtitle}>
-                НЕ ГОТОВО {/* Скрывает email в карточке вашего профиля. */}
-              </span>
-            </div>
-            <select 
-              // value={privacyEmail} 
-              // id='privacyEmail'
-              // onChange={e => setPrivacyEmail(e.target.value)} 
-              className={styles.privacySelectInput}
-            >
-              <option value="all">Все пользователи</option>
-              <option value="contacts">Только мои контакты</option>
-              <option value="none">Никто</option>
-            </select>
-          </div>
-
-          <button 
-            type="submit" disabled={isSaving} 
-            className={`${styles.settingsSaveBtn} ${styles.greenBtn}`}
+              ) ? 0.4 : 1,
+              cursor: (
+                (!currentUser?.username || currentUser?.username.trim() === '' || currentUser?.username === 'NULL') ||
+                ((!currentUser?.firstName || currentUser?.firstName.trim() === '' || currentUser?.firstName === 'NULL') &&
+                (!currentUser?.lastName || currentUser?.lastName.trim() === '' || currentUser?.lastName === 'NULL'))
+              ) ? 'not-allowed' : 'pointer',
+              transition: 'opacity 0.2s ease'
+            }}
           >
-            {isSaving ? 'Применение...' : 'Применить настройки приватности'}
-          </button>
-        </form>
-      {/* </div> */}
-      <div style={{ padding: '24px', boxSizing: 'border-box', display: "grid", gridTemplateRows: "93px auto 93px", alignItems: "center" }}>
-        <div>
-          <span style={{ fontSize: '14px', textTransform: 'uppercase', color: '#8e8e93', fontWeight: 'bold', display: 'block', marginBottom: '16px' }}>
-            👁️ Предпросмотр профиля:
-          </span>
-
-          <div style={{ display: 'flex', backgroundColor: '#1e1f22', padding: '3px', borderRadius: '8px' }}>
-            <button 
-              type="button" 
-              onClick={() => setPreviewRole('contact')} 
-              style={{ flex: 1, border: 'none', borderRadius: '6px', padding: '6px', fontSize: '12px', cursor: 'pointer', backgroundColor: previewRole === 'contact' ? '#007aff' : 'transparent', color: '#fff' }}
-            >
-              Как контакт
-            </button>
-            <button 
-              type="button" 
-              onClick={() => setPreviewRole('stranger')} 
-              style={{ flex: 1, border: 'none', borderRadius: '6px', padding: '6px', fontSize: '12px', cursor: 'pointer', backgroundColor: previewRole === 'stranger' ? '#da373c' : 'transparent', color: '#fff' }}
-            >
-              Незнакомец
-            </button>
-          </div>
+            <option value="username">Показывать никнейм</option>
+            <option value="full_name">Показывать имя и фамилию</option>
+          </select>
         </div>
 
-        <div style={{ height: "-webkit-fill-available", display: "flex", justifyContent: "center", background: "#532e2e", borderRadius: "25px", alignItems: "center" }}>
-          <div 
-            className={chatStyles['profile-modal-card']} 
-            style={{ width: '380px', boxShadow: '0 8px 32px rgba(0,0,0,0.4)', animation: 'none' }}
-          >
-            <div className={chatStyles['profile-avatar-wrapper']}>
-              {avatarUrl ? (
-                <img
-                  src={avatarUrl}
-                  alt="Avatar"
-                  style={{ width: '90px', height: '90px', borderRadius: '50%', objectFit: 'cover', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}
-                />
-              ) : (
-                <div className={chatStyles['profile-avatar']} style={{ backgroundColor: avatarColor }}>
-                  {previewDisplayName.substring(0, 1).toUpperCase()}
-                </div>
-              )}
 
-            </div>
-            <h2 className={chatStyles['profile-name']}>
-              {renderUserStatusBadge(currentUser)}
-              {previewDisplayName}
-            </h2>
-            <span className={chatStyles['profile-status']} style={{ color: shouldShowFieldInPreview(privacyOnline) ? '#2ec761' : '#707579' }}>
-              {shouldShowFieldInPreview(privacyOnline) ? 'в сети' : 'был(а) недавно'}
+        <div className={`${styles.privacyItemRow} ${styles.privacyBothBorder}`}>
+          <div className={styles.privacyTextInfo}>
+            <span className={styles.privacyTextTitle}>Кто видит моё имя и фамилию:</span>
+            <span className={styles.privacyTextSubtitle}>Скрывает или показывает реальное имя и фамилию в модальном окне вашего профиля.</span>
+          </div>
+          <select 
+            value={privacyFullName} 
+            id='privacyFullName'
+            onChange={e => setPrivacyFullName(e.target.value)} 
+            className={styles.privacySelectInput}
+            disabled={privacyNameFormat === 'full_name'}
+            style={{
+              opacity: privacyNameFormat === 'full_name' ? 0.4 : 1,
+              cursor: privacyNameFormat === 'full_name' ? 'not-allowed' : 'pointer',
+              transition: 'opacity 0.2s ease'
+            }}
+          >
+            <option value="all">Все пользователи</option>
+            <option value="contacts">Только мои контакты</option>
+            <option value="none">Никто</option>
+          </select>
+        </div>
+        
+        <div className={styles.privacyItemRow}>
+          <div className={styles.privacyTextInfo}>
+            <span className={styles.privacyTextTitle}>Кто может найти меня по поиску:</span>
+            <span className={styles.privacyTextSubtitle}>Разрешает или запрещает незнакомцам находить ваш аккаунт по логину во вкладке контактов.</span>
+          </div>
+          <select 
+            value={privacySearch} 
+            id='privacySearch'
+            onChange={e => setPrivacySearch(e.target.value)} 
+            className={styles.privacySelectInput}
+          >
+            <option value="all">Глобальный поиск</option>
+            <option value="none">Скрыть из поиска</option>
+          </select>
+        </div>
+
+        <div className={styles.privacyItemRow}>
+          <div className={styles.privacyTextInfo}>
+            <span className={styles.privacyTextTitle}>Кто видит фото профиля:</span>
+            <span className={styles.privacyTextSubtitle}>
+              НЕ ГОТОВО 
             </span>
-            <div className={chatStyles['info-section']}>
-              <div className={chatStyles['info-item']}>
-                <span className={chatStyles['info-value']}>
-                  @{uniqueId || 'не указан'}
-                </span>
-                <span className={chatStyles['info-label']}>
-                  Имя пользователя
-                </span>
-              </div>
-              <div className={chatStyles['info-item']}>
-                <span className={chatStyles['info-value']}>
-                  {/* @{desc || 'не указан'} */}
-                  не указан
-                </span>
-                <span className={chatStyles['info-label']}>
-                  [ТЕСТОВЫЙ БЛОК] О себе:
-                </span>
-              </div>
-              {phone.trim() !== '' && <div className={chatStyles['info-item']}>
-                <span className={chatStyles['info-value']}>
-                  {phone}
-                </span>
-                <span className={chatStyles['info-label']}>
-                  Телефон
-                </span>
-              </div>}
-              {email.trim() !== '' && <div className={chatStyles['info-item']}>
-                <span className={chatStyles['info-value']}>
-                  {email}
-                </span>
-                <span className={chatStyles['info-label']}>
-                  Электронная почта
-                </span>
-              </div>}
-            </div>
           </div>
-        </div>
+          <select 
+            // value={privacyEmail} 
+            // id='privacyEmail'
+            // onChange={e => setPrivacyEmail(e.target.value)} 
+            className={styles.privacySelectInput}
+          >
+            <option value="all">Все пользователи</option>
+            <option value="contacts">Только мои контакты</option>
+            <option value="none">Никто</option>
+          </select>
+        </div> */}
 
-      </div>
+        {/* <button 
+          type="submit" disabled={isSaving} 
+          className={`${styles.settingsSaveBtn} ${styles.greenBtn}`}
+        >
+          {isSaving ? 'Применение...' : 'Применить настройки приватности'}
+        </button> */}
+      </form>
     </>
   );
 }

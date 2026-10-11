@@ -52,7 +52,7 @@
 .settingsContainer {
   flex: 1;
   background-color: #121216;
-  padding: 40px;
+  /* padding: 40px; */
   overflow-y: auto;
   display: flex;
   justify-content: center;
