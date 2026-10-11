@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import styles from '../../components/css/chat-window.module.css';
 import ContextMenu from '../../components/contextMenu';
 import useMessengerContext from '../../context/messengerContext';
-import DropdownMenu from '../../components/dropdownMenu';
+import { DropdownMenu } from '../../components/GlobalUI'; 
 import { supabase } from '../../services/supabaseClient';
 import { renderUserStatusBadge } from '../../utils/statusBadge';
 import { Search, EllipsisVertical, X, Check, CheckCheck, Pencil, Paperclip, 
@@ -300,7 +300,6 @@ export default function ChatWindow() {
         }}
       >
         {displayedMessages.map((msg: any, index: number) => {
-          const isMyMsg = String(msg.senderId) === myId;
           const currentMsgDate = new Date(msg.createdAt);
           const currentDayStr = currentMsgDate.toLocaleDateString('ru-RU', {
             day: 'numeric',

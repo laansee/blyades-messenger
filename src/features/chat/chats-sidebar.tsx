@@ -3,7 +3,7 @@ import styles from '../../components/css/sidebar.module.css';
 import { Check, CheckCheck, Search, SquarePen, Users, Megaphone, PhoneCall } from 'lucide-react';
 import useMessengerContext from '../../context/messengerContext';
 import { renderUserStatusBadge } from '../../utils/statusBadge';
-import DropdownMenu from '../../components/dropdownMenu'; 
+import { DropdownMenu } from '../../components/GlobalUI'; 
 
 export default function ChatsSidebar({ onOpenCreateGroup }: { onOpenCreateGroup: () => void }) {
   const ctx = useMessengerContext();

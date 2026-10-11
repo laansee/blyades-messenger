@@ -1,8 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import useMessengerContext from '../context/messengerContext';
-import styles from './css/global-ui.module.css';
-import chatStyles from './css/chat-window.module.css';
+import GlobalUIStyles from './css/global-ui.module.css';
 import { X, Users, Check } from 'lucide-react';
 
 
@@ -30,11 +29,11 @@ export function ToastNotification({ toast }: ToastNotificationProps) {
 
   return (
     <div 
-      className={`${styles['toast-container']} ${toast.show ? 'active' : ''} ${styles[toast.type] || ''}`}
+      className={`${GlobalUIStyles['toast-container']} ${toast.show ? 'active' : ''} ${GlobalUIStyles[toast.type] || ''}`}
       style={{right: toast.show ? '20px' : '-380px'}}
     >
-      <span className={styles['toast-icon']}>{getIcon()}</span>
-      <span className={styles['toast-message']}>{toast.message}</span>
+      <span className={GlobalUIStyles['toast-icon']}>{getIcon()}</span>
+      <span className={GlobalUIStyles['toast-message']}>{toast.message}</span>
     </div>
   );
 }
@@ -63,21 +62,21 @@ export function ConfirmModal({ confirm, setConfirm }: ConfirmModalProps) {
 
   return (
     <div 
-      className={`${styles['confirm-overlay']} ${confirm.show ? styles['active'] : ''}`}
+      className={`${GlobalUIStyles['confirm-overlay']} ${confirm.show ? GlobalUIStyles['active'] : ''}`}
       onClick={() => setConfirm(prev => ({ ...prev, show: false }))}
     >
-      <div className={styles['confirm-card']} onClick={e => e.stopPropagation()}>
-        <h3 className={styles['confirm-title']}>{confirm.title}</h3>
-        <p className={styles['confirm-text']}>{confirm.text}</p>
-        <div className={styles['confirm-footer']}>
+      <div className={GlobalUIStyles['confirm-card']} onClick={e => e.stopPropagation()}>
+        <h3 className={GlobalUIStyles['confirm-title']}>{confirm.title}</h3>
+        <p className={GlobalUIStyles['confirm-text']}>{confirm.text}</p>
+        <div className={GlobalUIStyles['confirm-footer']}>
           <button 
-            className={styles['confirm-btn-cancel']}
+            className={GlobalUIStyles['confirm-btn-cancel']}
             onClick={() => setConfirm(prev => ({ ...prev, show: false }))}
           >
             Отмена
           </button>
           <button 
-            className={confirm.isDanger ? styles['confirm-btn-danger'] : styles['confirm-btn-primary']}
+            className={confirm.isDanger ? GlobalUIStyles['confirm-btn-danger'] : GlobalUIStyles['confirm-btn-primary']}
             onClick={async () => {
               // Сначала запускаем переданную функцию удаления/действия
               if (confirm.onConfirm) {
@@ -127,19 +126,19 @@ export function ContextMenu({ show, x, y, onClose, items }: ContextMenuProps) {
   if (!show || !items || items.length === 0) return null;
 
   return (
-    <div className={styles['menu-overlay']} onClick={onClose} onContextMenu={(e) => { e.preventDefault(); onClose(); }}>
+    <div className={GlobalUIStyles['menu-overlay']} onClick={onClose} onContextMenu={(e) => { e.preventDefault(); onClose(); }}>
       <div 
         ref={menuRef}
-        className={styles['menu-card']} 
+        className={GlobalUIStyles['menu-card']} 
         style={{ top: `${coords.top}px`, left: `${coords.left}px` }}
         onClick={(e) => e.stopPropagation()}
       >
         {items.map((item, index) => {
-          if (item.isDivider) return <div key={`divider-${index}`} className={styles['menu-divider']} />;
+          if (item.isDivider) return <div key={`divider-${index}`} className={GlobalUIStyles['menu-divider']} />;
           return (
             <button
               key={`item-${index}`}
-              className={`${styles['menu-item']} ${item.isDanger ? styles['menu-item-danger'] : ''}`}
+              className={`${GlobalUIStyles['menu-item']} ${item.isDanger ? GlobalUIStyles['menu-item-danger'] : ''}`}
               onClick={() => {
                 item.onClick();
                 setTimeout(() => {
@@ -147,8 +146,8 @@ export function ContextMenu({ show, x, y, onClose, items }: ContextMenuProps) {
                 }, 10);
               }}
             >
-              {item.icon && <span className={styles['menu-item-icon']}>{item.icon}</span>}
-              <span className={styles['menu-text']}>{item.label}</span>
+              {item.icon && <span className={GlobalUIStyles['menu-item-icon']}>{item.icon}</span>}
+              <span className={GlobalUIStyles['menu-text']}>{item.label}</span>
             </button>
           );
         })}
@@ -202,14 +201,15 @@ export function DropdownMenu({ show, onClose, x, y, items }: DropdownMenuProps) 
   return (
     <div 
       ref={menuRef}
-      className={styles['dropdown']}
+      className={GlobalUIStyles.dropdown}
       style={isAbsoluteMode ? {
         position: 'absolute', top: 'calc(100% + 8px)', right: 0, zIndex: 35000, display: 'block'
       } : {
         position: 'fixed', top: `${y}px`, left: `${x}px`, zIndex: 10000, display: 'block'
       }}
+      tabIndex={999999}
     >
-      <div className={styles['dropdown-list']}>
+      <div className={GlobalUIStyles['dropdown-list']}>
         {items.map((item) => {
           const Icon = item.icon;
           return (
@@ -217,14 +217,15 @@ export function DropdownMenu({ show, onClose, x, y, items }: DropdownMenuProps) 
               key={item.id}
               tabIndex={item.tabIndex}
               onClick={() => { item.onClick(); onClose(); }}
-              className={`${styles['dropdown-item']} ${item.danger ? styles['danger'] : ''} ${item.isSeparatorBefore ? styles['separator'] : ''}`}
+              // className={`${GlobalUIStyles['dropdown-item']} ${item.danger ? GlobalUIStyles['danger'] : ''} ${item.isSeparatorBefore ? GlobalUIStyles['separator'] : ''}`}
+              className={`${GlobalUIStyles['dropdown-item']} ${item.danger ? GlobalUIStyles['dropdown-item-danger'] : ''} ${item.isSeparatorBefore ? GlobalUIStyles['dropdown-item-separator'] : ''}`}
             >
-              <div className={styles['dropdown-item-left-side']}>
-                {Icon && <Icon size={18} className={styles['item-icon']} />}
+              <div className={GlobalUIStyles['dropdown-item-left-side']}>
+                {Icon && <Icon size={18} className={GlobalUIStyles['item-icon']} />}
                 <span>{item.text}</span>
               </div>
               {item.arrow && (
-                <span className={styles['dropdown-item-arrow-indicator']}>▶</span>
+                <span className={GlobalUIStyles['dropdown-item-arrow-indicator']}>▶</span>
               )}
             </button>
           );

@@ -254,17 +254,25 @@
 .dropdown-item:hover {background-color: #261f30;}
 .dropdown-item-left-side {display: flex; align-items: center; gap: 12px;}
 .dropdown-item-arrow-indicator {color: #6b7280; font-size: 10px;}
-.dropdown-item.separator { border-bottom: 5px solid #2c233699; 
+/* .dropdown-item.separator  */
+.dropdown-item-separator 
+{ border-bottom: 5px solid #2c233699; 
   padding-bottom: 12px; margin-bottom: 4px;}
-.dropdown-item.danger {
+.dropdown-item-danger 
+/* .dropdown-item.danger  */
+{
   color: #ef4444;
   transition: background-color 0.2s ease, color 0.2s ease;}
-.dropdown-item.danger svg,
-.dropdown-item.danger .item-icon {
+/* .dropdown-item.danger svg,
+.dropdown-item.danger .item-icon { */
+.dropdown-item-danger svg,
+.dropdown-item-danger .item-icon {
   color: #ff4d4d !important;
   stroke: #ff4d4d !important;}
-.dropdown-item.danger:hover {
+/* .dropdown-item.danger:hover { */
+.dropdown-item-danger:hover {
   background-color: #ef44441a;
   color: #ff6666 !important;}
-.dropdown-item.danger:hover svg {
+/* .dropdown-item.danger:hover svg { */
+.dropdown-item-danger:hover svg {
   stroke: #ff6666 !important;}
