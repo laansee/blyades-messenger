@@ -105,6 +105,7 @@ export default function ChatsSidebar({ onOpenCreateGroup }: { onOpenCreateGroup:
               }}
               style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
               title="Начать общение"
+              tabIndex={11}
             >
               <SquarePen color='#aaa8a8'/>
             </button>

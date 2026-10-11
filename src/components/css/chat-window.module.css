@@ -43,57 +43,6 @@
 .close-chat-btn {font-size: 22px; color: #9ca3af; cursor: pointer; transition: color 0.2s ease;}
 .close-chat-btn:hover {color: #ef4444; }
 
-.accountMenu-dropdown {
-  position: absolute; top: 38px; right: 80px; margin-top: 8px; width: 256px; 
-  background-color: var(--bg-secondary); border: 1px solid var(--bg-main); border-radius: 12px; 
-  box-shadow: 0 25px 20px -12px rgba(0, 0, 0, 0.6); padding: 4px 0; z-index: 50; 
-  animation: menuAppear 0.1s ease-out forwards;}
-@keyframes menuAppear {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-.accountMenu-list {
-  display: flex; 
-  flex-direction: column; 
-  background: none; 
-  border: none;}
-.accountMenu-item {
-  display: flex; 
-  align-items: center; 
-  justify-content: space-between; 
-  padding: 10px 16px; 
-  font-size: 14px; 
-  text-align: left; 
-  background: transparent; 
-  border: none; 
-  color: #d9d9da; 
-  cursor: pointer; 
-  transition: background-color 0.15s; 
-  width: 100%;}
-.accountMenu-item:hover {background-color: #261f30;}
-.accountMenu-item-left-side {display: flex; align-items: center; gap: 12px;}
-.accountMenu-item-arrow-indicator {color: #6b7280; font-size: 10px;}
-.accountMenu-item.separator { border-bottom: 5px solid #2c233699; 
-  padding-bottom: 12px; margin-bottom: 4px;}
-.accountMenu-item.danger {
-  color: #ef4444;
-  transition: background-color 0.2s ease, color 0.2s ease;}
-.accountMenu-item.danger svg,
-.accountMenu-item.danger .item-icon {
-  color: #ff4d4d !important;
-  stroke: #ff4d4d !important;}
-.accountMenu-item.danger:hover {
-  background-color: #ef44441a;
-  color: #ff6666 !important;}
-.accountMenu-item.danger:hover svg {
-  stroke: #ff6666 !important;}
-
 .message-search-bar {
   padding: 10px 16px; background-color: var(--bg-sidebar); border-bottom: 1px solid #383842; 
   animation: slideDown 0.2s ease-out; }

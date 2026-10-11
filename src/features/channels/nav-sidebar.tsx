@@ -96,7 +96,7 @@ export default function NavSidebar() {
         ref={profileMenuRef} 
         className={styles.avatarContainer}
         onClick={() => ctx.setShowProfileMenu(!ctx.showProfileMenu)}
-        tabIndex={11}
+        tabIndex={10}
       >
         {ctx.showProfileMenu && (
           <div className={styles.profilePopup}>

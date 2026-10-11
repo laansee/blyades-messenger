@@ -163,6 +163,7 @@ export function ContextMenu({ show, x, y, onClose, items }: ContextMenuProps) {
 export interface DropdownItem {
   id: string;
   text: string;
+  tabIndex: number;
   icon?: React.ComponentType<any>;
   danger?: boolean;
   arrow?: boolean;
@@ -186,18 +187,12 @@ export function DropdownMenu({ show, onClose, x, y, items }: DropdownMenuProps) 
       const target = e.target as HTMLElement;
       const clickedTrigger = target.closest('.dropdown-trigger-btn');
 
-      if (show && menuRef.current && !menuRef.current.contains(target) && !clickedTrigger) {
-        onClose();
-      }
+      if (show && menuRef.current && !menuRef.current.contains(target) && !clickedTrigger) onClose();
     };
     
-    if (show) {
-      document.addEventListener('mousedown', handleOutsideClick);
-    }
+    if (show) document.addEventListener('mousedown', handleOutsideClick);
 
-    return () => {
-      document.removeEventListener('mousedown', handleOutsideClick);
-    };
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, [show, onClose]);
 
   if (!show) return null;
@@ -207,28 +202,29 @@ export function DropdownMenu({ show, onClose, x, y, items }: DropdownMenuProps) 
   return (
     <div 
       ref={menuRef}
-      className={chatStyles['accountMenu-dropdown']}
+      className={styles['dropdown']}
       style={isAbsoluteMode ? {
         position: 'absolute', top: 'calc(100% + 8px)', right: 0, zIndex: 35000, display: 'block'
       } : {
         position: 'fixed', top: `${y}px`, left: `${x}px`, zIndex: 10000, display: 'block'
       }}
     >
-      <div className={chatStyles['accountMenu-list']}>
+      <div className={styles['dropdown-list']}>
         {items.map((item) => {
           const Icon = item.icon;
           return (
             <button
               key={item.id}
+              tabIndex={item.tabIndex}
               onClick={() => { item.onClick(); onClose(); }}
-              className={`${chatStyles['accountMenu-item']} ${item.danger ? chatStyles['danger'] : ''} ${item.isSeparatorBefore ? chatStyles['separator'] : ''}`}
+              className={`${styles['dropdown-item']} ${item.danger ? styles['danger'] : ''} ${item.isSeparatorBefore ? styles['separator'] : ''}`}
             >
-              <div className={chatStyles['accountMenu-item-left-side']}>
-                {Icon && <Icon size={18} className={chatStyles['item-icon']} />}
+              <div className={styles['dropdown-item-left-side']}>
+                {Icon && <Icon size={18} className={styles['item-icon']} />}
                 <span>{item.text}</span>
               </div>
               {item.arrow && (
-                <span className={chatStyles['accountMenu-item-arrow-indicator']}>▶</span>
+                <span className={styles['dropdown-item-arrow-indicator']}>▶</span>
               )}
             </button>
           );

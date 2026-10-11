@@ -89,30 +89,43 @@ a.navItem {
   user-select: none;
   cursor: default;}
 .avatarContainer {
+    width: stretch;
   user-select: none;
   position: relative;
   margin-top: auto; /* Прижимает всю конструкцию к низу сайдбара */
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: center;
   gap: 5px;
-}
+  cursor: pointer;
+  box-sizing: border-box;}
+.avatarContainer img {
+  width: 38px !important;
+  height: 38px !important;
+  min-width: 38px !important;
+  min-height: 38px !important;
+  border-radius: 50% !important;
+  object-fit: cover !important;
+  display: block !important;}
 
-.avatarContainer:hover > .navAvatar {transform: scale(1.08); box-shadow: 0 0 12px rgba(255, 255, 255, 0.15);}
-.avatarContainer:active > .navAvatar {transform: scale(0.95);}
+.avatarContainer:hover > .navAvatar,
+.avatarContainer:hover > avatarContainer img {
+  transform: scale(1.08); box-shadow: 0 0 12px rgba(255, 255, 255, 0.15);}
+.avatarContainer:active > .navAvatar,
+.avatarContainer:hover > avatarContainer img {
+  transform: scale(0.95);}
 .navAvatar {
   min-width: 38px;
-  width: 38px;
-  height: 38px;
-  border-radius: 50%; /* Делаем идеальный круг */
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  width: 38px !important;
+  height: 38px !important;
+  border-radius: 50% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
   color: #ffffff;
   font-weight: 700;
   font-size: 15px;
   cursor: pointer;
-  /* margin: 0 6px; */
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   user-select: none;
   cursor: default;}
