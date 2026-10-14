@@ -37,6 +37,35 @@
   transition: background 0.2s;
   margin-bottom: 4px;
   cursor: default;}
+
+
+
+.setSidebarItem[data-title]::after {
+  content: attr(data-title);
+  background-color: pink;
+  color: black;
+  font-size: 1.2em;
+  position: absolute;
+  padding: 1px 5px 2px 5px;
+  bottom: 1.1em;
+  left: 50%;
+  white-space: nowrap;
+  box-shadow: 1px 1px 4px #242424;
+  opacity: 0;
+  border: 1px solid #1b1b1b;
+  z-index: 9999999;
+  visibility: hidden;
+}
+
+.setSidebarItem[data-title]:hover::after {
+  visibility: visible;
+  opacity: 1;
+  transition: all 0.1s ease 0.4s;
+}
+
+
+
+
 .setSidebarItem:hover {background-color: #232327;}
 .setSidebarItem[aria-disabled=true] {color: #707579; cursor: not-allowed;}
 .setSidebarItem[aria-disabled=true]:hover {background-color: #00000000;}
@@ -52,7 +81,6 @@
 .settingsContainer {
   flex: 1;
   background-color: #121216;
-  /* padding: 40px; */
   overflow-y: auto;
   display: flex;
   justify-content: center;
@@ -96,12 +124,8 @@
   flex-direction: column;
   justify-content: space-between;
   gap: 16px;
-  /* background: #1e1e24; */
   padding: 20px;
-  /* border-radius: 12px; */
-  /* border: 1px solid #383842; */
-  overflow: auto;
-}
+  overflow: auto;}
 .settingsFormTitle {
   color: #ffffff;
   margin: 0 0 4px 0;
@@ -154,75 +178,6 @@
 .blueBtn { background-color: #007aff; }
 .greenBtn { background-color: #2ec761; }
 
-/* Стили главного меню ТГ */
-.tgProfileHeaderBlock {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  background: #1e1e24;
-  padding: 20px;
-  border-radius: 12px;
-  border: 1px solid #383842;}
-.tgProfileHugeAvatar {
-  width: 70px;
-  height: 70px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #ffffff;
-  font-size: 24px;
-  font-weight: 600;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);}
-.tgUserMetaWrapper {
-  display: flex;
-  flex-direction: column;}
-.tgUserMetaName {
-  color: #ffffff;
-  font-size: 18px;
-  font-weight: 500;
-  margin: 0 0 2px 0;}
-.tgUserMetaPhone {
-  color: #9ca3af;
-  font-size: 13px;
-  margin: 0 0 2px 0;}
-.tgUserMetaUsername {
-  color: #707579;
-  font-size: 12px;
-  margin: 0;}
-.tgMenuListBlock {
-  background: #1e1e24;
-  border-radius: 12px;
-  border: 1px solid #383842;
-  display: flex;
-  flex-direction: column;
-  padding: 6px 0;}
-.tgMenuSectionTitle {
-  font-size: 12px;
-  color: #8b5cf6;
-  font-weight: 600;
-  padding: 10px 20px 4px 20px;}
-.tgMenuItemRow {
-  width: 100%;
-  background: transparent;
-  border: none;
-  display: flex;
-  align-items: center;
-  padding: 12px 20px;
-  cursor: pointer;
-  text-align: left;
-  color: #ffffff;
-  font-size: 15px;
-  transition: background-color 0.15s;}
-.tgMenuItemRow:hover {background-color: #242430;}
-.tgMenuRowIcon {
-  margin-right: 16px;
-  font-size: 16px;
-  width: 20px;
-  text-align: center;}
-.tgMenuLogoutBtn { color: #ef4444; }
-.tgMenuLogoutBtn:hover { background-color: rgba(239, 68, 68, 0.08); }
-
 /* Стили вкладок конфиденциальности */
 .privacyItemRow {
   display: flex;
@@ -263,34 +218,31 @@
   font-size: 12px;}
 .privacyTextSubtitle b {
   font-weight: 700;}
-.privacySelectInput {
+/* .privacySelectInput {
   -webkit-appearance: none;
   -moz-appearance: none;
   appearance: none;
 
   width: 100%;
-  max-width: 280px; /* или подгони под ширину своей верстки */
-  background-color: #111214; /* Глубокий тёмный фон */
-  color: #dbdee1; /* Фирменный светло-серый текст */
+  max-width: 280px;
+  background-color: #111214;
+  color: #dbdee1;
   border: 1px solid #2b2d31;
   border-radius: 8px;
-  padding: 10px 40px 10px 16px; /* Большой отступ справа под нашу кастомную стрелочку */
+  padding: 10px 40px 10px 16px;
   font-size: 15px;
   font-weight: 500;
   font-family: inherit;
   cursor: pointer;
   transition:  0.15s ease-in-out;;
 
-  /* Вставляем аккуратную SVG-стрелочку вниз прямо в фон селекта */
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://w3.org' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23aaa8a8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>");
   background-repeat: no-repeat;
   background-position: right 12px center;
   background-size: 16px;}
-/* Эффект при наведении мыши */
 .privacySelectInput:hover {
   border-color: #35363c;
-  background-color: #1e1f22;
-}
+  background-color: #1e1f22;} */
 
 /* Эффект при фокусе/раскрытии */
 .privacySelectInput:focus {

@@ -90,21 +90,33 @@ export default function SettingsPage() {
         </div>
 
         <div className={style.setSidebarList}>
-          <div className={`${style.setSidebarItem} ${activeSettingsTab === 'profile' ? style.active : ''}`} onClick={() => setActiveSettingsTab('profile')} style={{ cursor: 'pointer' }}>👤 Аккаунт</div>
-          <div className={`${style.setSidebarItem} ${activeSettingsTab === 'privacy' ? style.active : ''}`} onClick={() => setActiveSettingsTab('privacy')} style={{ cursor: 'pointer' }}>🔒 Приватность</div>
           <div 
-            className={style.setSidebarItem} 
-            title="В разработке"
-            aria-disabled
+            className={`${style.setSidebarItem} ${activeSettingsTab === 'profile' ? style.active : ''}`} 
+            onClick={() => setActiveSettingsTab('profile')} 
+            style={{ cursor: 'pointer' }}
           >
-            <span className={style.tgMenuRowIcon}>💬</span> Чаты
+            👤 Аккаунт
+          </div>
+          <div 
+            className={`${style.setSidebarItem} ${activeSettingsTab === 'privacy' ? style.active : ''}`} 
+            onClick={() => setActiveSettingsTab('privacy')} 
+            style={{ cursor: 'pointer' }}
+          >
+            🔒 Приватность
           </div>
           <div 
             className={style.setSidebarItem} 
             title="В разработке"
             aria-disabled
           >
-            <span className={style.tgMenuRowIcon}>🔔</span> Уведомления
+            💬 Чаты
+          </div>
+          <div 
+            className={style.setSidebarItem} 
+            data-title="В разработке"
+            aria-disabled
+          >
+            🔔 Уведомления
           </div>
 
           <div className={style.settingsLineDivider}></div>
@@ -114,7 +126,7 @@ export default function SettingsPage() {
             onClick={ctx.handleLogout}
             aria-exit
           >
-            <span className={style.tgMenuRowIcon}>🚪</span> Выйти
+            🚪 Выйти
           </div>
         </div>
       </section>

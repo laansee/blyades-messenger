@@ -1,68 +1,115 @@
 import React, { useState } from 'react';
 import styles from '../../components/css/settings.module.css'; // Твои оригинальные стили
-import chatStyles from '../../components/css/chat-window.module.css'; 
 import useMessengerContext from '../../context/messengerContext';
-import { renderUserStatusBadge } from '../../utils/statusBadge';
 import { supabase } from '../../services/supabaseClient';
+import { EditorModal, EditorInputField } from '../../components/GlobalUI';
+import { User } from 'lucide-react';
 
-interface EditProfileProps {
-  onBack: () => void;
-}
-
-export default function EditProfile({ onBack }: { onBack: () => void }) {
+export default function EditProfile({ onBack, state, setters }: any) {
   const ctx = useMessengerContext();
   const currentUser = ctx.currentUser;
 
-  const [uniqueId, setUniqueId] = useState(currentUser?.uniqueId || '');
-  const [username, setUsername] = useState(currentUser?.username || '');
-  const [firstName, setFirstName] = useState(currentUser?.firstName || '');
-  const [lastName, setLastName] = useState(currentUser?.lastName || '');
-  const [email, setEmail] = useState(currentUser?.email || '');
-  const [phone, setPhone] = useState(currentUser?.phone || '');
-  const [aboutMe, setAboutMe] = useState(currentUser?.about_me || '');
-  const [avatarColor, setAvatarColor] = useState(currentUser?.avatarColor || '#007aff');
-  const [avatarUrl, setAvatarUrl] = useState(currentUser?.avatarUrl || null);
+  // Извлекаем стейты и сетнеры из верхнего компонента
+  const { uniqueId, username, firstName, lastName, email, phone, aboutMe, avatarColor, avatarUrl } = state;
+  const { setUniqueId, setUsername, setFirstName, setLastName, setEmail, setPhone, setAboutMe, setAvatarColor, setAvatarUrl } = setters;
+  
+  const [modalConfig, setModalConfig] = useState<{
+    show: boolean;
+    title: string;
+    fields: EditorInputField[];
+    initialValues: Record<string, string>;
+    onSave: (values: Record<string, string>) => Promise<void>;
+  }>({
+    show: false,
+    title: '',
+    fields: [],
+    initialValues: {},
+    onSave: async () => {}
+  });
+
+  // Вспомогательный метод открытия модалки под конкретную строку
+  const openEditor = (type: 'name' | 'username' | 'phone' | 'email' | 'about') => {
+    let title = '';
+    let fields: EditorInputField[] = [];
+    let initialValues: Record<string, string> = {};
+    let onSaveAction = async (values: Record<string, string>) => {};
+
+    if (type === 'name') {
+      title = 'Редактирование имени';
+      fields = [
+        { key: 'firstName', label: 'Имя', placeholder: 'Введите ваше имя' },
+        { key: 'lastName', label: 'Фамилия', placeholder: 'Введите вашу фамилию' }
+      ];
+      initialValues = { firstName, lastName };
+      onSaveAction = async (v) => {
+        const { error } = await supabase.from('users').update({ firstName: v.firstName.trim() || null, lastName: v.lastName.trim() || null }).eq('id', currentUser.id);
+        if (!error) {
+          setFirstName(v.firstName.trim());
+          setLastName(v.lastName.trim());
+          ctx.setCurrentUser({ ...currentUser, firstName: v.firstName.trim() || null, lastName: v.lastName.trim() || null });
+          ctx.showToast('Имя успешно обновлено', 'success');
+        }
+      };
+    } else if (type === 'username') {
+      title = 'Изменить имя пользователя';
+      fields = [
+        { key: 'username', label: 'Отображаемое имя (Никнейм)', placeholder: 'Никнейм' },
+        { key: 'uniqueId', label: 'Имя пользователя (ID)', placeholder: 'Логин', required: true } as any
+      ];
+      initialValues = { username, uniqueId };
+      onSaveAction = async (v) => {
+        if (!v.uniqueId.trim()) return;
+        const { error } = await supabase.from('users').update({ username: v.username.trim(), uniqueId: v.uniqueId.trim() }).eq('id', currentUser.id);
+        if (!error) {
+          setUsername(v.username.trim());
+          setUniqueId(v.uniqueId.trim());
+          ctx.setCurrentUser({ ...currentUser, username: v.username.trim(), uniqueId: v.uniqueId.trim() });
+          ctx.showToast('Идентификаторы обновлены', 'success');
+        }
+      };
+    } else if (type === 'phone') {
+      title = 'Изменить номер телефона';
+      fields = [{ key: 'phone', label: 'Номер телефона', type: 'tel', placeholder: '+7...' }];
+      initialValues = { phone };
+      onSaveAction = async (v) => {
+        const { error } = await supabase.from('users').update({ phone: v.phone.trim() || null }).eq('id', currentUser.id);
+        if (!error) {
+          setPhone(v.phone.trim());
+          ctx.setCurrentUser({ ...currentUser, phone: v.phone.trim() || null });
+          ctx.showToast('Телефон сохранен', 'success');
+        }
+      };
+    } else if (type === 'email') {
+      title = 'Изменить электронную почту';
+      fields = [{ key: 'email', label: 'Электронная почта', type: 'email', placeholder: 'mail@example.com' }];
+      initialValues = { email };
+      onSaveAction = async (v) => {
+        const { error } = await supabase.from('users').update({ email: v.email.trim() || null }).eq('id', currentUser.id);
+        if (!error) {
+          setEmail(v.email.trim());
+          ctx.setCurrentUser({ ...currentUser, email: v.email.trim() || null });
+          ctx.showToast('Почта сохранена', 'success');
+        }
+      };
+    } else if (type === 'about') {
+      title = 'О себе';
+      fields = [{ key: 'aboutMe', label: 'Любые подробности, например: возраст, род занятий...', type: 'textarea', maxLength: 70 }];
+      initialValues = { aboutMe };
+      onSaveAction = async (v) => {
+        const { error } = await supabase.from('users').update({ about_me: v.aboutMe.trim() || null }).eq('id', currentUser.id);
+        if (!error) {
+          setAboutMe(v.aboutMe.trim());
+          ctx.setCurrentUser({ ...currentUser, about_me: v.aboutMe.trim() || null });
+          ctx.showToast('Информация "О себе" обновлена', 'success');
+        }
+      };
+    }
+
+    setModalConfig({ show: true, title, fields, initialValues, onSave: onSaveAction });
+  };
+  
   const [isSaving, setIsSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
-
-  const privacyPhone = currentUser?.privacyPhone || 'all';
-  const privacyEmail = currentUser?.privacyEmail || 'all';
-  const privacyOnline = currentUser?.privacyOnline || 'all';
-  const privacyNameFormat = currentUser?.privacyNameFormat || 'username';
-  const privacyFullName = currentUser?.privacyFullName || 'all';
-  const [previewRole, setPreviewRole] = useState<'contact' | 'stranger'>('contact');
-
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    try {
-      if (!e.target.files || e.target.files.length === 0) return;
-      setUploading(true);
-
-      const file = e.target.files[0];
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${currentUser.id}-${Math.random()}.${fileExt}`;
-      const filePath = `${fileName}`;
-
-      // 1. Грузим картинку в созданный нами бакет 'avatars'
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, file);
-
-      if (uploadError) throw uploadError;
-
-      // 2. Получаем постоянную публичную ссылку на загруженный файл
-      const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
-      
-      if (data?.publicUrl) {
-        setAvatarUrl(data.publicUrl); // Мгновенно рендерим фотку в превью!
-        ctx.showToast('Фото профиля успешно загружено на сервер! 📸', 'success');
-      }
-    } catch (err: any) {
-      console.error(err);
-      ctx.showToast(`Ошибка загрузки: ${err.message}`, 'error');
-    } finally {
-      setUploading(false);
-    }
-  };
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,7 +136,6 @@ export default function EditProfile({ onBack }: { onBack: () => void }) {
         .eq('id', currentUser.id);
 
       if (!error) {
-        // Локально обновляем состояние в ядре приложения
         ctx.setCurrentUser({
           ...currentUser,
           username: username.trim(),
@@ -103,7 +149,7 @@ export default function EditProfile({ onBack }: { onBack: () => void }) {
           avatarColor
         });
         
-        ctx.showToast('Профиль успешно сохранен! 👤', 'success');
+        ctx.showToast('Профиль успешно сохранен!', 'success');
         onBack();
       } else {
         ctx.showToast(`Ошибка сохранения: ${error.message}`, 'error');
@@ -116,271 +162,230 @@ export default function EditProfile({ onBack }: { onBack: () => void }) {
     }
   };
 
-  const shouldShowFieldInPreview = (setting: string) => {
-    if (setting === 'all') return true;
-    if (setting === 'none') return false;
-    return setting === 'contacts' ? previewRole === 'contact' : true;
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      if (!e.target.files || e.target.files.length === 0) return;
+      ctx.showToast('Загрузка аватарки...', 'info');
+      setUploading(true);
+
+      const file = e.target.files[0];
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${currentUser.id}-${Math.random()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage.from('avatars').getPublicUrl(fileName);
+      if (data?.publicUrl) {
+        const { error: dbError } = await supabase.from('users')
+          .update({ avatarUrl: data.publicUrl })
+          .eq('id', currentUser.id);
+        if (dbError) throw dbError;
+
+        setAvatarUrl(data.publicUrl);
+        ctx.setCurrentUser({ ...currentUser, avatarUrl: data.publicUrl });
+        ctx.showToast('Фото успешно сохранено! 📸', 'success');
+      }
+    } catch (err: any) {
+      console.error(err);
+      ctx.showToast(`Ошибка загрузки: ${err.message}`, 'error');
+    } finally {
+      setUploading(false);
+    }
   };
 
-  const previewDisplayName = username.trim() !== '' ? username : `@${uniqueId}`;
-
   return (
-    <>
-      {/* <div className={styles.settingsInputField} style={{ gap: '16px' }}> */}
-        {/* <button onClick={onBack} className={styles.settingsBackBtn}>
-          ⬅ Назад к списку
+    <>        
+      <form onSubmit={handleFormSubmit} className={styles.settingsFormCard} style={{ width: 'stretch' }}>
+        <div style={{display: "flex", flexDirection: "column", gap: "16px"}}>
+          <h3 className={styles.settingsFormTitle}>
+            <User/>
+            Личные данные аккаунта
+          </h3>
+
+          {/* Модернизированный селектор аватарки */}
+          <div className={styles.settingsInputField}>
+            <label className={styles.settingsLabel} htmlFor='avatarColor-input'>Фото профиля:</label>
+            {/* <label className={styles.settingsLabel} htmlFor='avatarColor-input'>Фото профиля (цвет вашей аватарки):</label> */}
+            <div className={styles.settingsColorPickerRow}>
+              {/* <input type="color" className={styles.settingsColorCircleInput} value={avatarColor} id='avatarColor-input' onChange={e => setAvatarColor(e.target.value)} />
+              <span className={styles.settingsColorHint}>Цвет круга</span> */}
+              
+              {/* 🚀 НАСТОЯЩИЙ ИНПУТ ЗАГРУЗКИ ФОТКИ */}
+              <input 
+                type="file" 
+                accept="image/*" 
+                onChange={handleAvatarUpload} 
+                disabled={uploading}
+                style={{ color: '#9ca3af', fontSize: '13px' }}
+              />
+              {uploading && <span style={{ color: '#007aff', fontSize: '12px' }}>Загрузка файла...</span>}
+            </div>
+          </div>
+          <div style={{ backgroundColor: '#1c1c24', border: '1px solid #2b2d31', borderRadius: '14px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            {/* Строка 1: Имя и Фамилия */}
+            <div onClick={() => openEditor('name')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid #2b2d31', cursor: 'pointer', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = '#23232e'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <span style={{ fontSize: '14px', color: '#ff7bf6', fontWeight: '600' }}>Имя</span>
+                <span style={{ fontSize: '15px', color: '#fff' }}>{`${firstName || ''} ${lastName || ''}`.trim() || 'Не указано'}</span>
+              </div>
+              <span style={{ color: '#8e8e93', fontSize: '14px' }}>▶</span>
+            </div>
+
+            {/* Строка 2: Логины и никнеймы */}
+            <div onClick={() => openEditor('username')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid #2b2d31', cursor: 'pointer', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = '#23232e'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <span style={{ fontSize: '14px', color: '#ff7bf6', fontWeight: '600' }}>Имя пользователя (ID / Никнейм)</span>
+                <span style={{ fontSize: '15px', color: '#fff' }}>@{uniqueId} {username && `(${username})`}</span>
+              </div>
+              <span style={{ color: '#8e8e93', fontSize: '14px' }}>▶</span>
+            </div>
+
+            {/* Строка 3: Номер телефона */}
+            <div onClick={() => openEditor('phone')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid #2b2d31', cursor: 'pointer', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = '#23232e'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <span style={{ fontSize: '14px', color: '#ff7bf6', fontWeight: '600' }}>Номер телефона</span>
+                <span style={{ fontSize: '15px', color: '#fff' }}>{phone || 'Не указан'}</span>
+              </div>
+              <span style={{ color: '#8e8e93', fontSize: '14px' }}>▶</span>
+            </div>
+
+            {/* Строка 4: Почта */}
+            <div onClick={() => openEditor('email')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid #2b2d31', cursor: 'pointer', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = '#23232e'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <span style={{ fontSize: '14px', color: '#ff7bf6', fontWeight: '600' }}>Электронная почта</span>
+                <span style={{ fontSize: '15px', color: '#fff' }}>{email || 'Не указана'}</span>
+              </div>
+              <span style={{ color: '#8e8e93', fontSize: '14px' }}>▶</span>
+            </div>
+
+            {/* Строка 5: О себе */}
+            <div onClick={() => openEditor('about')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', cursor: 'pointer', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = '#23232e'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <span style={{ fontSize: '14px', color: '#ff7bf6', fontWeight: '600' }}>О себе</span>
+                <span style={{ fontSize: '15px', color: '#fff', whiteSpace: 'pre-wrap' }}>{aboutMe || 'Расскажите о себе...'}</span>
+              </div>
+              <span style={{ color: '#8e8e93', fontSize: '14px' }}>▶</span>
+            </div>
+          </div>
+
+          {/* 🛡️ НАША ЖИВАЯ УНИВЕРСАЛЬНАЯ МОДАЛКА */}
+          <EditorModal
+            show={modalConfig.show}
+            title={modalConfig.title}
+            fields={modalConfig.fields}
+            initialValues={modalConfig.initialValues}
+            onClose={() => setModalConfig(prev => ({ ...prev, show: false }))}
+            onSave={modalConfig.onSave}
+          />
+
+          {/* <div className={styles.settingsInputField}>
+            <label 
+              className={styles.settingsLabel}
+              htmlFor='username-input'
+            >
+              Отображаемое имя:
+            </label>
+            <input 
+              type="text" 
+              className={styles.settingsInputText}
+              value={username}
+              id='username-input' 
+              onChange={e => setUsername(e.target.value)} 
+              placeholder="Введите никнейм"
+            />
+          </div>
+          
+          <div style={{display: "flex", justifyContent: "space-between", gap: "20px"}} className={styles.settingsInputField} >
+            <label 
+              className={styles.settingsLabel}
+              htmlFor='firstName-input'
+            >
+              Имя Фамилия:
+            </label>
+            <input 
+              type="text" 
+              className={styles.settingsInputText}
+              value={firstName} 
+              id='firstName-input'
+              onChange={e => setFirstName(e.target.value)} 
+              placeholder="Введите ваше имя"
+            />
+          </div>
+
+          <div className={styles.settingsInputField}>
+            <label 
+              className={styles.settingsLabel}
+              htmlFor='uniqueId-input'
+            >
+              Имя пользователя (ID):
+            </label>
+            <input 
+              type="text" 
+              className={styles.settingsInputText}
+              value={uniqueId}
+              id='uniqueId-input' 
+              onChange={e => setUniqueId(e.target.value)} 
+              placeholder="Придумайте логин" 
+              required
+            />
+          </div>
+
+          <div className={styles.settingsInputField}>
+            <label 
+              className={styles.settingsLabel}
+              htmlFor='phone-input'
+            >
+              Номер телефона:
+            </label>
+            <input 
+              type="text" 
+              className={styles.settingsInputText}
+              value={phone} 
+              id='phone-input'
+              onChange={e => setPhone(e.target.value)} 
+              placeholder="+7 (999) 999-99-99"
+            />
+          </div>
+
+          <div className={styles.settingsInputField}>
+            <label 
+              className={styles.settingsLabel}
+              htmlFor='email-input'
+            >
+              Электронная почта:
+            </label>
+            <input 
+              type="email" 
+              className={styles.settingsInputText}
+              value={email}
+              id='email-input' 
+              onChange={e => setEmail(e.target.value)} 
+              placeholder="example@mail.com"
+            />
+          </div>
+
+          <div className={styles.settingsInputField}>
+            <label className={styles.settingsLabel} htmlFor='aboutMe-input'>О себе:</label>
+            <textarea
+              id='aboutMe-input'
+              className={styles.settingsInputText}
+              value={aboutMe}
+              onChange={e => setAboutMe(e.target.value)}
+              placeholder="Расскажите немного о себе..."
+              style={{ resize: 'vertical', minHeight: '80px', fontFamily: 'inherit' }}
+              maxLength={70}
+            />
+          </div> */}
+
+        </div>
+        {/* <button type="submit" disabled={isSaving} className={`${styles.settingsSaveBtn} ${styles.blueBtn}`}>
+          {isSaving ? 'Сохранение...' : 'Сохранить профиль'}
         </button> */}
-        
-        <form onSubmit={handleFormSubmit} className={styles.settingsFormCard}>
-          <div style={{display: "flex", flexDirection: "column", gap: "16px"}}>
-            <h3 className={styles.settingsFormTitle}>👤 Личные данные аккаунта</h3>
-
-            {/* Модернизированный селектор аватарки */}
-            <div className={styles.settingsInputField}>
-              <label className={styles.settingsLabel} htmlFor='avatarColor-input'>Фото профиля (цвет вашей аватарки):</label>
-              <div className={styles.settingsColorPickerRow}>
-                <input type="color" className={styles.settingsColorCircleInput} value={avatarColor} id='avatarColor-input' onChange={e => setAvatarColor(e.target.value)} />
-                <span className={styles.settingsColorHint}>Цвет круга</span>
-                
-                {/* 🚀 НАСТОЯЩИЙ ИНПУТ ЗАГРУЗКИ ФОТКИ */}
-                <input 
-                  type="file" 
-                  accept="image/*" 
-                  onChange={handleAvatarUpload} 
-                  disabled={uploading}
-                  style={{ color: '#9ca3af', fontSize: '13px' }}
-                />
-                {uploading && <span style={{ color: '#007aff', fontSize: '12px' }}>Загрузка файла...</span>}
-              </div>
-            </div>
-            
-            <div className={styles.settingsInputField}>
-              <label 
-                className={styles.settingsLabel}
-                htmlFor='username-input'
-              >
-                Отображаемое имя (Никнейм):
-              </label>
-              <input 
-                type="text" 
-                className={styles.settingsInputText}
-                value={username}
-                id='username-input' 
-                onChange={e => setUsername(e.target.value)} 
-                placeholder="Введите никнейм"
-              />
-            </div>
-            
-            <div style={{display: "flex", justifyContent: "space-between", gap: "20px"}}>
-              <div className={styles.settingsInputField} style={{width: "50%"}}>
-                <label 
-                  className={styles.settingsLabel}
-                  htmlFor='firstName-input'
-                >
-                  Имя:
-                </label>
-                <input 
-                  type="text" 
-                  className={styles.settingsInputText}
-                  value={firstName} 
-                  id='firstName-input'
-                  onChange={e => setFirstName(e.target.value)} 
-                  placeholder="Введите ваше имя"
-                />
-              </div>
-              <div className={styles.settingsInputField} style={{width: "50%"}}>
-                <label 
-                  className={styles.settingsLabel}
-                  htmlFor='lastName-input'
-                >
-                  Фамилия:
-                </label>
-                <input 
-                  type="text" 
-                  className={styles.settingsInputText}
-                  value={lastName} 
-                  id='lastName-input'
-                  onChange={e => setLastName(e.target.value)} 
-                  placeholder="Введите вашу фамилию"
-                />
-              </div>
-            </div>
-
-            <div className={styles.settingsInputField}>
-              <label 
-                className={styles.settingsLabel}
-                htmlFor='uniqueId-input'
-              >
-                Имя пользователя (ID):
-              </label>
-              <input 
-                type="text" 
-                className={styles.settingsInputText}
-                value={uniqueId}
-                id='uniqueId-input' 
-                onChange={e => setUniqueId(e.target.value)} 
-                placeholder="Придумайте логин" 
-                required
-              />
-            </div>
-
-            <div className={styles.settingsInputField}>
-              <label 
-                className={styles.settingsLabel}
-                htmlFor='phone-input'
-              >
-                Номер телефона:
-              </label>
-              <input 
-                type="text" 
-                className={styles.settingsInputText}
-                value={phone} 
-                id='phone-input'
-                onChange={e => setPhone(e.target.value)} 
-                placeholder="+7 (999) 999-99-99"
-              />
-            </div>
-
-            <div className={styles.settingsInputField}>
-              <label 
-                className={styles.settingsLabel}
-                htmlFor='email-input'
-              >
-                Электронная почта:
-              </label>
-              <input 
-                type="email" 
-                className={styles.settingsInputText}
-                value={email}
-                id='email-input' 
-                onChange={e => setEmail(e.target.value)} 
-                placeholder="example@mail.com"
-              />
-            </div>
-
-            <div className={styles.settingsInputField}>
-              <label className={styles.settingsLabel} htmlFor='aboutMe-input'>О себе:</label>
-              <textarea
-                id='aboutMe-input'
-                className={styles.settingsInputText}
-                value={aboutMe}
-                onChange={e => setAboutMe(e.target.value)}
-                placeholder="Расскажите немного о себе..."
-                style={{ resize: 'vertical', minHeight: '80px', fontFamily: 'inherit' }}
-                maxLength={70}
-              />
-            </div>
-          </div>
-          <button type="submit" disabled={isSaving} className={`${styles.settingsSaveBtn} ${styles.blueBtn}`}>
-            {isSaving ? 'Сохранение...' : 'Сохранить профиль'}
-          </button>
-        </form>
-      {/* </div> */}
-      <div style={{ padding: '24px', boxSizing: 'border-box', display: "grid", gridTemplateRows: "93px auto 93px", alignItems: "center" }}>
-        <div>
-          <span style={{ fontSize: '14px', textTransform: 'uppercase', color: '#8e8e93', fontWeight: 'bold', display: 'block', marginBottom: '16px' }}>
-            👁️ Предпросмотр профиля:
-          </span>
-
-          <div style={{ display: 'flex', backgroundColor: '#1e1f22', padding: '3px', borderRadius: '8px' }}>
-            <button 
-              type="button" 
-              onClick={() => setPreviewRole('contact')} 
-              style={{ flex: 1, border: 'none', borderRadius: '6px', padding: '6px', fontSize: '16px', cursor: 'pointer', backgroundColor: previewRole === 'contact' ? '#007aff' : 'transparent', color: '#fff' }}
-            >
-              Как контакт
-            </button>
-            <button 
-              type="button" 
-              onClick={() => setPreviewRole('stranger')} 
-              style={{ flex: 1, border: 'none', borderRadius: '6px', padding: '6px', fontSize: '16px', cursor: 'pointer', backgroundColor: previewRole === 'stranger' ? '#da373c' : 'transparent', color: '#fff' }}
-            >
-              Незнакомец
-            </button>
-          </div>
-        </div>
-
-        <div style={{ height: "-webkit-fill-available", display: "flex", justifyContent: "center", background: "#532e2e", borderRadius: "25px", alignItems: "center" }}>
-          <div 
-            className={chatStyles['profile-modal-card']} 
-            style={{ width: '380px', boxShadow: '0 8px 32px rgba(0,0,0,0.4)', animation: 'none' }}
-          >
-            <div className={chatStyles['profile-avatar-wrapper']}>
-              {avatarUrl ? (
-                <img
-                  src={avatarUrl}
-                  alt="Avatar"
-                  style={{ width: '90px', height: '90px', borderRadius: '50%', objectFit: 'cover', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}
-                />
-              ) : (
-                <div className={chatStyles['profile-avatar']} style={{ backgroundColor: avatarColor }}>
-                  {previewDisplayName.substring(0, 1).toUpperCase()}
-                </div>
-              )}
-            </div>
-            <h2 className={chatStyles['profile-name']}>
-              {renderUserStatusBadge(currentUser)}
-              {previewDisplayName}
-            </h2>
-            <span className={chatStyles['profile-status']} style={{ color: shouldShowFieldInPreview(privacyOnline) ? '#2ec761' : '#707579' }}>
-              {shouldShowFieldInPreview(privacyOnline) ? 'в сети' : 'был(а) недавно'}
-            </span>
-            <div className={chatStyles['info-section']}>
-              {privacyNameFormat === 'username' && 
-               shouldShowFieldInPreview(privacyFullName) && 
-               ((firstName && firstName.trim() !== '') || (lastName && lastName.trim() !== '')) && (
-                <div className={chatStyles['info-item']}>
-                  <span className={chatStyles['info-value']}>
-                    {`${firstName || ''} ${lastName || ''}`.trim()}
-                  </span>
-                  <span className={chatStyles['info-label']}>Настоящие Имя и Фамилия</span>
-                </div>
-              )}
-              <div className={chatStyles['info-item']}>
-                <span className={chatStyles['info-value']}>
-                  @{uniqueId || 'не указан'}
-                </span>
-                <span className={chatStyles['info-label']}>
-                  Имя пользователя
-                </span>
-              </div>
-              {aboutMe.trim() !== '' && (
-                <div className={chatStyles['info-item']}>
-                  <span className={chatStyles['info-value']} style={{ whiteSpace: 'pre-wrap' }}>
-                    {aboutMe}
-                  </span>
-                  <span className={chatStyles['info-label']}>
-                    О себе
-                  </span>
-                </div>
-              )}
-              {shouldShowFieldInPreview(privacyPhone) && phone && phone.trim() !== '' && (
-                <div className={chatStyles['info-item']}>
-                  <span className={chatStyles['info-value']}>{phone}</span>
-                  <span className={chatStyles['info-label']}>Телефон</span>
-                </div>
-              )}
-              {shouldShowFieldInPreview(privacyEmail) && email && email.trim() !== '' && (
-                <div className={chatStyles['info-item']}>
-                  <span className={chatStyles['info-value']}>{email}</span>
-                  <span className={chatStyles['info-label']}>Электронная почта</span>
-                </div>
-              )}
-              {/* {currentChatUser.privacyNameFormat === 'username' && 
-              shouldShowField(currentChatUser.privacyFullName, currentChatUser.isContact) && 
-              (currentChatUser.firstName || currentChatUser.lastName) && (
-                <div className={styles['info-item']}>
-                  <span className={styles['info-value']}>
-                    {`${currentChatUser.firstName || ''} ${currentChatUser.lastName || ''}`.trim()}
-                  </span>
-                  <span className={styles['info-label']}>Настоящие Имя и Фамилия</span>
-                </div>
-              )} */}
-            </div>
-          </div>
-        </div>
-
-      </div>
+      </form>
     </>
   );
 }
