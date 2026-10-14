@@ -200,191 +200,100 @@ export default function EditProfile({ onBack, state, setters }: any) {
   return (
     <>        
       <form onSubmit={handleFormSubmit} className={styles.settingsFormCard} style={{ width: 'stretch' }}>
-        <div style={{display: "flex", flexDirection: "column", gap: "16px"}}>
-          <h3 className={styles.settingsFormTitle}>
-            <User/>
-            Личные данные аккаунта
-          </h3>
+        <h3 className={styles.settingsFormTitle}>
+          <User/>
+          Личные данные аккаунта
+        </h3>
 
-          {/* Модернизированный селектор аватарки */}
-          <div className={styles.settingsInputField}>
-            <label className={styles.settingsLabel} htmlFor='avatarColor-input'>Фото профиля:</label>
-            {/* <label className={styles.settingsLabel} htmlFor='avatarColor-input'>Фото профиля (цвет вашей аватарки):</label> */}
-            <div className={styles.settingsColorPickerRow}>
-              {/* <input type="color" className={styles.settingsColorCircleInput} value={avatarColor} id='avatarColor-input' onChange={e => setAvatarColor(e.target.value)} />
-              <span className={styles.settingsColorHint}>Цвет круга</span> */}
-              
-              {/* 🚀 НАСТОЯЩИЙ ИНПУТ ЗАГРУЗКИ ФОТКИ */}
-              <input 
-                type="file" 
-                accept="image/*" 
-                onChange={handleAvatarUpload} 
-                disabled={uploading}
-                style={{ color: '#9ca3af', fontSize: '13px' }}
-              />
-              {uploading && <span style={{ color: '#007aff', fontSize: '12px' }}>Загрузка файла...</span>}
-            </div>
-          </div>
-          <div style={{ backgroundColor: '#1c1c24', border: '1px solid #2b2d31', borderRadius: '14px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            {/* Строка 1: Имя и Фамилия */}
-            <div onClick={() => openEditor('name')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid #2b2d31', cursor: 'pointer', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = '#23232e'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <span style={{ fontSize: '14px', color: '#ff7bf6', fontWeight: '600' }}>Имя</span>
-                <span style={{ fontSize: '15px', color: '#fff' }}>{`${firstName || ''} ${lastName || ''}`.trim() || 'Не указано'}</span>
-              </div>
-              <span style={{ color: '#8e8e93', fontSize: '14px' }}>▶</span>
-            </div>
-
-            {/* Строка 2: Логины и никнеймы */}
-            <div onClick={() => openEditor('username')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid #2b2d31', cursor: 'pointer', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = '#23232e'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <span style={{ fontSize: '14px', color: '#ff7bf6', fontWeight: '600' }}>Имя пользователя (ID / Никнейм)</span>
-                <span style={{ fontSize: '15px', color: '#fff' }}>@{uniqueId} {username && `(${username})`}</span>
-              </div>
-              <span style={{ color: '#8e8e93', fontSize: '14px' }}>▶</span>
-            </div>
-
-            {/* Строка 3: Номер телефона */}
-            <div onClick={() => openEditor('phone')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid #2b2d31', cursor: 'pointer', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = '#23232e'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <span style={{ fontSize: '14px', color: '#ff7bf6', fontWeight: '600' }}>Номер телефона</span>
-                <span style={{ fontSize: '15px', color: '#fff' }}>{phone || 'Не указан'}</span>
-              </div>
-              <span style={{ color: '#8e8e93', fontSize: '14px' }}>▶</span>
-            </div>
-
-            {/* Строка 4: Почта */}
-            <div onClick={() => openEditor('email')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid #2b2d31', cursor: 'pointer', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = '#23232e'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <span style={{ fontSize: '14px', color: '#ff7bf6', fontWeight: '600' }}>Электронная почта</span>
-                <span style={{ fontSize: '15px', color: '#fff' }}>{email || 'Не указана'}</span>
-              </div>
-              <span style={{ color: '#8e8e93', fontSize: '14px' }}>▶</span>
-            </div>
-
-            {/* Строка 5: О себе */}
-            <div onClick={() => openEditor('about')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', cursor: 'pointer', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = '#23232e'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <span style={{ fontSize: '14px', color: '#ff7bf6', fontWeight: '600' }}>О себе</span>
-                <span style={{ fontSize: '15px', color: '#fff', whiteSpace: 'pre-wrap' }}>{aboutMe || 'Расскажите о себе...'}</span>
-              </div>
-              <span style={{ color: '#8e8e93', fontSize: '14px' }}>▶</span>
-            </div>
-          </div>
-
-          {/* 🛡️ НАША ЖИВАЯ УНИВЕРСАЛЬНАЯ МОДАЛКА */}
-          <EditorModal
-            show={modalConfig.show}
-            title={modalConfig.title}
-            fields={modalConfig.fields}
-            initialValues={modalConfig.initialValues}
-            onClose={() => setModalConfig(prev => ({ ...prev, show: false }))}
-            onSave={modalConfig.onSave}
-          />
-
-          {/* <div className={styles.settingsInputField}>
-            <label 
-              className={styles.settingsLabel}
-              htmlFor='username-input'
-            >
-              Отображаемое имя:
-            </label>
+        {/* Модернизированный селектор аватарки */}
+        <div className={styles.settingsInputField}>
+          <label className={styles.settingsLabel} htmlFor='avatarColor-input'>Фото профиля:</label>
+          <div className={styles.settingsColorPickerRow}>
+            {/* <input type="color" className={styles.settingsColorCircleInput} value={avatarColor} id='avatarColor-input' onChange={e => setAvatarColor(e.target.value)} />
+            <span className={styles.settingsColorHint}>Цвет круга</span> */}
+            
+            {/* 🚀 НАСТОЯЩИЙ ИНПУТ ЗАГРУЗКИ ФОТКИ */}
             <input 
-              type="text" 
-              className={styles.settingsInputText}
-              value={username}
-              id='username-input' 
-              onChange={e => setUsername(e.target.value)} 
-              placeholder="Введите никнейм"
+              type="file" 
+              accept="image/*" 
+              onChange={handleAvatarUpload} 
+              disabled={uploading}
+              style={{ color: '#9ca3af', fontSize: '13px' }}
             />
+            {uploading && <span style={{ color: '#007aff', fontSize: '12px' }}>Загрузка файла...</span>}
           </div>
-          
-          <div style={{display: "flex", justifyContent: "space-between", gap: "20px"}} className={styles.settingsInputField} >
-            <label 
-              className={styles.settingsLabel}
-              htmlFor='firstName-input'
-            >
-              Имя Фамилия:
-            </label>
-            <input 
-              type="text" 
-              className={styles.settingsInputText}
-              value={firstName} 
-              id='firstName-input'
-              onChange={e => setFirstName(e.target.value)} 
-              placeholder="Введите ваше имя"
-            />
-          </div>
-
-          <div className={styles.settingsInputField}>
-            <label 
-              className={styles.settingsLabel}
-              htmlFor='uniqueId-input'
-            >
-              Имя пользователя (ID):
-            </label>
-            <input 
-              type="text" 
-              className={styles.settingsInputText}
-              value={uniqueId}
-              id='uniqueId-input' 
-              onChange={e => setUniqueId(e.target.value)} 
-              placeholder="Придумайте логин" 
-              required
-            />
-          </div>
-
-          <div className={styles.settingsInputField}>
-            <label 
-              className={styles.settingsLabel}
-              htmlFor='phone-input'
-            >
-              Номер телефона:
-            </label>
-            <input 
-              type="text" 
-              className={styles.settingsInputText}
-              value={phone} 
-              id='phone-input'
-              onChange={e => setPhone(e.target.value)} 
-              placeholder="+7 (999) 999-99-99"
-            />
-          </div>
-
-          <div className={styles.settingsInputField}>
-            <label 
-              className={styles.settingsLabel}
-              htmlFor='email-input'
-            >
-              Электронная почта:
-            </label>
-            <input 
-              type="email" 
-              className={styles.settingsInputText}
-              value={email}
-              id='email-input' 
-              onChange={e => setEmail(e.target.value)} 
-              placeholder="example@mail.com"
-            />
-          </div>
-
-          <div className={styles.settingsInputField}>
-            <label className={styles.settingsLabel} htmlFor='aboutMe-input'>О себе:</label>
-            <textarea
-              id='aboutMe-input'
-              className={styles.settingsInputText}
-              value={aboutMe}
-              onChange={e => setAboutMe(e.target.value)}
-              placeholder="Расскажите немного о себе..."
-              style={{ resize: 'vertical', minHeight: '80px', fontFamily: 'inherit' }}
-              maxLength={70}
-            />
-          </div> */}
-
         </div>
-        {/* <button type="submit" disabled={isSaving} className={`${styles.settingsSaveBtn} ${styles.blueBtn}`}>
-          {isSaving ? 'Сохранение...' : 'Сохранить профиль'}
-        </button> */}
+        <div className={styles.settingsFormFields}>
+          {/* Строка 1: Имя и Фамилия */}
+          <div 
+            onClick={() => openEditor('name')} 
+            className={styles.settingsFormInput}
+          >
+            <div className={styles.settingsFormInputText}>
+              <span className={styles.settingsFormInputTitle}>Имя</span>
+              <span className={styles.settingsFormInputValue}>{`${firstName || ''} ${lastName || ''}`.trim() || 'Не указано'}</span>
+            </div>
+            <span className={styles.settingsFormInputArrow}>▶</span>
+          </div>
+
+          {/* Строка 2: Логины и никнеймы */}
+          <div 
+            onClick={() => openEditor('username')} 
+            className={styles.settingsFormInput}
+          >
+            <div className={styles.settingsFormInputText}>
+              <span className={styles.settingsFormInputTitle}>Имя пользователя (ID / Никнейм)</span>
+              <span className={styles.settingsFormInputValue}>@{uniqueId} {username && `(${username})`}</span>
+            </div>
+            <span className={styles.settingsFormInputArrow}>▶</span>
+          </div>
+
+          {/* Строка 3: Номер телефона */}
+          <div 
+            onClick={() => openEditor('phone')} 
+            className={styles.settingsFormInput}
+          >
+            <div className={styles.settingsFormInputText}>
+              <span className={styles.settingsFormInputTitle}>Номер телефона</span>
+              <span className={styles.settingsFormInputValue}>{phone || 'Не указан'}</span>
+            </div>
+            <span className={styles.settingsFormInputArrow}>▶</span>
+          </div>
+
+          {/* Строка 4: Почта */}
+          <div 
+            onClick={() => openEditor('email')} 
+            className={styles.settingsFormInput}
+          >
+            <div className={styles.settingsFormInputText}>
+              <span className={styles.settingsFormInputTitle}>Электронная почта</span>
+              <span className={styles.settingsFormInputValue}>{email || 'Не указана'}</span>
+            </div>
+            <span className={styles.settingsFormInputArrow}>▶</span>
+          </div>
+
+          {/* Строка 5: О себе */}
+          <div 
+            onClick={() => openEditor('about')} 
+            className={styles.settingsFormInput}
+          >
+            <div className={styles.settingsFormInputText}>
+              <span className={styles.settingsFormInputTitle}>О себе</span>
+              <span className={styles.settingsFormInputValue}>{aboutMe || 'Расскажите о себе...'}</span>
+            </div>
+            <span className={styles.settingsFormInputArrow}>▶</span>
+          </div>
+        </div>
+
+        {/* 🛡️ НАША ЖИВАЯ УНИВЕРСАЛЬНАЯ МОДАЛКА */}
+        <EditorModal
+          show={modalConfig.show}
+          title={modalConfig.title}
+          fields={modalConfig.fields}
+          initialValues={modalConfig.initialValues}
+          onClose={() => setModalConfig(prev => ({ ...prev, show: false }))}
+          onSave={modalConfig.onSave}
+        />
       </form>
     </>
   );

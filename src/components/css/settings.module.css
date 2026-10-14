@@ -85,44 +85,10 @@
   display: flex;
   justify-content: center;
   font-family: system-ui, -apple-system, sans-serif;}
-.settingsCardWrapper {
-  width: 100%;
-  max-width: 520px;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;}
-.settingsHeaderBlock {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;}
-.settingsTitle {
-  color: #ffffff;
-  font-size: 24px;
-  font-weight: 600;
-  margin: 0;}
-.settingsLineDivider {
-  width: 100%;
-  height: 1px;
-  background-color: #383842;
-  margin: 6px 0;}
-.settingsBackBtn {
-  background: transparent;
-  border: none;
-  color: #8b5cf6;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  align-self: flex-start;
-  padding: 0;
-  transition: color 0.2s;
-  display: flex;
-  align-items: center;
-  gap: 6px;}
-.settingsBackBtn:hover {color: #a78bfa;}
 .settingsFormCard {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 16px;
   padding: 20px;
   overflow: auto;}
@@ -130,26 +96,65 @@
   color: #ffffff;
   margin: 0 0 4px 0;
   font-size: 22px;
-  font-weight: 500;}
+  font-weight: 500;
+  display: inline-flex;
+  gap: 5px;}
+.settingsFormContainer {
+  display: flex;
+  flex-direction: column;
+  width: 100%; 
+  gap: 24px;
+  box-sizing: border-box;
+  font-family: sans-serif}
+
+.settingsFormFields {
+  background-color: #1c1c24;
+  border: 1px solid #2b2d31;
+  border-radius: 14px; 
+  display: flex; 
+  flex-direction: column; 
+  overflow: hidden;}
+.settingsFormInput {
+  display: flex;
+  justify-content: space-between;
+  align-items: center; 
+  padding: 16px 20px; 
+  border-bottom: 1px solid #2b2d31; 
+  cursor: pointer;
+  transition: background 0.2s;
+  background-color: transparent;}
+.settingsFormInput:hover {
+  background-color: #23232e;}
+.settingsFormInputText {
+  display: flex; 
+  flex-direction: column; 
+  gap: 4px;}
+.settingsFormInputTitle {
+  font-size: 14px;
+  color: #ededed;
+  font-weight: 600;}
+.settingsFormInputValue {
+  font-size: 15px; 
+  color: #9b9b9b;}
+.settingsFormInputArrow {
+  color: #8e8e93;
+  font-size: 14px;}
+
+.settingsLineDivider {
+  width: 100%;
+  height: 1px;
+  background-color: #383842;
+  margin: 6px 0;}
+
 .settingsInputField {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  flex: 1}
+  gap: 6px;}
 .settingsLabel {
   font-size: 13px;
   color: #9ca3af;
   font-weight: 600;}
-.settingsInputText {
-  padding: 10px 12px;
-  border-radius: 6px;
-  border: 1px solid #383842;
-  background-color: #121216;
-  color: #ffffff;
-  font-size: 14px;
-  outline: none;
-  transition: border-color 0.2s;}
-.settingsInputText:focus {border-color: #8b5cf6;}
+
 .settingsColorPickerRow {
   display: flex;
   align-items: center;
@@ -164,115 +169,37 @@
 .settingsColorHint {
   font-size: 13px;
   color: #9ca3af;}
-.settingsSaveBtn {
-  align-self: flex-end;
-  padding: 8px 16px;
-  color: #ffffff;
-  border: none;
-  border-radius: 6px;
-  font-weight: 600;
-  cursor: pointer;
-  font-size: 13px;
-  transition: opacity 0.2s, transform 0.1s;}
-.settingsSaveBtn:active {transform: scale(0.98);}
+
 .blueBtn { background-color: #007aff; }
 .greenBtn { background-color: #2ec761; }
 
-/* Стили вкладок конфиденциальности */
-.privacyItemRow {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  padding-bottom: 12px;}
-.privacyNoBorder {
-  border-bottom: none;
-  padding-bottom: 4px;}
-.privacyPreviewNick {
-  background: #1c1c24;
-  border-radius: 8px;
-  padding: 12px 16px;
-  border: 1px dashed #383842; 
-  margin-top: -8px;
-  margin-bottom: -12px;}
-.privacyTopBorder {
-  padding-top: 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-  border-bottom: none;
-  padding-bottom: 4px;}
-.privacyBothBorder {
-  padding-top: 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  padding-bottom: 12px;}
-.privacyTextInfo {
+.settingsPreview {
+  width: 380px; 
+  background-color: #14141c;
+  border-left: 1px solid #2b2d31;
+  padding: 40px 24px;
   display: flex;
   flex-direction: column;
-  gap: 4px;}
-.privacyTextTitle {
-  color: #ffffff;
+  gap: 20px;
+  box-sizing: border-box;}
+.settingsPreviewChange span {
   font-size: 14px;
-  font-weight: 600;}
-.privacyTextSubtitle {
-  color: #9ca3af;
-  font-size: 12px;}
-.privacyTextSubtitle b {
-  font-weight: 700;}
-/* .privacySelectInput {
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  appearance: none;
-
-  width: 100%;
-  max-width: 280px;
-  background-color: #111214;
-  color: #dbdee1;
-  border: 1px solid #2b2d31;
-  border-radius: 8px;
-  padding: 10px 40px 10px 16px;
-  font-size: 15px;
-  font-weight: 500;
-  font-family: inherit;
-  cursor: pointer;
-  transition:  0.15s ease-in-out;;
-
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://w3.org' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23aaa8a8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  background-size: 16px;}
-.privacySelectInput:hover {
-  border-color: #35363c;
-  background-color: #1e1f22;} */
-
-/* Эффект при фокусе/раскрытии */
-.privacySelectInput:focus {
-  outline: none;
-  border-color: #007aff;}
-
-/* Стилизация выпадающих пунктов (option) внутри селекта */
-.privacySelectInput option {
-  background-color: #111214;
-  color: #dbdee1;
-  padding: 12px;
-  border-radius: 5px;}
-
-/* Стили вкладок тем оформления */
-.tgThemeRow {
+  text-transform: uppercase;
+  color: #8e8e93;
+  font-weight: bold;
+  display: block;
+  margin-bottom: 16px;}
+.settingsPreviewChange div {
   display: flex;
-  gap: 12px;
-  margin-top: 10px;}
-.tgThemeOption {
+  background-color: #1e1f22;
+  padding: 3px;
+  border-radius: 8px;}
+.settingsPreviewChange button {
   flex: 1;
-  padding: 14px;
-  background-color: #121216;
-  border: 1px solid #383842;
-  border-radius: 8px;
-  color: #ffffff;
-  font-size: 15px;
-  font-weight: 500;
+  border: none;
+  border-radius: 6px;
+  padding: 6px;
+  font-size: 14px; 
   cursor: pointer;
-  transition: border-color 0.2s, background-color 0.2s;}
-.tgThemeOption:hover {background-color: #242430;}
-.tgThemeActive {
-  border-color: #8b5cf6;
-  background-color: rgba(139, 92, 246, 0.1) !important;}
+  color: #fff}
+  

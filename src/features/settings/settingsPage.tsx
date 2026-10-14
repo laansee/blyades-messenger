@@ -8,6 +8,7 @@ import { renderUserStatusBadge } from '../../utils/statusBadge';
 
 import EditProfile from './edit-profile';
 import PrivacySettings from './privacy-settings';
+import { Lock, User } from 'lucide-react';
 
 export default function SettingsPage() {
   const ctx = useMessengerContext();
@@ -95,14 +96,16 @@ export default function SettingsPage() {
             onClick={() => setActiveSettingsTab('profile')} 
             style={{ cursor: 'pointer' }}
           >
-            👤 Аккаунт
+            <User/>
+            Аккаунт
           </div>
           <div 
             className={`${style.setSidebarItem} ${activeSettingsTab === 'privacy' ? style.active : ''}`} 
             onClick={() => setActiveSettingsTab('privacy')} 
             style={{ cursor: 'pointer' }}
           >
-            🔒 Приватность
+            <Lock/>
+            Приватность
           </div>
           <div 
             className={style.setSidebarItem} 
@@ -157,21 +160,21 @@ export default function SettingsPage() {
           </div>
         )} */}
       </div>
-      <div style={{ width: '380px', backgroundColor: '#14141c', borderLeft: '1px solid #2b2d31', padding: '40px 24px', display: 'flex', flexDirection: 'column', gap: '20px', boxSizing: 'border-box' }}>
-        <div>
-          <span style={{ fontSize: '14px', textTransform: 'uppercase', color: '#8e8e93', fontWeight: 'bold', display: 'block', marginBottom: '16px' }}>👁️ Предпросмотр профиля:</span>
-          <div style={{ display: 'flex', backgroundColor: '#1e1f22', padding: '3px', borderRadius: '8px' }}>
+      <div className={style.settingsPreview}>
+        <div className={style.settingsPreviewChange}>
+          <span>👁️ Предпросмотр профиля:</span>
+          <div>
             <button 
               type="button" 
               onClick={() => setPreviewRole('contact')} 
-              style={{ flex: 1, border: 'none', borderRadius: '6px', padding: '6px', fontSize: '14px', cursor: 'pointer', backgroundColor: previewRole === 'contact' ? '#007aff' : 'transparent', color: '#fff' }}
+              style={{ backgroundColor: previewRole === 'contact' ? '#007aff' : 'transparent' }}
             >
               Как контакт
             </button>
             <button 
               type="button" 
               onClick={() => setPreviewRole('stranger')} 
-              style={{ flex: 1, border: 'none', borderRadius: '6px', padding: '6px', fontSize: '14px', cursor: 'pointer', backgroundColor: previewRole === 'stranger' ? '#da373c' : 'transparent', color: '#fff' }}
+              style={{ backgroundColor: previewRole === 'stranger' ? '#da373c' : 'transparent' }}
             >
               Незнакомец
             </button>
@@ -189,7 +192,9 @@ export default function SettingsPage() {
             )}
           </div>
 
-          <h2 className={chatStyles['profile-name']} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+          <h2 className={chatStyles['profile-name']}
+          //  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+          >
             {renderUserStatusBadge(currentUser)}
             {previewDisplayName}
           </h2>

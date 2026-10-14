@@ -217,8 +217,7 @@ export function DropdownMenu({ show, onClose, x, y, items }: DropdownMenuProps) 
               key={item.id}
               tabIndex={item.tabIndex}
               onClick={() => { item.onClick(); onClose(); }}
-              // className={`${GlobalUIStyles['dropdown-item']} ${item.danger ? GlobalUIStyles['danger'] : ''} ${item.isSeparatorBefore ? GlobalUIStyles['separator'] : ''}`}
-              className={`${GlobalUIStyles['dropdown-item']} ${item.danger ? GlobalUIStyles['dropdown-item-danger'] : ''} ${item.isSeparatorBefore ? GlobalUIStyles['dropdown-item-separator'] : ''}`}
+              className={`${GlobalUIStyles['dropdown-item']} ${item.danger ? GlobalUIStyles['danger'] : ''} ${item.isSeparatorBefore ? GlobalUIStyles['separator'] : ''}`}
             >
               <div className={GlobalUIStyles['dropdown-item-left-side']}>
                 {Icon && <Icon size={18} className={GlobalUIStyles['item-icon']} />}
@@ -436,34 +435,18 @@ export function EditorModal({ show, title, fields, initialValues, onClose, onSav
   };
 
   return createPortal(
-    <div 
-      onClick={onClose}
-      style={{
-        position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
-        backgroundColor: 'rgba(0, 0, 0, 0.65)', backdropFilter: 'blur(4px)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999999
-      }}
-    >
-      <div 
-        onClick={e => e.stopPropagation()}
-        style={{
-          backgroundColor: '#23232e', border: '1px solid #383842', padding: '24px',
-          borderRadius: '14px', width: '100%', maxWidth: '360px',
-          boxShadow: '0 12px 40px rgba(0, 0, 0, 0.6)', color: '#fff',
-          fontFamily: 'sans-serif', display: 'flex', flexDirection: 'column', gap: '20px',
-          animation: 'scaleInCard 0.18s cubic-bezier(0.34, 1.56, 0.64, 1) forwards'
-        }}
-      >
-        <h3 style={{ fontSize: '18px', margin: 0, fontWeight: '700', letterSpacing: '0.3px' }}>{title}</h3>
+    <div onClick={onClose} className={GlobalUIStyles['sModal-background']}>
+      <div onClick={e => e.stopPropagation()} className={GlobalUIStyles['sModal-container']}>
+        <h3 className={GlobalUIStyles['sModal-title']}>{title}</h3>
         
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <form onSubmit={handleSubmit} className={GlobalUIStyles['sModal-form']}>
           {fields.map((field) => {
             const isTextarea = field.type === 'textarea';
             const currentValue = values[field.key] || '';
 
             return (
-              <div key={field.key} style={{ display: 'flex', flexDirection: 'column', gap: '6px', position: 'relative' }}>
-                <label style={{ fontSize: '12px', color: '#a2a2b5', fontWeight: '600' }}>{field.label}</label>
+              <div key={field.key} className={GlobalUIStyles['sModal-card']}>
+                <label className={GlobalUIStyles['sModal-label']}>{field.label}</label>
                 
                 {isTextarea ? (
                   <textarea
@@ -471,7 +454,7 @@ export function EditorModal({ show, title, fields, initialValues, onClose, onSav
                     maxLength={field.maxLength}
                     value={currentValue}
                     onChange={e => setValues(prev => ({ ...prev, [field.key]: e.target.value }))}
-                    style={{ width: '100%', backgroundColor: '#18181e', color: '#fff', border: 'none', borderBottom: '2px solid #5856d6', padding: '10px 0', fontSize: '15px', outline: 'none', resize: 'none', minHeight: '60px', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                    className={GlobalUIStyles['sModal-textarea']}
                   />
                 ) : (
                   <input
@@ -480,14 +463,14 @@ export function EditorModal({ show, title, fields, initialValues, onClose, onSav
                     maxLength={field.maxLength}
                     value={currentValue}
                     onChange={e => setValues(prev => ({ ...prev, [field.key]: e.target.value }))}
-                    style={{ width: '100%', backgroundColor: '#18181e', color: '#fff', border: 'none', borderBottom: '2px solid #5856d6', padding: '10px 0', fontSize: '15px', outline: 'none', boxSizing: 'border-box' }}
+                    className={GlobalUIStyles['sModal-input']}
                     autoComplete="off"
                   />
                 )}
 
                 {/* Счётчик лимита символов (для био "О себе") */}
                 {field.maxLength && (
-                  <span style={{ position: 'absolute', bottom: '-16px', right: 0, fontSize: '10px', color: '#636366' }}>
+                  <span className={GlobalUIStyles['sModal-counter']}>
                     {field.maxLength - currentValue.length}
                   </span>
                 )}
@@ -495,11 +478,11 @@ export function EditorModal({ show, title, fields, initialValues, onClose, onSav
             );
           })}
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '16px', marginTop: '14px' }}>
-            <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', color: '#b0b0b8', cursor: 'pointer', fontSize: '14px', fontWeight: '600' }}>
+          <div className={GlobalUIStyles['sModal-buttons']}>
+            <button type="button" onClick={onClose}>
               Отмена
             </button>
-            <button type="submit" disabled={isSaving} style={{ background: 'none', border: 'none', color: '#9d7bf6', cursor: 'pointer', fontSize: '14px', fontWeight: '700' }}>
+            <button type="submit" disabled={isSaving}>
               {isSaving ? 'Сохранение...' : 'Сохранить'}
             </button>
           </div>
@@ -555,67 +538,43 @@ export function PrivacySelectorModal({ show, title, subtitle, options, selectedV
   };
 
   return createPortal(
-    <div 
-      onClick={onClose}
-      style={{
-        position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
-        backgroundColor: 'rgba(0, 0, 0, 0.65)', backdropFilter: 'blur(4px)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999999
-      }}
-    >
-      <div 
-        onClick={e => e.stopPropagation()}
-        style={{
-          backgroundColor: '#23232e', border: '1px solid #383842', padding: '24px',
-          borderRadius: '14px', width: '100%', maxWidth: '360px',
-          boxShadow: '0 12px 40px rgba(0, 0, 0, 0.6)', color: '#fff',
-          fontFamily: 'sans-serif', display: 'flex', flexDirection: 'column', gap: '16px',
-          animation: 'scaleInCard 0.18s cubic-bezier(0.34, 1.56, 0.64, 1) forwards'
-        }}
-      >
+    <div onClick={onClose} className={GlobalUIStyles['sModal-background']}>
+      <div onClick={e => e.stopPropagation()} className={GlobalUIStyles['sModal-container']}>
         <div>
-          <h3 style={{ fontSize: '18px', margin: 0, fontWeight: '700', letterSpacing: '0.3px' }}>{title}</h3>
-          {subtitle && <p style={{ fontSize: '12px', color: '#9d7bf6', margin: '6px 0 0 0', fontWeight: '600' }}>{subtitle}</p>}
+          <h3 className={GlobalUIStyles['sModal-title']}>{title}</h3>
+          {subtitle && <p className={GlobalUIStyles['sModal-subtitle']}>{subtitle}</p>}
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '8px' }}>
-          {options.map((opt) => {
-            const isSelected = localValue === opt.value;
-            return (
-              <div
-                key={opt.value}
-                onClick={() => !isSaving && handleRadioClick(opt.value)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '14px', padding: '12px 10px',
-                  borderRadius: '8px', cursor: isSaving ? 'not-allowed' : 'pointer',
-                  transition: 'background 0.2s ease', backgroundColor: isSelected ? 'rgba(157, 123, 246, 0.05)' : 'transparent'
-                }}
-                onMouseEnter={e => !isSelected && (e.currentTarget.style.backgroundColor = '#18181e')}
-                onMouseLeave={e => !isSelected && (e.currentTarget.style.backgroundColor = 'transparent')}
-              >
-                {/* Кастомная круглая радио-кнопка */}
-                <div style={{
-                  width: '20px', height: '20px', borderRadius: '50%',
-                  border: isSelected ? '2px solid #9d7bf6' : '2px solid #636366',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  boxSizing: 'border-box', transition: 'all 0.15s ease'
-                }}>
-                  {isSelected && (
-                    <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#9d7bf6' }} />
-                  )}
+        <div className={GlobalUIStyles['sModal-form']}>
+          <div className={GlobalUIStyles['sModal-radio-options']}>
+            {options.map((opt) => {
+              const isSelected = localValue === opt.value;
+              return (
+                <div
+                  key={opt.value}
+                  onClick={() => !isSaving && handleRadioClick(opt.value)}
+                  style={{cursor: isSaving ? 'not-allowed' : 'pointer'}}
+                  className={GlobalUIStyles['sModal-radio-value']} 
+                >
+                  {/* Кастомная круглая радио-кнопка */}
+                  <div style={{border: isSelected ? '2px solid #9d7bf6' : '2px solid #636366'}} className={GlobalUIStyles['sModal-radio-circle']}>
+                    {isSelected && (
+                      <div className={GlobalUIStyles['sModal-radio-isSelected']}/>
+                    )}
+                  </div>
+                  <span style={{ fontWeight: isSelected ? '600' : '500', color: isSelected ? '#fff' : '#dbdee1' }}>
+                    {opt.label}
+                  </span>
                 </div>
-                <span style={{ fontSize: '15px', fontWeight: isSelected ? '600' : '500', color: isSelected ? '#fff' : '#dbdee1' }}>
-                  {opt.label}
-                </span>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
-          <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', color: '#b0b0b8', cursor: 'pointer', fontSize: '14px', fontWeight: '600' }}>
-            Закрыть
-          </button>
+          <div className={GlobalUIStyles['sModal-buttons']}>
+            <button type="button" onClick={onClose}>
+              Закрыть
+            </button>
+          </div>
         </div>
       </div>
     </div>,
