@@ -331,7 +331,7 @@ export function CreateGroupModal({ show, onClose }: CreateGroupModalProps) {
             <label style={{ fontSize: '12px', color: '#9ca3af', fontWeight: 'bold', textTransform: 'uppercase', fontFamily: 'sans-serif' }}>
               Пригласить участников ({selectedUsers.length})
             </label>
-            <div style={{ maxHeight: '200px', overflowY: 'auto', backgroundColor: '#1e1f22', border: '1px solid #2b2d31', borderRadius: '6px', padding: '6px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+            {/* <div style={{ maxHeight: '200px', overflowY: 'auto', backgroundColor: '#1e1f22', border: '1px solid #2b2d31', borderRadius: '6px', padding: '6px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
               {ctx.chats.length === 0 ? (
                 <div style={{ color: '#636366', fontSize: '13px', textAlign: 'center', padding: '20px', fontFamily: 'sans-serif' }}>
                   У вас пока нет контактов
@@ -361,7 +361,51 @@ export function CreateGroupModal({ show, onClose }: CreateGroupModalProps) {
                   );
                 })
               )}
+            </div> */}
+            {/* 🚀 ГАРАНТИРОВАННЫЙ ФИКС: Оставляем только реальных людей, отсекая группы с помощью .filter */}
+            <div style={{ maxHeight: '200px', overflowY: 'auto', backgroundColor: '#1e1f22', border: '1px solid #2b2d31', borderRadius: '6px', padding: '6px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              {ctx.chats.filter((c: any) => {
+                const hasLogin = (c.uniqueId && c.uniqueId.trim() !== '') || (c.username && c.username.trim() !== '');
+                const isGroupFlag = c.isGroup === true;
+                // Пропускаем только реальных людей, у которых есть логин и нет флага группы
+                return hasLogin && !isGroupFlag;
+              }).length === 0 ? (
+                <div style={{ color: '#636366', fontSize: '13px', textAlign: 'center', padding: '20px', fontFamily: 'sans-serif' }}>
+                  У вас пока нет доступных пользователей
+                </div>
+              ) : (
+                ctx.chats
+                  .filter((c: any) => {
+                    const hasLogin = (c.uniqueId && c.uniqueId.trim() !== '') || (c.username && c.username.trim() !== '');
+                    const isGroupFlag = c.isGroup === true;
+                    return hasLogin && !isGroupFlag;
+                  })
+                  .map((user: any) => {
+                    const isChecked = selectedUsers.includes(user.id);
+                    return (
+                      <div 
+                        key={user.id} 
+                        onClick={() => toggleUserSelection(user.id)}
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px', borderRadius: '4px', cursor: 'pointer', backgroundColor: isChecked ? 'rgba(0, 122, 255, 0.08)' : 'transparent', transition: 'background-color 0.15s ease' }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: user.avatarColor, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 'bold', fontSize: '12px', fontFamily: 'sans-serif' }}>
+                            {user.name.substring(0, 1).toUpperCase()}
+                          </div>
+                          <span style={{ color: isChecked ? '#fff' : '#dbdee1', fontSize: '14px', fontWeight: isChecked ? '600' : '500', fontFamily: 'sans-serif' }}>
+                            {user.name}
+                          </span>
+                        </div>
+                        
+                        <div style={{ width: '20px', height: '20px', borderRadius: '50%', border: isChecked ? 'none' : '2px solid #3a3a3c', backgroundColor: isChecked ? '#007aff' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s ease' }}>
+                          {isChecked && <Check size={12} color="#fff" strokeWidth={3} />}
+                        </div>
+                      </div>
+                    );
+                  })
+              )}
             </div>
+
           </div>
 
           {/* Кнопки футера */}
