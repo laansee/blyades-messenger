@@ -225,24 +225,42 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        <div 
-          className={chatStyles['message-bubble']}
-          style={{ background: '#232327'}}
-        >
-          <div className={chatStyles['message-text']}>
-            <span 
-              className={chatStyles['group-msg-sender-name']} 
-              style={{ color: nameColor }}
-            >
-              {renderUserStatusBadge(currentUser)}
-              {previewDisplayName}
-            </span>
-            Привет, теперь моё сообщение будет выглядеть так!
-            <span className={chatStyles['message-meta']}>
-              <span className={chatStyles['message-time']}>
-                13:37
+
+
+        <div className={chatStyles['message-with-avatar']} style={{background: '#616161', padding: '10px', borderRadius: '9px',}}>
+          <div 
+            className={chatStyles['group-msg-avatar']} 
+            style={{ backgroundColor: avatarColor }}
+          >
+            {avatarUrl ? (
+              <img 
+                src={avatarUrl} 
+                alt="Avatar" 
+                style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
+              />
+            ) : (
+              previewDisplayName.substring(0, 1).toUpperCase()
+            )}
+          </div>
+          <div 
+            className={chatStyles['message-bubble']}
+            style={{ background: '#232327'}}
+          >
+            <div className={chatStyles['message-text']}>
+              <span 
+                className={chatStyles['group-msg-sender-name']} 
+                style={{ color: nameColor }}
+              >
+                {renderUserStatusBadge(currentUser)}
+                {previewDisplayName}
               </span>
-            </span>
+              Привет, теперь моё сообщение будет выглядеть так!
+              <span className={chatStyles['message-meta']}>
+                <span className={chatStyles['message-time']}>
+                  13:37
+                </span>
+              </span>
+            </div>
           </div>
         </div>
       </div>
