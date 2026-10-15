@@ -2,7 +2,10 @@ import React, { useState } from 'react';
 import styles from '../../components/css/settings.module.css'; // Твои оригинальные стили
 import useMessengerContext from '../../context/messengerContext';
 import { supabase } from '../../services/supabaseClient';
-import { EditorModal, EditorInputField } from '../../components/GlobalUI';
+import { 
+  EditorModal, EditorInputField, 
+  PrivacySelectorModal, PrivacyOption 
+} from '../../components/GlobalUI';
 import { User } from 'lucide-react';
 
 export default function EditProfile({ onBack, state, setters }: any) {
@@ -26,6 +29,23 @@ export default function EditProfile({ onBack, state, setters }: any) {
     initialValues: {},
     onSave: async () => {}
   });
+  
+    // Локальный стейт конфигурации модального окна выбора
+    const [radioModalConfig, setRadioModalConfig] = useState<{
+      show: boolean;
+      title: string;
+      subtitle: string;
+      options: PrivacyOption[];
+      selectedValue: string;
+      onSelect: (value: string) => Promise<void>;
+    }>({
+      show: false,
+      title: '',
+      subtitle: '',
+      options: [],
+      selectedValue: '',
+      onSelect: async () => {}
+    });
 
   // Вспомогательный метод открытия модалки под конкретную строку
   const openEditor = (type: 'name' | 'username' | 'phone' | 'email' | 'about') => {
@@ -106,6 +126,33 @@ export default function EditProfile({ onBack, state, setters }: any) {
     }
 
     setModalConfig({ show: true, title, fields, initialValues, onSave: onSaveAction });
+  };
+  
+  const openPrivacySelector = () => {
+    let title = 'Цвет имени';
+    let subtitle = '';
+    let options = [
+      { value: '#5eaddf', label: '#5eaddf' },
+      { value: '#7aca7c', label: '#7aca7c' },
+      { value: '#e49553', label: '#e49553' },
+      { value: '#e45a63', label: '#e45a63' },
+      { value: '#a580de', label: '#a580de' },
+      { value: '#5bc1d1', label: '#5bc1d1' },
+      { value: '#e8508a', label: '#e8508a' }
+    ];
+    let selectedValue = '';
+    let onSelectAction = async (val: string) => {};
+
+    // onSelectAction = async (val) => {
+    //   const { error } = await supabase.from('users').update({ privacySearch: val, updatedAt: new Date().toISOString() }).eq('id', currentUser.id);
+    //   if (!error) {
+    //     setPrivacySearch(val);
+    //     ctx.setCurrentUser({ ...currentUser, privacySearch: val });
+    //     ctx.showToast('Настройки обнаружения аккаунта изменены', 'success');
+    //   }
+    // };
+
+    setRadioModalConfig({ show: true, title, subtitle, options, selectedValue, onSelect: onSelectAction });
   };
   
   const [isSaving, setIsSaving] = useState(false);
@@ -223,6 +270,21 @@ export default function EditProfile({ onBack, state, setters }: any) {
             {uploading && <span style={{ color: '#007aff', fontSize: '12px' }}>Загрузка файла...</span>}
           </div>
         </div>
+
+        {/*  */}
+        {/* <div className={styles.settingsInputField}>
+          <h6 className={styles.settingsLabel}>Цвет имени</h6>
+          <div>
+            <button style={{background: '#5eaddf'}}>/</button>
+            <button style={{background: '#7aca7c'}}>/</button>
+            <button style={{background: '#e49553'}}>/</button>
+            <button style={{background: '#e45a63'}}>/</button>
+            <button style={{background: '#a580de'}}>/</button>
+            <button style={{background: '#5bc1d1'}}>/</button>
+            <button style={{background: '#e8508a'}}>/</button>
+          </div>
+        </div> */}
+
         <div className={styles.settingsFormFields}>
           {/* Строка 1: Имя и Фамилия */}
           <div 
@@ -247,6 +309,18 @@ export default function EditProfile({ onBack, state, setters }: any) {
             </div>
             <span className={styles.settingsFormInputArrow}>▶</span>
           </div>
+
+          {/*  */}
+          {/* <div 
+            onClick={() => openPrivacySelector()} 
+            className={styles.settingsFormInput}
+          >
+            <div className={styles.settingsFormInputText}>
+              <span className={styles.settingsFormInputTitle}>Цвет имени</span>
+              <span className={styles.settingsFormInputValue}>@{uniqueId} {username && `(${username})`}</span>
+            </div>
+            <span className={styles.settingsFormInputArrow}>▶</span>
+          </div> */}
 
           {/* Строка 3: Номер телефона */}
           <div 
@@ -293,6 +367,15 @@ export default function EditProfile({ onBack, state, setters }: any) {
           initialValues={modalConfig.initialValues}
           onClose={() => setModalConfig(prev => ({ ...prev, show: false }))}
           onSave={modalConfig.onSave}
+        />
+        <PrivacySelectorModal
+          show={radioModalConfig.show}
+          title={radioModalConfig.title}
+          subtitle={radioModalConfig.subtitle}
+          options={radioModalConfig.options}
+          selectedValue={radioModalConfig.selectedValue}
+          onClose={() => setRadioModalConfig(prev => ({ ...prev, show: false }))}
+          onSelect={radioModalConfig.onSelect}
         />
       </form>
     </>

@@ -26,6 +26,7 @@ export default function SettingsPage() {
   const [phone, setPhone] = useState(currentUser?.phone || '');
   const [aboutMe, setAboutMe] = useState(currentUser?.about_me || '');
   const [avatarColor, setAvatarColor] = useState(currentUser?.avatarColor || '#007aff');
+  const [nameColor, setNameColor] = useState(currentUser?.avatarColor || '#440101');
   const [avatarUrl, setAvatarUrl] = useState(currentUser?.avatarUrl || null);
 
   // 🚀 ОБЩИЕ СТЕЙТЫ НАСТРОЕК КОНФИДЕНЦИАЛЬНОСТИ
@@ -46,6 +47,7 @@ export default function SettingsPage() {
       setPhone(currentUser.phone || '');
       setAboutMe(currentUser.about_me || '');
       setAvatarColor(currentUser.avatarColor || '#007aff');
+      setNameColor(currentUser.nameColor || '#440101');
       setAvatarUrl(currentUser.avatarUrl || null);
       setPrivacyPhone(currentUser.privacyPhone || 'all');
       setPrivacyEmail(currentUser.privacyEmail || 'all');
@@ -220,6 +222,27 @@ export default function SettingsPage() {
             {aboutMe.trim() !== '' && (
               <div className={chatStyles['info-item']}><span className={chatStyles['info-value']} style={{ wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>{aboutMe}</span><span className={chatStyles['info-label']}>О себе</span></div>
             )}
+          </div>
+        </div>
+
+        <div 
+          className={chatStyles['message-bubble']}
+          style={{ background: '#232327'}}
+        >
+          <div className={chatStyles['message-text']}>
+            <span 
+              className={chatStyles['group-msg-sender-name']} 
+              style={{ color: nameColor }}
+            >
+              {renderUserStatusBadge(currentUser)}
+              {previewDisplayName}
+            </span>
+            Привет, теперь моё сообщение будет выглядеть так!
+            <span className={chatStyles['message-meta']}>
+              <span className={chatStyles['message-time']}>
+                13:37
+              </span>
+            </span>
           </div>
         </div>
       </div>

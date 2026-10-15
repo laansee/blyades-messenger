@@ -167,6 +167,7 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
               username: u.username,
               uniqueId: u.uniqueId,
               name: calculatedName,
+              nameColor: u.nameColor || '#007aff',
               avatarColor: u.avatarColor || '#007aff',
               avatarUrl: u.avatarUrl,
               isContact: isContact,

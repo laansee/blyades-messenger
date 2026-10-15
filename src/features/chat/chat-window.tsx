@@ -359,6 +359,7 @@ export default function ChatWindow() {
                   const senderUserObj = ctx.chats.find((c: any) => String(c.id) === String(msg.senderId));
                   const senderDisplayName = senderUserObj ? senderUserObj.name : `Юзер #${msg.senderId}`;
                   const senderAvatarColor = senderUserObj ? senderUserObj.avatarColor : '#007aff';
+                  const senderNameColor = senderUserObj ? senderUserObj.nameColor : '#007aff';
 
                   // Умное скрытие аватарок: показываем аватарку только если предыдущее сообщение было написано ДРУГИМ человеком
                   const isFirstInRow = index === 0 || displayedMessages[index - 1].senderId !== msg.senderId || displayedMessages[index - 1].senderId === 'system';
@@ -415,7 +416,7 @@ export default function ChatWindow() {
                           {isGroupChat && !isMyMsg && isFirstInRow && (
                             <span 
                               className={styles['group-msg-sender-name']} 
-                              style={{ color: senderAvatarColor }}
+                              style={{ color: senderNameColor }}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 ctx.setShowUserModal(String(msg.senderId)); // Передаем ID конкретного человека!
