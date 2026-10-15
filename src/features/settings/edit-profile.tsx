@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import styles from '../../components/css/settings.module.css'; // Твои оригинальные стили
 import useMessengerContext from '../../context/messengerContext';
 import { supabase } from '../../services/supabaseClient';
 import { 
-  EditorModal, EditorInputField, 
-  PrivacySelectorModal, PrivacyOption 
+  EditorModal, EditorInputField,
+  AvatarCropModal,
+  AvatarUploadSelectorModal
 } from '../../components/GlobalUI';
 import { User } from 'lucide-react';
 
@@ -16,6 +17,59 @@ export default function EditProfile({ onBack, state, setters }: any) {
   const { uniqueId, username, firstName, lastName, email, phone, aboutMe, avatarColor, avatarUrl } = state;
   const { setUniqueId, setUsername, setFirstName, setLastName, setEmail, setPhone, setAboutMe, setAvatarColor, setAvatarUrl } = setters;
   
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [rawImageSrc, setRawImageSrc] = useState<string | null>(null);
+  const [showCropModal, setShowCropModal] = useState(false);
+  const [showUploadSelector, setShowUploadSelector] = useState(false);
+
+  // 🚀 ОБРАБОТЧИК ФАЙЛОВ ИЗ ДРОП-ЗОНЫ ИЛИ ИНПУТА
+  const processSelectedFile = (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      ctx.showToast('Ошибка: Можно загружать только изображения!', 'error');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setRawImageSrc(reader.result as string);
+      setShowUploadSelector(false);
+      setShowCropModal(true);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // 🚀 СОХРАНЕНИЕ ОБРЕЗАННОГО СЖАТОГО BLOB В СТОРАДЖ SUPABASE
+  const saveCroppedAvatar = async (croppedBlob: Blob) => {
+    try {
+      ctx.showToast('Загрузка аватарки в облако...', 'info');
+      const fileName = `${currentUser.id}-${Date.now()}.png`;
+
+      // 1. Отправляем Blob напрямую в бакет 'avatars'
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, croppedBlob, { contentType: 'image/png' });
+
+      if (uploadError) throw uploadError;
+
+      // 2. Достаем постоянную публичную ссылку
+      const { data } = supabase.storage.from('avatars').getPublicUrl(fileName);
+      if (data?.publicUrl) {
+        const freshUrl = data.publicUrl;
+
+        // 3. Синхронизируем ячейку в таблице пользователей
+        const { error: dbError } = await supabase.from('users').update({ avatarUrl: freshUrl }).eq('id', currentUser.id);
+        if (dbError) throw dbError;
+
+        setAvatarUrl(freshUrl);
+        ctx.setCurrentUser({ ...currentUser, avatarUrl: freshUrl });
+        ctx.showToast('Новое фото профиля успешно применено! 📸', 'success');
+      }
+    } catch (err: any) {
+      console.error(err);
+      ctx.showToast(`Ошибка сохранения: ${err.message}`, 'error');
+    }
+  };
+
   const [modalConfig, setModalConfig] = useState<{
     show: boolean;
     title: string;
@@ -29,23 +83,6 @@ export default function EditProfile({ onBack, state, setters }: any) {
     initialValues: {},
     onSave: async () => {}
   });
-  
-    // Локальный стейт конфигурации модального окна выбора
-    const [radioModalConfig, setRadioModalConfig] = useState<{
-      show: boolean;
-      title: string;
-      subtitle: string;
-      options: PrivacyOption[];
-      selectedValue: string;
-      onSelect: (value: string) => Promise<void>;
-    }>({
-      show: false,
-      title: '',
-      subtitle: '',
-      options: [],
-      selectedValue: '',
-      onSelect: async () => {}
-    });
 
   // Вспомогательный метод открытия модалки под конкретную строку
   const openEditor = (type: 'name' | 'username' | 'phone' | 'email' | 'about') => {
@@ -127,36 +164,6 @@ export default function EditProfile({ onBack, state, setters }: any) {
 
     setModalConfig({ show: true, title, fields, initialValues, onSave: onSaveAction });
   };
-  
-  const openPrivacySelector = () => {
-    let title = 'Цвет имени';
-    let subtitle = '';
-    let options = [
-      { value: '#5eaddf', label: '#5eaddf' },
-      { value: '#7aca7c', label: '#7aca7c' },
-      { value: '#e49553', label: '#e49553' },
-      { value: '#e45a63', label: '#e45a63' },
-      { value: '#a580de', label: '#a580de' },
-      { value: '#5bc1d1', label: '#5bc1d1' },
-      { value: '#e8508a', label: '#e8508a' }
-    ];
-    let selectedValue = '';
-    let onSelectAction = async (val: string) => {};
-
-    // onSelectAction = async (val) => {
-    //   const { error } = await supabase.from('users').update({ privacySearch: val, updatedAt: new Date().toISOString() }).eq('id', currentUser.id);
-    //   if (!error) {
-    //     setPrivacySearch(val);
-    //     ctx.setCurrentUser({ ...currentUser, privacySearch: val });
-    //     ctx.showToast('Настройки обнаружения аккаунта изменены', 'success');
-    //   }
-    // };
-
-    setRadioModalConfig({ show: true, title, subtitle, options, selectedValue, onSelect: onSelectAction });
-  };
-  
-  const [isSaving, setIsSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -209,41 +216,6 @@ export default function EditProfile({ onBack, state, setters }: any) {
     }
   };
 
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    try {
-      if (!e.target.files || e.target.files.length === 0) return;
-      ctx.showToast('Загрузка аватарки...', 'info');
-      setUploading(true);
-
-      const file = e.target.files[0];
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${currentUser.id}-${Math.random()}.${fileExt}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(fileName, file);
-
-      if (uploadError) throw uploadError;
-
-      const { data } = supabase.storage.from('avatars').getPublicUrl(fileName);
-      if (data?.publicUrl) {
-        const { error: dbError } = await supabase.from('users')
-          .update({ avatarUrl: data.publicUrl })
-          .eq('id', currentUser.id);
-        if (dbError) throw dbError;
-
-        setAvatarUrl(data.publicUrl);
-        ctx.setCurrentUser({ ...currentUser, avatarUrl: data.publicUrl });
-        ctx.showToast('Фото успешно сохранено! 📸', 'success');
-      }
-    } catch (err: any) {
-      console.error(err);
-      ctx.showToast(`Ошибка загрузки: ${err.message}`, 'error');
-    } finally {
-      setUploading(false);
-    }
-  };
-
   return (
     <>        
       <form onSubmit={handleFormSubmit} className={styles.settingsFormCard} style={{ width: 'stretch' }}>
@@ -252,40 +224,23 @@ export default function EditProfile({ onBack, state, setters }: any) {
           Личные данные аккаунта
         </h3>
 
-        {/* Модернизированный селектор аватарки */}
-        <div className={styles.settingsInputField}>
-          <label className={styles.settingsLabel} htmlFor='avatarColor-input'>Фото профиля:</label>
-          <div className={styles.settingsColorPickerRow}>
-            {/* <input type="color" className={styles.settingsColorCircleInput} value={avatarColor} id='avatarColor-input' onChange={e => setAvatarColor(e.target.value)} />
-            <span className={styles.settingsColorHint}>Цвет круга</span> */}
-            
-            {/* 🚀 НАСТОЯЩИЙ ИНПУТ ЗАГРУЗКИ ФОТКИ */}
-            <input 
-              type="file" 
-              accept="image/*" 
-              onChange={handleAvatarUpload} 
-              disabled={uploading}
-              style={{ color: '#9ca3af', fontSize: '13px' }}
-            />
-            {uploading && <span style={{ color: '#007aff', fontSize: '12px' }}>Загрузка файла...</span>}
-          </div>
-        </div>
-
-        {/*  */}
-        {/* <div className={styles.settingsInputField}>
-          <h6 className={styles.settingsLabel}>Цвет имени</h6>
-          <div>
-            <button style={{background: '#5eaddf'}}>/</button>
-            <button style={{background: '#7aca7c'}}>/</button>
-            <button style={{background: '#e49553'}}>/</button>
-            <button style={{background: '#e45a63'}}>/</button>
-            <button style={{background: '#a580de'}}>/</button>
-            <button style={{background: '#5bc1d1'}}>/</button>
-            <button style={{background: '#e8508a'}}>/</button>
-          </div>
-        </div> */}
-
         <div className={styles.settingsFormFields}>
+
+
+          {/*  */}
+          <div 
+            onClick={() => setShowUploadSelector(true)} 
+            className={styles.settingsFormInput}
+            style={{ cursor: 'pointer' }}
+          >
+            <div className={styles.settingsFormInputText}>
+              <span className={styles.settingsFormInputTitle}>Фото</span>
+              <span className={styles.settingsFormInputValue}>Сменить...</span>
+            </div>
+            <span className={styles.settingsFormInputArrow}>▶</span>
+          </div>
+
+
           {/* Строка 1: Имя и Фамилия */}
           <div 
             onClick={() => openEditor('name')} 
@@ -368,14 +323,31 @@ export default function EditProfile({ onBack, state, setters }: any) {
           onClose={() => setModalConfig(prev => ({ ...prev, show: false }))}
           onSave={modalConfig.onSave}
         />
-        <PrivacySelectorModal
-          show={radioModalConfig.show}
-          title={radioModalConfig.title}
-          subtitle={radioModalConfig.subtitle}
-          options={radioModalConfig.options}
-          selectedValue={radioModalConfig.selectedValue}
-          onClose={() => setRadioModalConfig(prev => ({ ...prev, show: false }))}
-          onSelect={radioModalConfig.onSelect}
+        <AvatarUploadSelectorModal
+          show={showUploadSelector}
+          avatarUrl={avatarUrl}
+          avatarColor={avatarColor}
+          isDragOver={isDragOver}
+          uploading={false} // Сюда временно пишем false, так как стейт удален
+          fileInputRef={fileInputRef}
+          setAvatarColor={setAvatarColor}
+          onClose={() => setShowUploadSelector(false)}
+          onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+          onDragLeave={() => setIsDragOver(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setIsDragOver(false);
+            if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+              processSelectedFile(e.dataTransfer.files[0]);
+            }
+          }}
+          onFileSelect={(e) => e.target.files && e.target.files.length > 0 && processSelectedFile(e.target.files[0])}
+        />
+        <AvatarCropModal 
+          show={showCropModal} 
+          imageSrc={rawImageSrc} 
+          onClose={() => { setShowCropModal(false); setRawImageSrc(null); }} 
+          onSave={saveCroppedAvatar} 
         />
       </form>
     </>

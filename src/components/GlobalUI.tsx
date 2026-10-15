@@ -625,3 +625,383 @@ export function PrivacySelectorModal({ show, title, subtitle, options, selectedV
     document.body
   );
 }
+
+// ========================================================
+// 📸 8. МОДАЛКА ВЫБОРА И ДРОП-ЗОНЫ АВАТАРА (AvatarUploadSelectorModal)
+// ========================================================
+interface AvatarUploadSelectorModalProps {
+  show: boolean;
+  avatarUrl: string | null;
+  avatarColor: string;
+  isDragOver: boolean;
+  uploading: boolean;
+  fileInputRef: React.RefObject<HTMLInputElement>;
+  setAvatarColor: (color: string) => void;
+  onClose: () => void;
+  onDragOver: (e: React.DragEvent) => void;
+  onDragLeave: () => void;
+  onDrop: (e: React.DragEvent) => void;
+  onFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
+}
+export function AvatarUploadSelectorModal({
+  show,
+  avatarUrl,
+  avatarColor,
+  isDragOver,
+  uploading,
+  fileInputRef,
+  setAvatarColor,
+  onClose,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+  onFileSelect
+}: AvatarUploadSelectorModalProps) {
+  if (!show) return null;
+
+  return createPortal(
+    <div 
+      onClick={onClose} 
+      style={{ 
+        position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+        backgroundColor: 'rgba(0, 0, 0, 0.7)', backdropFilter: 'blur(4px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999999 
+      }}
+    >
+      <div 
+        onClick={e => e.stopPropagation()} 
+        style={{ 
+          backgroundColor: '#23232e', border: '1px solid #383842', padding: '24px', 
+          borderRadius: '16px', width: '100%', maxWidth: '380px', display: 'flex', 
+          flexDirection: 'column', alignItems: 'center', gap: '20px', 
+          boxShadow: '0 16px 40px rgba(0,0,0,0.5)', color: '#fff', fontFamily: 'sans-serif'
+        }}
+      >
+        <h3 style={{ fontSize: '18px', margin: 0, fontWeight: '700', alignSelf: 'flex-start' }}>
+          Снимок профиля
+        </h3>
+
+        {/* Интерактивная область Drag-and-Drop */}
+        <div
+          onDragOver={onDragOver}
+          onDragLeave={onDragLeave}
+          onDrop={onDrop}
+          onClick={() => fileInputRef.current?.click()}
+          style={{
+            width: '100%', height: '180px', borderRadius: '12px',
+            backgroundColor: '#18181e', display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center', gap: '14px',
+            cursor: 'pointer', border: isDragOver ? '2px dashed #9d7bf6' : '1px dashed #383842',
+            transition: 'all 0.2s ease', boxShadow: isDragOver ? '0 0 15px rgba(157, 123, 246, 0.2)' : 'none'
+          }}
+        >
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            accept="image/*" 
+            onChange={onFileSelect} 
+            style={{ display: 'none' }} 
+          />
+
+          {avatarUrl ? (
+            <img src={avatarUrl} alt="Preview" style={{ width: '70px', height: '70px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #383842' }} />
+          ) : (
+            <div style={{ width: '70px', height: '70px', borderRadius: '50%', backgroundColor: avatarColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', fontWeight: 'bold' }}>
+              📸
+            </div>
+          )}
+
+          <div style={{ textAlign: 'center', padding: '0 10px' }}>
+            <span style={{ fontSize: '14px', fontWeight: '600', color: isDragOver ? '#9d7bf6' : '#fff', display: 'block', marginBottom: '4px' }}>
+              {isDragOver ? '💥 Бросайте сюда фото!' : 'Перетащите изображение или кликните'}
+            </span>
+            <span style={{ fontSize: '11px', color: '#a2a2b5' }}>PNG, JPG, GIF до 5 МБ</span>
+          </div>
+        </div>
+
+        {uploading && <span style={{ color: '#9d7bf6', fontSize: '13px' }}>Обработка файла...</span>}
+
+        {/* Выбор базового цвета подложки */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', alignSelf: 'flex-start', width: '100%', borderTop: '1px solid #383842', paddingTop: '14px' }}>
+          <input 
+            type="color" 
+            value={avatarColor} 
+            onChange={e => setAvatarColor(e.target.value)} 
+            style={{ width: '32px', height: '32px', border: 'none', borderRadius: '50%', cursor: 'pointer', background: 'none' }} 
+          />
+          <span style={{ fontSize: '13px', color: '#a2a2b5' }}>Изменить базовый цвет круга</span>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%', gap: '14px', marginTop: '4px' }}>
+          <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', color: '#b0b0b8', cursor: 'pointer', fontSize: '14px', fontWeight: '600' }}>
+            Отмена
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+// ========================================================
+// ✂️ 9. МОДАЛКА ОБРЕЗКИ И МАСШТАБИРОВАНИЯ АВАТАРА (AvatarCropModal)
+// ========================================================
+interface AvatarCropModalProps {
+  show: boolean;
+  imageSrc: string | null;
+  onClose: () => void;
+  onSave: (croppedBlob: Blob) => Promise<void>;
+}
+
+export function AvatarCropModal({ show, imageSrc, onClose, onSave }: AvatarCropModalProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [zoom, setZoom] = useState(1);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Загружаем изображение при открытии
+  useEffect(() => {
+    if (show && imageSrc) {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.src = imageSrc;
+      img.onload = () => {
+        setImageObj(img);
+        setZoom(1);
+        setOffset({ x: 0, y: 0 });
+      };
+      setIsSaving(false);
+    }
+  }, [show, imageSrc]);
+
+  // Живая отрисовка на Canvas с круглой маской
+  useEffect(() => {
+    if (!imageObj || !canvasRef.current) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Очищаем холст
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.save();
+
+    // Центр холста
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
+    const radius = 100; // Диаметр круга обрезки — 200px
+
+    // Считаем масштаб, чтобы вписать картинку по меньшей стороне
+    const baseScale = Math.max(200 / imageObj.width, 200 / imageObj.height);
+    const currentScale = baseScale * zoom;
+
+    const iw = imageObj.width * currentScale;
+    const ih = imageObj.height * currentScale;
+
+    // Позиция отрисовки с учетом сдвига мышкой
+    const x = cx - iw / 2 + offset.x;
+    const y = cy - ih / 2 + offset.y;
+
+    // Рисуем картинку на задний план (полупрозрачную)
+    ctx.globalAlpha = 0.3;
+    ctx.drawImage(imageObj, x, y, iw, ih);
+
+    // Включаем маску круга
+    ctx.globalAlpha = 1.0;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.clip();
+
+    // Рисуем яркую картинку внутри круга
+    ctx.drawImage(imageObj, x, y, iw, ih);
+    ctx.restore();
+
+    // Рисуем красивую фиолетовую рамку поверх круга обрезки
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.strokeStyle = '#9d7bf6';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+  }, [imageObj, zoom, offset]);
+
+  if (!show || !imageSrc) return null;
+
+  // Обработчики Drag-to-Move внутри Canvas
+  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    setIsDragging(true);
+    setDragStart({ x: e.clientX - offset.x, y: e.clientY - offset.y });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!isDragging || !imageObj || !canvasRef.current) return;
+
+    const canvas = canvasRef.current;
+    
+    // Рассчитываем текущие размеры картинки на экране (один в один как в рендере)
+    const baseScale = Math.max(200 / imageObj.width, 200 / imageObj.height);
+    const currentScale = baseScale * zoom;
+
+    const iw = imageObj.width * currentScale;
+    const ih = imageObj.height * currentScale;
+
+    // Считаем сырые новые координаты сдвига от движения мышки
+    let newX = e.clientX - dragStart.x;
+    let newY = e.clientY - dragStart.y;
+
+    // 🎯 ВЫЧИСЛЯЕМ МАКСИМАЛЬНО ДОПУСТИМЫЕ СДВИГИ ПО ОСИ X И Y
+    // Картинка не должна уходить внутрь круга (диаметр 200px, радиус 100px от центра)
+    const maxOffsetX = Math.max(0, (iw - 200) / 2);
+    const maxOffsetY = Math.max(0, (ih - 200) / 2);
+
+    // Жёстко зажимаем новые координаты в лимиты [-maxOffset, maxOffset]
+    if (newX > maxOffsetX) newX = maxOffsetX;
+    if (newX < -maxOffsetX) newX = -maxOffsetX;
+
+    if (newY > maxOffsetY) newY = maxOffsetY;
+    if (newY < -maxOffsetY) newY = -maxOffsetY;
+
+    setOffset({ x: newX, y: newY });
+  };
+
+  const handleMouseUpOrLeave = () => {
+    setIsDragging(false);
+  };
+
+  // 🚀 БРОНЕБОЙНЫЙ ВЫРЕЗАТЕЛЬ АВАТАРОК: Берёт чистую картинку, полностью игнорируя фиолетовые рамки интерфейса!
+  const handleGenerateCrop = async () => {
+    if (!canvasRef.current || !imageObj) return;
+    setIsSaving(true);
+
+    const canvas = canvasRef.current;
+    
+    // Создаем виртуальный холст 200x200 для идеального PNG-экспорта
+    const exportCanvas = document.createElement('canvas');
+    exportCanvas.width = 200;
+    exportCanvas.height = 200;
+    const eCtx = exportCanvas.getContext('2d');
+
+    if (eCtx) {
+      // 🎯 Магия математики: воссоздаем пропорции и сдвиги, но рисуем ТОЛЬКО чистый imageObj!
+      const cx = canvas.width / 2;
+      const cy = canvas.height / 2;
+      
+      // Считаем масштаб точно так же, как при отрисовке на экране
+      const baseScale = Math.max(200 / imageObj.width, 200 / imageObj.height);
+      const currentScale = baseScale * zoom;
+
+      const iw = imageObj.width * currentScale;
+      const ih = imageObj.height * currentScale;
+
+      // Считаем, какая область оригинальной картинки попала в круг обрезки 200x200
+      // Переводим экранные координаты холста в систему координат экспортного канваса
+      const renderX = cx - iw / 2 + offset.x;
+      const renderY = cy - ih / 2 + offset.y;
+
+      const sx = (cx - 100 - renderX) / currentScale;
+      const sy = (cy - 100 - renderY) / currentScale;
+      const sw = 200 / currentScale;
+      const sh = 200 / currentScale;
+
+      // Рисуем чистый исходник без масок, рамок и прозрачностей
+      eCtx.drawImage(
+        imageObj,
+        sx, sy, sw, sh,  // Откуда вырезаем из исходного файла (x, y, w, h)
+        0, 0, 200, 200   // Куда вставляем на аватарку (x, y, w, h)
+      );
+
+      // Сжимаем в Blob и пушим в Supabase
+      exportCanvas.toBlob(async (blob) => {
+        if (blob) {
+          await onSave(blob);
+          onClose();
+        }
+        setIsSaving(false);
+      }, 'image/png', 0.95);
+    }
+  };
+
+  const getConstrainedOffset = (currentX: number, currentY: number, targetZoom: number) => {
+    if (!imageObj || !canvasRef.current) return { x: currentX, y: currentY };
+
+    const baseScale = Math.max(200 / imageObj.width, 200 / imageObj.height);
+    const currentScale = baseScale * targetZoom;
+
+    const iw = imageObj.width * currentScale;
+    const ih = imageObj.height * currentScale;
+
+    const maxOffsetX = Math.max(0, (iw - 200) / 2);
+    const maxOffsetY = Math.max(0, (ih - 200) / 2);
+
+    // Зажимаем переданные координаты в новые рамки масштаба
+    let fixedX = currentX;
+    let fixedY = currentY;
+
+    if (fixedX > maxOffsetX) fixedX = maxOffsetX;
+    if (fixedX < -maxOffsetX) fixedX = -maxOffsetX;
+    if (fixedY > maxOffsetY) fixedY = maxOffsetY;
+    if (fixedY < -maxOffsetY) fixedY = -maxOffsetY;
+
+    return { x: fixedX, y: fixedY };
+  };
+
+  return createPortal(
+    <div onClick={onClose} style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0, 0, 0, 0.75)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999999 }}>
+      <div onClick={e => e.stopPropagation()} style={{ backgroundColor: '#23232e', border: '1px solid #383842', padding: '24px', borderRadius: '16px', width: '100%', maxWidth: '380px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', boxShadow: '0 16px 40px rgba(0,0,0,0.5)', animation: 'scaleInCard 0.18s cubic-bezier(0.34, 1.56, 0.64, 1) forwards' }}>
+        <h3 style={{ fontSize: '18px', margin: 0, color: '#fff', fontWeight: '700', alignSelf: 'flex-start' }}>Редактирование фото</h3>
+        
+        {/* Интерактивный интерактивный холст обрезки */}
+        <canvas
+          ref={canvasRef}
+          width={300}
+          height={300}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUpOrLeave}
+          onMouseLeave={handleMouseUpOrLeave}
+          style={{ 
+            backgroundColor: '#13131a', 
+            borderRadius: '12px', 
+            cursor: isDragging ? 'grabbing' : 'grab', 
+            touchAction: 'none' 
+          }}
+        />
+
+        <p style={{ fontSize: '12px', color: '#a2a2b5', margin: 0, textAlign: 'center' }}>↕ Перетаскивайте фото мышкой для центрирования</p>
+
+        {/* Слайдер Zoom-масштаба */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', width: '100%', padding: '0 10px', boxSizing: 'border-box' }}>
+          <span style={{ fontSize: '16px', userSelect: 'none' }}>➖</span>
+          <input
+            type="range"
+            min="1"
+            max="3"
+            step="0.01"
+            value={zoom}
+            onChange={e => {
+              const nextZoom = parseFloat(e.target.value);
+              setZoom(nextZoom);
+              
+              const corrected = getConstrainedOffset(offset.x, offset.y, nextZoom);
+              setOffset(corrected);
+            }}
+            style={{ flex: 1, accentColor: '#9d7bf6', cursor: 'pointer' }}
+          />
+          <span style={{ fontSize: '16px', userSelect: 'none' }}>➕</span>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '16px', width: '100%', borderTop: '1px solid #383842', paddingTop: '16px' }}>
+          <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', color: '#b0b0b8', cursor: 'pointer', fontSize: '14px', fontWeight: '600' }}>Отмена</button>
+          <button type="button" onClick={handleGenerateCrop} disabled={isSaving} style={{ background: 'none', border: 'none', color: '#9d7bf6', cursor: 'pointer', fontSize: '14px', fontWeight: '700' }}>
+            {isSaving ? 'Сохранение...' : 'Готово'}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+function handleAvatarUpload(e: React.MouseEvent<HTMLCanvasElement, MouseEvent>): void {
+  throw new Error('Function not implemented.');
+}
