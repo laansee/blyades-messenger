@@ -642,6 +642,7 @@ interface AvatarUploadSelectorModalProps {
   onDragLeave: () => void;
   onDrop: (e: React.DragEvent) => void;
   onFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onColorSelect: (color: string) => Promise<void>;
 }
 export function AvatarUploadSelectorModal({
   show,
@@ -655,9 +656,21 @@ export function AvatarUploadSelectorModal({
   onDragOver,
   onDragLeave,
   onDrop,
-  onFileSelect
+  onFileSelect,
+  onColorSelect
 }: AvatarUploadSelectorModalProps) {
   if (!show) return null;
+
+  const avatarPalette = [
+    '#ba4c47',
+    '#c36f24',
+    '#8957ca',
+    '#3c9c22',
+    '#37a5b1',
+    '#3380c1',
+    '#b64c82',
+    '#798896'
+  ];
 
   return createPortal(
     <div 
@@ -677,9 +690,10 @@ export function AvatarUploadSelectorModal({
           boxShadow: '0 16px 40px rgba(0,0,0,0.5)', color: '#fff', fontFamily: 'sans-serif'
         }}
       >
-        <h3 style={{ fontSize: '18px', margin: 0, fontWeight: '700', alignSelf: 'flex-start' }}>
-          Снимок профиля
-        </h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+          <h3 style={{ fontSize: '18px', margin: 0, fontWeight: '700' }}>Снимок профиля</h3>
+          <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', color: '#8e8e93', cursor: 'pointer', fontSize: '20px' }}>×</button>
+        </div>
 
         {/* Интерактивная область Drag-and-Drop */}
         <div
@@ -722,19 +736,37 @@ export function AvatarUploadSelectorModal({
         {uploading && <span style={{ color: '#9d7bf6', fontSize: '13px' }}>Обработка файла...</span>}
 
         {/* Выбор базового цвета подложки */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', alignSelf: 'flex-start', width: '100%', borderTop: '1px solid #383842', paddingTop: '14px' }}>
-          <input 
-            type="color" 
-            value={avatarColor} 
-            onChange={e => setAvatarColor(e.target.value)} 
-            style={{ width: '32px', height: '32px', border: 'none', borderRadius: '50%', cursor: 'pointer', background: 'none' }} 
-          />
-          <span style={{ fontSize: '13px', color: '#a2a2b5' }}>Изменить базовый цвет круга</span>
+        <div style={{ width: '100%', borderTop: '1px solid #383842', paddingTop: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <span style={{ fontSize: '12px', color: '#a2a2b5', fontWeight: '600' }}>Базовый цвет подложки:</span>
+          <div style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '10px', justifyContent: 'center' }}>
+            {avatarPalette.map((color) => {
+              const isSelected = avatarColor.toLowerCase() === color.toLowerCase();
+              return (
+                <div
+                  key={color}
+                  onClick={async () => {
+                    setAvatarColor(color);
+                    await onColorSelect(color);
+                  }}
+                  style={{
+                    width: '28px', height: '36px', borderRadius: '50%',
+                    backgroundColor: color, cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                    boxShadow: isSelected ? `0 0 10px ${color}` : '0 2px 4px rgba(0,0,0,0.2)',
+                    border: isSelected ? '2px solid #ffffff' : '2px solid transparent',
+                    transform: isSelected ? 'scale(1.1)' : 'scale(1)'
+                  }}
+                  onMouseEnter={e => !isSelected && (e.currentTarget.style.transform = 'scale(1.05)')}
+                  onMouseLeave={e => !isSelected && (e.currentTarget.style.transform = 'scale(1)')}
+                />
+              );
+            })}
+          </div>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%', gap: '14px', marginTop: '4px' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%', gap: '14px', borderTop: '1px solid #383842', paddingTop: '14px' }}>
           <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', color: '#b0b0b8', cursor: 'pointer', fontSize: '14px', fontWeight: '600' }}>
-            Отмена
+            Закрыть
           </button>
         </div>
       </div>
@@ -1004,4 +1036,141 @@ export function AvatarCropModal({ show, imageSrc, onClose, onSave }: AvatarCropM
 }
 function handleAvatarUpload(e: React.MouseEvent<HTMLCanvasElement, MouseEvent>): void {
   throw new Error('Function not implemented.');
+}
+
+// ========================================================
+// 🎨 10. МОДАЛКА ВЫБОРА ЦВЕТА ИМЕНИ (NameColorSelectorModal)
+// ========================================================
+interface NameColorSelectorModalProps {
+  show: boolean;
+  title: string;
+  subtitle?: string;
+  colors: string[];
+  selectedColor: string;
+  onClose: () => void;
+  onSelect: (color: string) => Promise<void>;
+}
+export function NameColorSelectorModal({
+  show,
+  title,
+  subtitle,
+  colors,
+  selectedColor,
+  onClose,
+  onSelect
+}: NameColorSelectorModalProps) {
+  const [localColor, setLocalColor] = useState(selectedColor);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (show) {
+      setLocalColor(selectedColor || '#5eaddf');
+      setIsSaving(false);
+    }
+  }, [show, selectedColor]);
+
+  if (!show) return null;
+
+  const handleColorClick = async (color: string) => {
+    setLocalColor(color);
+    setIsSaving(true);
+    try {
+      await onSelect(color);
+      onClose();
+    } catch (err) {
+      console.error('Ошибка при сохранении цвета имени:', err);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return createPortal(
+    <div 
+      onClick={onClose} 
+      style={{ 
+        position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+        backgroundColor: 'rgba(0, 0, 0, 0.7)', backdropFilter: 'blur(4px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999999 
+      }}
+    >
+      <div 
+        onClick={e => e.stopPropagation()} 
+        style={{ 
+          backgroundColor: '#23232e', border: '1px solid #383842', padding: '24px', 
+          borderRadius: '16px', width: '100%', maxWidth: '380px', display: 'flex', 
+          flexDirection: 'column', gap: '16px', boxShadow: '0 16px 40px rgba(0,0,0,0.5)', 
+          color: '#fff', fontFamily: 'sans-serif'
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+          <h3 style={{ fontSize: '18px', margin: 0, fontWeight: '700' }}>{title}</h3>
+          <button 
+            type="button" 
+            onClick={onClose} 
+            style={{ background: 'none', border: 'none', color: '#8e8e93', cursor: 'pointer', fontSize: '20px', lineHeight: 1 }}
+          >
+            ×
+          </button>
+        </div>
+
+        {subtitle && (
+          <p style={{ fontSize: '13px', color: '#a2a2b5', margin: '0 0 4px 0', lineHeight: 1.4 }}>
+            {subtitle}
+          </p>
+        )}
+
+        {/* 🚀 ПАЛИТРА КРУЖОЧКОВ В ОДНУ ЛИНИЮ (КАК НА СКРИНШОТЕ!) */}
+        <div 
+          style={{ 
+            display: 'flex', flexDirection: 'row', flexWrap: 'wrap', 
+            gap: '12px', justifyContent: 'center', padding: '10px 0', width: '100%' 
+          }}
+        >
+          {colors.map((color) => {
+            const isSelected = localColor.toLowerCase() === color.toLowerCase();
+            return (
+              <div
+                key={color}
+                onClick={() => !isSaving && handleColorClick(color)}
+                style={{
+                  width: '36px', height: '36px', borderRadius: '50%',
+                  backgroundColor: color, cursor: isSaving ? 'not-allowed' : 'pointer',
+                  position: 'relative', display: 'flex', alignItems: 'center',
+                  justifyContent: 'center', transition: 'transform 0.15s ease',
+                  boxShadow: isSelected ? '0 0 12px ' + color : '0 2px 6px rgba(0,0,0,0.3)',
+                  border: isSelected ? '3px solid #ffffff' : '2px solid transparent',
+                  transform: isSelected ? 'scale(1.1)' : 'scale(1)',
+                  boxSizing: 'border-box'
+                }}
+                onMouseEnter={e => !isSelected && (e.currentTarget.style.transform = 'scale(1.05)')}
+                onMouseLeave={e => !isSelected && (e.currentTarget.style.transform = 'scale(1)')}
+              >
+                {isSelected && (
+                  <div 
+                    style={{ 
+                      width: '6px', height: '6px', borderRadius: '50%', 
+                      backgroundColor: '#ffffff', boxShadow: '0 0 4px rgba(0,0,0,0.5)' 
+                    }} 
+                  />
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {isSaving && <span style={{ color: '#9d7bf6', fontSize: '12px', alignSelf: 'center' }}>Сохранение выбора...</span>}
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%', gap: '14px', borderTop: '1px solid #383842', paddingTop: '14px', marginTop: '4px' }}>
+          <button 
+            type="button" 
+            onClick={onClose} 
+            style={{ background: 'none', border: 'none', color: '#b0b0b8', cursor: 'pointer', fontSize: '14px', fontWeight: '600' }}
+          >
+            Закрыть
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
 }

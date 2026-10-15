@@ -5,7 +5,8 @@ import { supabase } from '../../services/supabaseClient';
 import { 
   EditorModal, EditorInputField,
   AvatarCropModal,
-  AvatarUploadSelectorModal
+  AvatarUploadSelectorModal,
+  NameColorSelectorModal
 } from '../../components/GlobalUI';
 import { User } from 'lucide-react';
 
@@ -22,6 +23,38 @@ export default function EditProfile({ onBack, state, setters }: any) {
   const [rawImageSrc, setRawImageSrc] = useState<string | null>(null);
   const [showCropModal, setShowCropModal] = useState(false);
   const [showUploadSelector, setShowUploadSelector] = useState(false);
+  const [colorModalConfig, setColorModalConfig] = useState<{
+    show: boolean;
+    selectedColor: string;
+  }>({
+    show: false,
+    selectedColor: '#5eaddf'
+  });
+
+  const openNameColorSelector = () => {
+    // Подтягиваем текущий цвет из глобального контекста юзера, либо ставим дефолтный голубой
+    const currentColor = currentUser?.nameColor || '#5eaddf';
+    setColorModalConfig({
+      show: true,
+      selectedColor: currentColor
+    });
+  };
+
+  // Колбэк, который срабатывает при клике по кружочку в палитре
+  const handleSaveNameColor = async (chosenColor: string) => {
+    const { error } = await supabase
+      .from('users')
+      .update({ nameColor: chosenColor, updatedAt: new Date().toISOString() })
+      .eq('id', currentUser.id);
+
+    if (!error) {
+      // Обновляем ядро мессенджера, чтобы имя мгновенно перекрасилось во всех чатах!
+      ctx.setCurrentUser({ ...currentUser, nameColor: chosenColor });
+      ctx.showToast('Цвет имени успешно обновлён! 🎨', 'success');
+    } else {
+      ctx.showToast(`Ошибка смены цвета: ${error.message}`, 'error');
+    }
+  };
 
   // 🚀 ОБРАБОТЧИК ФАЙЛОВ ИЗ ДРОП-ЗОНЫ ИЛИ ИНПУТА
   const processSelectedFile = (file: File) => {
@@ -266,16 +299,21 @@ export default function EditProfile({ onBack, state, setters }: any) {
           </div>
 
           {/*  */}
-          {/* <div 
-            onClick={() => openPrivacySelector()} 
+          <div 
+            onClick={openNameColorSelector} 
             className={styles.settingsFormInput}
           >
             <div className={styles.settingsFormInputText}>
               <span className={styles.settingsFormInputTitle}>Цвет имени</span>
-              <span className={styles.settingsFormInputValue}>@{uniqueId} {username && `(${username})`}</span>
+              <span 
+                className={styles.settingsFormInputValue} 
+                style={{ color: currentUser?.nameColor || '#5eaddf', fontWeight: 'bold' }}
+              >
+                {currentUser?.nameColor || '#5eaddf'}
+              </span>
             </div>
             <span className={styles.settingsFormInputArrow}>▶</span>
-          </div> */}
+          </div>
 
           {/* Строка 3: Номер телефона */}
           <div 
@@ -314,7 +352,6 @@ export default function EditProfile({ onBack, state, setters }: any) {
           </div>
         </div>
 
-        {/* 🛡️ НАША ЖИВАЯ УНИВЕРСАЛЬНАЯ МОДАЛКА */}
         <EditorModal
           show={modalConfig.show}
           title={modalConfig.title}
@@ -328,7 +365,7 @@ export default function EditProfile({ onBack, state, setters }: any) {
           avatarUrl={avatarUrl}
           avatarColor={avatarColor}
           isDragOver={isDragOver}
-          uploading={false} // Сюда временно пишем false, так как стейт удален
+          uploading={false}
           fileInputRef={fileInputRef}
           setAvatarColor={setAvatarColor}
           onClose={() => setShowUploadSelector(false)}
@@ -342,12 +379,42 @@ export default function EditProfile({ onBack, state, setters }: any) {
             }
           }}
           onFileSelect={(e) => e.target.files && e.target.files.length > 0 && processSelectedFile(e.target.files[0])}
+          onColorSelect={async (chosenColor: string) => {
+            const { error } = await supabase
+              .from('users')
+              .update({ avatarColor: chosenColor, updatedAt: new Date().toISOString() })
+              .eq('id', currentUser.id);
+
+            if (!error) {
+              ctx.setCurrentUser({ ...currentUser, avatarColor: chosenColor });
+              ctx.showToast('Базовый цвет аватарки сохранён! 🎨', 'success');
+            } else {
+              ctx.showToast(`Ошибка сохранения цвета: ${error.message}`, 'error');
+            }
+          }}
         />
         <AvatarCropModal 
           show={showCropModal} 
           imageSrc={rawImageSrc} 
           onClose={() => { setShowCropModal(false); setRawImageSrc(null); }} 
           onSave={saveCroppedAvatar} 
+        />
+        <NameColorSelectorModal
+          show={colorModalConfig.show}
+          title="Предпросмотр цвета"
+          subtitle="Выберите цвет, которым будут выделяться Ваше имя."
+          colors={[
+            '#5eaddf',
+            '#7aca7c',
+            '#e49553',
+            '#e45a63',
+            '#a580de',
+            '#5bc1d1',
+            '#e8508a'
+          ]}
+          selectedColor={colorModalConfig.selectedColor}
+          onClose={() => setColorModalConfig(prev => ({ ...prev, show: false }))}
+          onSelect={handleSaveNameColor}
         />
       </form>
     </>
