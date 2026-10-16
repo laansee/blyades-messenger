@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import styles from '../css/chat-window.module.css';
+import styles from '../css/profile.module.css';
 import { supabase } from '../../services/supabaseClient';
+import { Search, UserPlus, Users } from 'lucide-react';
 
 interface GroupProfileViewProps {
   currentChatUser: any;
@@ -66,33 +67,36 @@ export default function GroupProfileView({ currentChatUser, baseName, onEditTogg
     : `Пользователь #${currentChatUser.ownerId}`;
 
   return (
-    <div className={styles['view-mode']}>
-      <div className={styles['profile-avatar-wrapper']}>
-        <div className={styles['profile-avatar']} style={{ backgroundColor: currentChatUser.avatarColor || '#5865F2' }}>
-          {baseName.substring(0, 1).toUpperCase()}
+    <div className={styles['view-mode']}> 
+
+      <div style={{ padding: '24px'}}>
+        <div className={styles['profile-avatar-wrapper']}>
+          <div className={styles['profile-avatar']} style={{ backgroundColor: currentChatUser.avatarColor || '#5865F2' }}>
+            {baseName.substring(0, 1).toUpperCase()}
+          </div>
         </div>
-      </div>
 
-      <h2 className={styles['profile-name']}>{baseName}</h2>
-      <span className={styles['profile-status']}>группа беседы</span>
+        <h2 className={styles['profile-name']}>{baseName}</h2>
+        <span className={styles['profile-status']}>группа беседы</span>
 
-      <div className={styles['action-buttons-row']}>
-        <button 
-          type="button" 
-          className={styles['action-btn']} 
-          onClick={() => { ctx.setActiveChatId(currentChatUser.id); onClose(); }}
-        >
-          <span className={styles['btn-icon']}>💬</span>
-          <span className={styles['btn-text']}>Чат</span>
-        </button>
-        <button type="button" className={styles['action-btn']}>
-          <span className={styles['btn-icon']}>🔔</span>
-          <span className={styles['btn-text']}>Звук</span>
-        </button>
-        <button type="button" className={styles['action-btn']} onClick={onEditToggle}>
-          <span className={styles['btn-icon']}>⚙️</span>
-          <span className={styles['btn-text']}>Настройки</span>
-        </button>
+        <div className={styles['action-buttons-row']}>
+          <button 
+            type="button" 
+            className={styles['action-btn']} 
+            onClick={() => { ctx.setActiveChatId(currentChatUser.id); onClose(); }}
+          >
+            <span className={styles['btn-icon']}>💬</span>
+            <span className={styles['btn-text']}>Чат</span>
+          </button>
+          <button type="button" className={styles['action-btn']}>
+            <span className={styles['btn-icon']}>🔔</span>
+            <span className={styles['btn-text']}>Звук</span>
+          </button>
+          <button type="button" className={styles['action-btn']} onClick={onEditToggle}>
+            <span className={styles['btn-icon']}>⚙️</span>
+            <span className={styles['btn-text']}>Настройки</span>
+          </button>
+        </div>
       </div>
 
       <div className={styles['info-section']}>
@@ -110,15 +114,28 @@ export default function GroupProfileView({ currentChatUser, baseName, onEditTogg
           <span className={styles['info-label']}>Создатель беседы</span>
         </div>
 
-        <div style={{ marginTop: '20px', borderTop: '1px solid #2b2d31', paddingTop: '16px' }}>
-          <span style={{ fontSize: '12px', color: '#9ca3af', fontWeight: 'bold', textTransform: 'uppercase', display: 'block', marginBottom: '12px' }}>
-            Участники группы ({groupMembers.length})
-          </span>
+        <div className={styles['info-divider']}></div>
+
+        <div className={styles['info-users']}>
+          <div className={styles['info-users-header']}>
+            <span>
+              <Users/>
+            </span>
+            <span>Участники группы ({groupMembers.length})</span>
+            <span>
+              <div>
+                <Search/>
+              </div>
+              <div>
+                <UserPlus/>
+              </div>
+            </span>
+          </div>
           
           {loadingMembers ? (
             <span style={{ color: '#636366', fontSize: '13px' }}>Синхронизация участников...</span>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div className={styles['info-users-section']} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {groupMembers.map((member) => {
                 const isOwner = String(member.id) === String(currentChatUser.ownerId);
                 const isMe = String(member.id) === String(ctx?.currentUser?.id);
@@ -133,8 +150,11 @@ export default function GroupProfileView({ currentChatUser, baseName, onEditTogg
                   : member.username;
 
                 return (
-                  <div key={member.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '4px 0', justifyContent: 'space-between' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div 
+                    key={member.id} 
+                    className={styles['info-users-item']} 
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }} className={styles['info-users-meta']} >
                       {member.avatarUrl ? (
                         <img
                           src={member.avatarUrl}
@@ -154,7 +174,7 @@ export default function GroupProfileView({ currentChatUser, baseName, onEditTogg
                       </div>
                     </div>
                     
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} className={styles['info-users-stat']} >
                       {isOwner ? (
                         <span style={{ fontSize: '10px', backgroundColor: 'rgba(255,204,0,0.1)', color: '#ffcc00', padding: '2px 8px', borderRadius: '10px', fontWeight: 'bold' }}>владелец</span>
                       ) : (
