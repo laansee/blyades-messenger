@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import styles from '../../components/css/sidebar.module.css';
 import { Check, CheckCheck, Search, SquarePen, Users, Megaphone, PhoneCall } from 'lucide-react';
-import useMessengerContext from '../../context/messengerContext';
+import useMessengerContext, { formatUserOnlineStatus } from '../../context/messengerContext';
 import { renderUserStatusBadge } from '../../utils/statusBadge';
 import { DropdownMenu } from '../../components/GlobalUI'; 
 
@@ -234,20 +234,26 @@ export default function ChatsSidebar({ onOpenCreateGroup }: { onOpenCreateGroup:
             return (
               <div key={chat.id} className={`${styles['chat-preview-card']} ${ctx.activeChatId === chat.id ? styles.active : ''}`} onClick={() => ctx.setActiveChatId(chat.id)}>
                 <div className={styles['avatar-wrapper']}>
-                {chat.avatarUrl ? (
-                  <img
-                    src={chat.avatarUrl}
-                    alt="Avatar"
-                    style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}
-                  />
-                ) : (
-                  <div className={styles['chat-avatar']} style={{ backgroundColor: chat.avatarColor }}>
-                    {chat.name.substring(0, 1).toUpperCase()}
-                  </div>
-                )}
-                {/* <div className={styles['chat-avatar']} style={{ backgroundColor: chat.avatarColor }}>
-                  {chat.name.substring(0, 1).toUpperCase()}
-                </div> */}
+                  {chat.avatarUrl ? (
+                    <img
+                      src={chat.avatarUrl}
+                      alt="Avatar"
+                      style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}
+                    />
+                  ) : (
+                    <div className={styles['chat-avatar']} style={{ backgroundColor: chat.avatarColor }}>
+                      {chat.name.substring(0, 1).toUpperCase()}
+                    </div>
+                  )}
+                  {!chat.isGroup && (() => {
+                    const statusInfo = formatUserOnlineStatus(chat.updatedAt, chat.privacyOnline);
+                    if (!statusInfo.isOnline) return null;
+
+                    return (
+                      <div title="В сети" className={styles['chat-avatar-online']} />
+                    );
+                  })()}
+
                 </div>
                 <div className={styles['chat-info']}>
                   <div className={styles['chat-meta']}>
