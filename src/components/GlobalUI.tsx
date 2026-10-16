@@ -365,10 +365,12 @@ export function CreateGroupModal({ show, onClose }: CreateGroupModalProps) {
             {/* 🚀 ГАРАНТИРОВАННЫЙ ФИКС: Оставляем только реальных людей, отсекая группы с помощью .filter */}
             <div style={{ maxHeight: '200px', overflowY: 'auto', backgroundColor: '#1e1f22', border: '1px solid #2b2d31', borderRadius: '6px', padding: '6px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
               {ctx.chats.filter((c: any) => {
-                const hasLogin = (c.uniqueId && c.uniqueId.trim() !== '') || (c.username && c.username.trim() !== '');
+                const chatIdStr = String(c.id);
+                
                 const isGroupFlag = c.isGroup === true;
-                // Пропускаем только реальных людей, у которых есть логин и нет флага группы
-                return hasLogin && !isGroupFlag;
+                const isGroupPrefix = chatIdStr.startsWith('group_');
+
+                return !isGroupFlag && !isGroupPrefix
               }).length === 0 ? (
                 <div style={{ color: '#636366', fontSize: '13px', textAlign: 'center', padding: '20px', fontFamily: 'sans-serif' }}>
                   У вас пока нет доступных пользователей
@@ -376,9 +378,11 @@ export function CreateGroupModal({ show, onClose }: CreateGroupModalProps) {
               ) : (
                 ctx.chats
                   .filter((c: any) => {
-                    const hasLogin = (c.uniqueId && c.uniqueId.trim() !== '') || (c.username && c.username.trim() !== '');
+                    const chatIdStr = String(c.id);
+                    
                     const isGroupFlag = c.isGroup === true;
-                    return hasLogin && !isGroupFlag;
+                    const isGroupPrefix = chatIdStr.startsWith('group_');
+                    return !isGroupFlag && !isGroupPrefix
                   })
                   .map((user: any) => {
                     const isChecked = selectedUsers.includes(user.id);
@@ -393,7 +397,7 @@ export function CreateGroupModal({ show, onClose }: CreateGroupModalProps) {
                             {user.name.substring(0, 1).toUpperCase()}
                           </div>
                           <span style={{ color: isChecked ? '#fff' : '#dbdee1', fontSize: '14px', fontWeight: isChecked ? '600' : '500', fontFamily: 'sans-serif' }}>
-                            {user.name}
+                            {user.name || user.username}
                           </span>
                         </div>
                         
