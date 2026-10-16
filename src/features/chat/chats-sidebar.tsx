@@ -231,11 +231,6 @@ export default function ChatsSidebar({ onOpenCreateGroup }: { onOpenCreateGroup:
               return isStatusSend && isNotMyMessage;
             }).length;
 
-            // 🕵️‍♂️ ДИАГНОСТИЧЕСКИЙ ЛОГ: Открой консоль Chrome и посмотри, что выдает этот чат!
-            // if (chat.name.toLowerCase().includes('проверка') || unreadCount > 0) {
-            //   console.log(`[Sidebar_Debug] Чат: ${chat.name}, Всего сообщений в ctx: ${chatMsgs.length}, Насчитали непрочитанных: ${unreadCount}`);
-            // }
-
             return (
               <div key={chat.id} className={`${styles['chat-preview-card']} ${ctx.activeChatId === chat.id ? styles.active : ''}`} onClick={() => ctx.setActiveChatId(chat.id)}>
                 <div className={styles['avatar-wrapper']}>
@@ -269,7 +264,7 @@ export default function ChatsSidebar({ onOpenCreateGroup }: { onOpenCreateGroup:
                         const senderUserObj = ctx.chats.find((c: any) => String(c.id) === String(lastMessage.senderId));
                         return <span style={{ color: '#a2a2b5', fontWeight: '600' }}>{senderUserObj ? senderUserObj.name : 'Участник'}: </span>;
                       })()}
-                      {lastMessage ? lastMessage.text : 'Нет сообщений'}
+                      {lastMessage ? lastMessage.text.replace(/<\/?[^>]+(>|$)/g, "") : 'Нет сообщений'}
                     </p>
                     
                     {/* НАША СЕТКА ИНДИКАТОРОВ (ГАЛКИ ИЛИ ЖИВОЙ КРУЖОК С ЦИФРОЙ) */}

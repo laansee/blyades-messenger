@@ -121,6 +121,9 @@ export default function GroupProfileView({ currentChatUser, baseName, onEditTogg
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {groupMembers.map((member) => {
                 const isOwner = String(member.id) === String(currentChatUser.ownerId);
+                const isMe = String(member.id) === String(ctx?.currentUser?.id);
+                // Проверяем, являемся ли МЫ создателем (админом) этой конкретной беседы
+                const amIOwner = String(currentChatUser.ownerId) === String(ctx?.currentUser?.id);
                 
                 // Вычисляем, как отобразить имя участника по его правилам конфиденциальности
                 const useFullNameMode = member.privacyNameFormat === 'full_name' && shouldShowMemberFullName(member);
@@ -130,29 +133,64 @@ export default function GroupProfileView({ currentChatUser, baseName, onEditTogg
                   : member.username;
 
                 return (
-                  <div key={member.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '4px 0' }}>
-                    {member.avatarUrl ? (
-                      <img
-                        src={member.avatarUrl}
-                        alt="Avatar"
-                        style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}
-                      />
-                    ) : (
-                      <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: member.avatarColor || '#007aff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 'bold', fontSize: '13px' }}>
-                        {displayName.substring(0, 1).toUpperCase()}
+                  <div key={member.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '4px 0', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      {member.avatarUrl ? (
+                        <img
+                          src={member.avatarUrl}
+                          alt="Avatar"
+                          style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}
+                        />
+                      ) : (
+                        <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: member.avatarColor || '#007aff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 'bold', fontSize: '13px' }}>
+                          {displayName.substring(0, 1).toUpperCase()}
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ color: '#fff', fontSize: '14px', fontWeight: '500' }}>{displayName}</span>
+                        <span style={{ color: '#636366', fontSize: '12px' }}>
+                          @{member.uniqueId || member.username}
+                        </span>
                       </div>
-                    )}
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                      {/* Настоящее отображаемое имя */}
-                      <span style={{ color: '#fff', fontSize: '14px', fontWeight: '500' }}>{displayName}</span>
-                      {/* 🚀 ИСПРАВЛЕНИЕ: Выводим СТРОГО уникальный тег uniqueId с собачкой! */}
-                      <span style={{ color: '#636366', fontSize: '12px' }}>
-                        @{member.uniqueId || member.username}
-                      </span>
                     </div>
-                    {isOwner && (
-                      <span style={{ marginLeft: 'auto', fontSize: '10px', backgroundColor: 'rgba(255,204,0,0.1)', color: '#ffcc00', padding: '2px 8px', borderRadius: '10px', fontWeight: 'bold' }}>владелец</span>
-                    )}
+                    
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      {isOwner ? (
+                        <span style={{ fontSize: '10px', backgroundColor: 'rgba(255,204,0,0.1)', color: '#ffcc00', padding: '2px 8px', borderRadius: '10px', fontWeight: 'bold' }}>владелец</span>
+                      ) : (
+                        amIOwner && !isMe && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              ctx.showConfirm(
+                                'Исключение из беседы',
+                                `Вы действительно хотите исключить пользователя ${displayName} из беседы "${currentChatUser.name}"?`,
+                                async () => {
+                                  if (ctx.handleKickUserFromGroup) {
+                                    await ctx.handleKickUserFromGroup(currentChatUser.id, member.id);
+                                    // Локально вырезаем юзера из текущего стейта списка на экране для моментального отклика
+                                    setGroupMembers(prev => prev.filter(m => m.id !== member.id));
+                                    ctx.setConfirm((prev: any) => ({ ...prev, show: false }));
+                                  }
+                                },
+                                true
+                              );
+                            }}
+                            style={{
+                              background: 'none', border: 'none', color: '#ff453a', 
+                              fontSize: '12px', fontWeight: '600', cursor: 'pointer',
+                              padding: '2px 8px', borderRadius: '6px', backgroundColor: 'rgba(255, 69, 58, 0.05)',
+                              transition: 'all 0.15s ease', fontFamily: 'sans-serif'
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(255, 69, 58, 0.12)'}
+                            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'rgba(255, 69, 58, 0.05)'}
+                          >
+                            Исключить
+                          </button>
+                        )
+                      )}
+                    </div>
+
                   </div>
                 );
               })}

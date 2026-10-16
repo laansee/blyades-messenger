@@ -2,13 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import styles from '../../components/css/chat-window.module.css';
 import ContextMenu from '../../components/contextMenu';
 import useMessengerContext from '../../context/messengerContext';
-import { DropdownMenu } from '../../components/GlobalUI'; 
+import { DropdownMenu, AddParticipantsModal } from '../../components/GlobalUI'; 
 import { supabase } from '../../services/supabaseClient';
 import { renderUserStatusBadge } from '../../utils/statusBadge';
 import { Search, EllipsisVertical, X, Check, CheckCheck, Pencil, Paperclip, 
   Send, FaceSlightlySmiling, ArrowUp, ArrowDown, User, 
   BellOff, MessageSquare, Trash, Phone, Clock, 
-  Pin, PinOff } from 'lucide-react';
+  Pin, PinOff, 
+  Users} from 'lucide-react';
 
 function formatHoursAndMinutes(isoString: string | undefined): string {
   if (!isoString) return '';
@@ -30,6 +31,9 @@ export default function ChatWindow() {
   const previousChatIdRef = useRef<string | null>(null);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [existingUsers, setExistingUsers] = useState<string[]>([]);
 
   const currentChatUser = ctx.chats.find((c: any) => String(c.id) === String(ctx.activeChatId));
   const myId = String(ctx.currentUser?.id);
@@ -103,6 +107,7 @@ export default function ChatWindow() {
       if (isChatChanged) {
         messagesBodyRef.current.scrollTop = messagesBodyRef.current.scrollHeight;
         previousChatIdRef.current = ctx.activeChatId;
+        setShowScrollBtn(false); 
 
         if (messageInputRef.current) {
           messageInputRef.current.focus();
@@ -162,6 +167,99 @@ export default function ChatWindow() {
     e.stopPropagation();
     setShowMenu((prev) => !prev);
   };
+
+  const isCurrentChatGroup = currentChatUser?.isGroup || String(ctx.activeChatId).startsWith('group_');
+
+  const headerDropdownItems = isCurrentChatGroup 
+    ? [
+        // 👥 НАБОР ОПЦИЙ ДЛЯ ГРУППОВОЙ БЕСЕДЫ
+        {
+          id: 'group-info',
+          text: 'Добавить участников', // 🎯 Сделали кнопку явным действием приглашения
+          icon: Users,
+          onClick: async () => {
+            // Перед открытием запрашиваем из базы список тех, кто УЖЕ в этой группе
+            const { data } = await supabase.from('group_members').select('userId').eq('chatId', partnerId);
+            if (data) {
+              setExistingUsers(data.map(m => String(m.userId)));
+            }
+            setShowAddModal(true); // 👥 Открываем окно!
+          }
+        },
+        {
+          id: 'group-info',
+          text: 'Информация о беседе',
+          icon: Users, // Передаем иконку из lucide-react напрямую
+          onClick: () => ctx.setShowUserModal(true)
+        },
+        { id: 'to-top', text: 'Наверх', icon: ArrowUp, isSeparatorBefore: true, onClick: scrollInToTop },
+        {
+          id: 'leave-group',
+          text: String(currentChatUser?.ownerId) === myId ? 'Удалить беседу' : 'Покинуть беседу',
+          danger: true,
+          icon: Trash,
+          onClick: () => {
+            const isOwner = String(currentChatUser?.ownerId) === myId;
+            ctx.showConfirm(
+              isOwner ? 'Удаление беседы' : 'Выход из беседы',
+              isOwner 
+                ? `Вы являетесь создателем беседы "${currentChatUser?.name || ''}". Удаление полностью сотрет чат и историю сообщений у ВСЕХ участников насовсем. Продолжить?`
+                : `Вы действительно хотите покинуть беседу "${currentChatUser?.name || ''}"?`,
+              async () => {
+                if (ctx.handleLeaveOrDeleteGroup) {
+                  await ctx.handleLeaveOrDeleteGroup(partnerId, currentChatUser?.ownerId);
+                }
+              },
+              true
+            );
+          }
+        }
+      ]
+    : [
+        // 👤 НАБОР ОПЦИЙ ДЛЯ ЛИЧНОГО ЧАТА С ПОЛЬЗОВАТЕЛЕМ
+        { 
+          id: 'notifications', 
+          text: 'Выключить уведомления (заглушка)', 
+          icon: BellOff, 
+          onClick: scrollInToTop
+        },
+        { 
+          id: 'pin-chat', 
+          text: 'Закрепить переписку (заглушка)', 
+          icon: Pin, 
+          onClick: scrollInToTop},
+        {
+          id: 'profile',
+          text: 'Профиль пользователя',
+          icon: User,
+          onClick: () => ctx.setShowUserModal(true)
+        },
+        { id: 'to-top', text: 'Наверх', icon: ArrowUp, isSeparatorBefore: true, onClick: scrollInToTop },
+        { 
+          id: 'delete-chat', 
+          text: 'Удалить чат', 
+          icon: Trash, 
+          danger: true,
+          onClick: () => {
+            ctx.showConfirm(
+              'Удаление чата', 
+              `Вы действительно хотите полностью удалить чат с пользователем ${currentChatUser?.name || ''}? Это действие сотрет всю историю переписки у обоих участников насовсем.`, 
+              async () => {
+                const currentRoomId = Number(myId) < Number(partnerId) ? `${myId}_${partnerId}` : `${partnerId}_${myId}`;
+                const { error } = await supabase.from('messages').delete().eq('chatId', currentRoomId);
+                if (error) {
+                  ctx.showToast('Не удалось очистить чат', 'error');
+                  return;
+                }
+                ctx.setAllMessages((prev: any[]) => prev.filter(m => m.chatId !== currentRoomId));
+                ctx.setActiveChatId(null);
+                ctx.showToast('Чат успешно удален', 'success');
+              },
+              true
+            );
+          }
+        }
+      ];
 
   return (
     <main className={styles['chat-window']}>
@@ -225,44 +323,7 @@ export default function ChatWindow() {
               show={showMenu} 
               onClose={() => setShowMenu(false)} 
               x={0} y={0}
-              items={[
-                { id: 'notifications', text: 'Выключить уведомления (заглушка)', icon: BellOff, onClick: scrollInToTop},
-                { id: 'pin-chat', text: 'Закрепить переписку (заглушка)', icon: Pin, onClick: scrollInToTop},
-                { id: 'profile', text: 'Профиль пользователя', icon: User, onClick: () => ctx.setShowUserModal(true) },
-                { id: 'to-top', text: 'Наверх', icon: ArrowUp,
-                  isSeparatorBefore: true, onClick: scrollInToTop },
-                { 
-                  id: 'delete-chat', 
-                  text: 'Удалить чат', 
-                  icon: Trash, 
-                  danger: true,
-                  onClick: () => {
-                    ctx.showConfirm(
-                      'Удаление чата', 
-                      `Вы действительно хотите полностью удалить чат с пользователем ${currentChatUser?.name || ''}? Это действие сотрет всю историю переписки у обоих участников насовсем.`, 
-                      async () => {
-                        const currentRoomId = Number(myId) < Number(partnerId) ? `${myId}_${partnerId}` : `${partnerId}_${myId}`;
-                        
-                        const { error } = await supabase
-                          .from('messages')
-                          .delete()
-                          .eq('chatId', currentRoomId);
-
-                        if (error) {
-                          ctx.showToast('Не удалось очистить чат', 'error');
-                          console.error(error.message);
-                          return;
-                        }
-
-                        ctx.setAllMessages((prev: any[]) => prev.filter(m => m.chatId !== currentRoomId));
-                        ctx.setActiveChatId(null);
-                        ctx.showToast('Чат успешно удален', 'success');
-                      },
-                      true
-                    );
-                  }
-                }
-              ]} 
+              items={headerDropdownItems} 
             />
           </div>
           <button 
@@ -362,8 +423,19 @@ export default function ChatWindow() {
                   const senderNameColor = senderUserObj ? senderUserObj.nameColor : '#007aff';
 
                   // Умное скрытие аватарок: показываем аватарку только если предыдущее сообщение было написано ДРУГИМ человеком
-                  const isFirstInRow = index === 0 || displayedMessages[index - 1].senderId !== msg.senderId || displayedMessages[index - 1].senderId === 'system';
+                  const isFirstInRow = (() => {
+                    if (index === 0) return true;
+                    
+                    const prevMsg = displayedMessages[index - 1];
+                    if (prevMsg.senderId === 'system' || prevMsg.senderId !== msg.senderId) return true;
 
+                    // 🎯 ФИКС СМЕНЫ ДАТ: Проверяем, не разделила ли сообщения новая дата
+                    const currentMsgDate = new Date(msg.createdAt).toLocaleDateString('ru-RU');
+                    const prevMsgDate = new Date(prevMsg.createdAt).toLocaleDateString('ru-RU');
+                    
+                    return currentMsgDate !== prevMsgDate;
+                  })();
+                  
                   const messageBubbleContent = (
                     <div 
                       className={`${styles.message} ${isMyMsg ? styles['message-outgoing'] : styles['message-incoming']}`}
@@ -517,7 +589,23 @@ export default function ChatWindow() {
         <button type="submit" className={styles['send-message-btn']}><Send color='#aaa8a8'/></button>
       </form>
 
-      <ContextMenu show={ctx.ctxMenu.show} x={ctx.ctxMenu.x} y={ctx.ctxMenu.y} onClose={ctx.closeContextMenu} items={ctx.ctxMenu.items} />
+      <ContextMenu 
+        show={ctx.ctxMenu.show} 
+        x={ctx.ctxMenu.x} 
+        y={ctx.ctxMenu.y} 
+        onClose={ctx.closeContextMenu} 
+        items={ctx.ctxMenu.items} 
+      />
+      <AddParticipantsModal
+       show={showAddModal}
+       existingUserIds={existingUsers}
+       onClose={() => setShowAddModal(false)}
+       onAdd={async (selectedIds) => {
+         if (ctx.handleAddUsersToGroup) {
+           await ctx.handleAddUsersToGroup(partnerId, selectedIds);
+         }
+       }}
+     />
     </main>
   );
 }

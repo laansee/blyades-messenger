@@ -1174,3 +1174,135 @@ export function NameColorSelectorModal({
     document.body
   );
 }
+
+// ========================================================
+// 👥 11. МОДАЛКА ДОБАВЛЕНИЯ УЧАСТНИКОВ В БЕСЕДУ (AddParticipantsModal)
+// ========================================================
+interface AddParticipantsModalProps {
+  show: boolean;
+  existingUserIds: string[]; // Массив ID тех, кто уже состоит в этой беседе
+  onClose: () => void;
+  onAdd: (selectedIds: string[]) => Promise<void>;
+}
+
+export function AddParticipantsModal({ show, existingUserIds, onClose, onAdd }: AddParticipantsModalProps) {
+  const ctx = useMessengerContext();
+  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Сбрасываем выбор при открытии окна
+  useEffect(() => {
+    if (show) {
+      setSelectedUsers([]);
+      setIsSaving(false);
+    }
+  }, [show]);
+
+  if (!show) return null;
+
+  const toggleUserSelection = (userId: string) => {
+    setSelectedUsers(prev =>
+      prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
+    );
+  };
+
+  const handleAddSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedUsers.length === 0) return;
+    setIsSaving(true);
+    try {
+      await onAdd(selectedUsers);
+      onClose();
+    } catch (err) {
+      console.error('Ошибка при добавлении участников:', err);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // 🚀 УМНЫЙ ФИЛЬТР: Оставляем только реальных пользователей-контактов, которых ЕЩЁ НЕТ в этой группе!
+  const availableContacts = ctx.chats.filter((c: any) => {
+    const isRealUser = c.uniqueId && c.uniqueId.trim() !== '';
+    const isNotGroup = !c.isGroup;
+    const isAlreadyInGroup = existingUserIds.map(String).includes(String(c.id));
+    
+    return isRealUser && isNotGroup && !isAlreadyInGroup;
+  });
+
+  return createPortal(
+    <div 
+      onClick={onClose} 
+      style={{ 
+        position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+        backgroundColor: 'rgba(0, 0, 0, 0.7)', backdropFilter: 'blur(4px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999999 
+      }}
+    >
+      <div 
+        onClick={e => e.stopPropagation()} 
+        style={{ 
+          backgroundColor: '#23232e', border: '1px solid #383842', padding: '24px', 
+          borderRadius: '16px', width: '100%', maxWidth: '360px', display: 'flex', 
+          flexDirection: 'column', gap: '20px', boxShadow: '0 16px 40px rgba(0,0,0,0.5)', 
+          color: '#fff', fontFamily: 'sans-serif',
+          animation: 'scaleInCard 0.18s cubic-bezier(0.34, 1.56, 0.64, 1) forwards'
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+          <h3 style={{ fontSize: '18px', margin: 0, fontWeight: '700' }}>Добавить в беседу</h3>
+          <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', color: '#8e8e93', cursor: 'pointer', fontSize: '20px' }}>×</button>
+        </div>
+
+        <form onSubmit={handleAddSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <label style={{ fontSize: '12px', color: '#9ca3af', fontWeight: 'bold', textTransform: 'uppercase' }}>
+              Выберите контакты ({selectedUsers.length})
+            </label>
+            
+            <div style={{ maxHeight: '200px', overflowY: 'auto', backgroundColor: '#18181e', border: '1px solid #2b2d31', borderRadius: '8px', padding: '6px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              {availableContacts.length === 0 ? (
+                <div style={{ color: '#636366', fontSize: '13px', textAlign: 'center', padding: '20px' }}>
+                  Все ваши доступные контакты уже добавлены в эту беседу
+                </div>
+              ) : (
+                availableContacts.map((user: any) => {
+                  const isChecked = selectedUsers.includes(user.id);
+                  return (
+                    <div 
+                      key={user.id} 
+                      onClick={() => toggleUserSelection(user.id)}
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px', borderRadius: '6px', cursor: 'pointer', backgroundColor: isChecked ? 'rgba(157, 123, 246, 0.08)' : 'transparent', transition: 'background-color 0.15s ease' }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: user.avatarColor, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 'bold', fontSize: '12px' }}>
+                          {user.name ? user.name.substring(0, 1).toUpperCase() : 'U'}
+                        </div>
+                        <span style={{ color: isChecked ? '#fff' : '#dbdee1', fontSize: '14px', fontWeight: isChecked ? '600' : '500' }}>
+                          {user.name || user.username}
+                        </span>
+                      </div>
+                      
+                      <div style={{ width: '20px', height: '20px', borderRadius: '50%', border: isChecked ? 'none' : '2px solid #3a3a3c', backgroundColor: isChecked ? '#9d7bf6' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s ease' }}>
+                        {isChecked && <span style={{ color: '#fff', fontSize: '10px', fontWeight: 'bold' }}>✓</span>}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '16px', borderTop: '1px solid #383842', paddingTop: '14px', marginTop: '4px' }}>
+            <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', color: '#b0b0b8', cursor: 'pointer', fontSize: '14px', fontWeight: '600' }}>
+              Отмена
+            </button>
+            <button type="submit" disabled={selectedUsers.length === 0 || isSaving} style={{ background: 'none', border: 'none', color: selectedUsers.length === 0 ? '#4e4e5a' : '#9d7bf6', cursor: selectedUsers.length === 0 ? 'not-allowed' : 'pointer', fontSize: '14px', fontWeight: '700' }}>
+              {isSaving ? 'Добавление...' : 'Добавить'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>,
+    document.body
+  );
+}

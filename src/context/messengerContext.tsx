@@ -123,94 +123,92 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
     fetchHistory();
   }, []);
 
-  // 👥 2 & 4. МОНОЛИТНАЯ И БЕЗОШИБОЧНАЯ СБОРКА САЙДБАРА (ЛИЧНЫЕ ЧАТЫ + БЕСЕДЫ)
-  useEffect(() => {
+
+  const fetchAndMatchChats = React.useCallback(async () => {
     if (!currentUser) return;
+    const myId = String(currentUser.id);
 
-    const fetchAndMatchChats = async () => {
-      const myId = String(currentUser.id);
+    const { data: myContacts } = await supabase.from('contacts').select('*').eq('userId', myId);
+    const { data: allUsers } = await supabase.from('users').select('*');
+    const { data: myGroupMemberships } = await supabase.from('group_members').select('chatId').eq('userId', myId);
 
-      const { data: myContacts } = await supabase.from('contacts').select('*').eq('userId', myId);
-      const { data: allUsers } = await supabase.from('users').select('*');
-      const { data: myGroupMemberships } = await supabase.from('group_members').select('chatId').eq('userId', myId);
+    const joinedGroupIds = myGroupMemberships ? myGroupMemberships.map(m => m.chatId) : [];
 
-      const joinedGroupIds = myGroupMemberships ? myGroupMemberships.map(m => m.chatId) : [];
+    let activeGroups: any[] = [];
+    if (joinedGroupIds.length > 0) {
+      const { data: groupsData } = await supabase.from('group_chats').select('*').in('id', joinedGroupIds);
+      if (groupsData) activeGroups = groupsData;
+    }
 
-      let activeGroups: any[] = [];
-      if (joinedGroupIds.length > 0) {
-        const { data: groupsData } = await supabase.from('group_chats').select('*').in('id', joinedGroupIds);
-        if (groupsData) activeGroups = groupsData;
-      }
+    if (allUsers) {
+      // А. Форматируем личные чаты
+      const formattedPersonalChats = allUsers
+        .filter((u: any) => String(u.id).trim() !== myId.trim())
+        .map((u: any) => {
+          const contactMeta = myContacts?.find((c: any) => String(c.contactId).trim() === String(u.id).trim());
+          const isContact = !!contactMeta;
 
-      if (allUsers) {
-        // А. Форматируем личные чаты
-        const formattedPersonalChats = allUsers
-          .filter((u: any) => String(u.id).trim() !== myId.trim())
-          .map((u: any) => {
-            const contactMeta = myContacts?.find((c: any) => String(c.contactId).trim() === String(u.id).trim());
-            const isContact = !!contactMeta;
+          let calculatedName = u.username;
+          if (isContact) {
+            calculatedName = `${contactMeta.firstName || ''} ${contactMeta.lastName || ''}`.trim() || u.username;
+          } else if (u.privacyNameFormat === 'full_name' && (u.firstName || u.lastName)) {
+            calculatedName = `${u.firstName || ''} ${u.lastName || ''}`.trim();
+          }
 
-            let calculatedName = u.username;
-            if (isContact) {
-              calculatedName = `${contactMeta.firstName || ''} ${contactMeta.lastName || ''}`.trim() || u.username;
-            } else if (u.privacyNameFormat === 'full_name' && (u.firstName || u.lastName)) {
-              calculatedName = `${u.firstName || ''} ${u.lastName || ''}`.trim();
-            }
-
-            const partnerId = String(u.id);
-            const roomName = Number(myId) < Number(partnerId) ? `${myId}_${partnerId}` : `${partnerId}_${myId}`;
-            const roomMessages = allMessages.filter(m => m.chatId === roomName);
-            const lastMsg = roomMessages[roomMessages.length - 1];
-
-            return {
-              id: String(u.id),
-              username: u.username,
-              uniqueId: u.uniqueId,
-              name: calculatedName,
-              nameColor: u.nameColor || '#007aff',
-              avatarColor: u.avatarColor || '#007aff',
-              avatarUrl: u.avatarUrl,
-              isContact: isContact,
-              isGroup: false,
-              phone: u.phone || '',
-              email: u.email || '',
-              firstName: u.firstName || '',
-              lastName: u.lastName || '',
-              privacyPhone: u.privacyPhone || 'all',
-              privacyEmail: u.privacyEmail || 'all',
-              privacyOnline: u.privacyOnline || 'all',
-              privacyNameFormat: u.privacyNameFormat || 'username',
-              privacyFullName: u.privacyFullName || 'all',
-              lastMessage: lastMsg ? lastMsg.text : 'Нет сообщений',
-              lastMessageTime: lastMsg ? new Date(lastMsg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''
-            };
-          });
-
-        // Б. 👥 Форматируем групповые чаты (беседы) С ЖЕЛЕЗНЫМ ВЫЧИСЛЕНИЕМ КОМНАТЫ
-        const formattedGroupChats = activeGroups.map((g: any) => {
-          const roomMessages = allMessages.filter(m => m.chatId === g.id);
+          const partnerId = String(u.id);
+          const roomName = Number(myId) < Number(partnerId) ? `${myId}_${partnerId}` : `${partnerId}_${myId}`;
+          const roomMessages = allMessages.filter(m => m.chatId === roomName);
           const lastMsg = roomMessages[roomMessages.length - 1];
 
           return {
-            id: g.id, 
-            name: g.name, 
-            avatarColor: g.avatarColor || '#5865F2',
-            isGroup: true, 
-            ownerId: g.ownerId,
+            id: String(u.id),
+            username: u.username,
+            uniqueId: u.uniqueId,
+            name: calculatedName,
+            nameColor: u.nameColor || '#007aff',
+            avatarColor: u.avatarColor || '#007aff',
+            avatarUrl: u.avatarUrl,
+            isContact: isContact,
+            isGroup: false,
+            phone: u.phone || '',
+            email: u.email || '',
+            firstName: u.firstName || '',
+            lastName: u.lastName || '',
+            privacyPhone: u.privacyPhone || 'all',
+            privacyEmail: u.privacyEmail || 'all',
+            privacyOnline: u.privacyOnline || 'all',
+            privacyNameFormat: u.privacyNameFormat || 'username',
+            privacyFullName: u.privacyFullName || 'all',
             lastMessage: lastMsg ? lastMsg.text : 'Нет сообщений',
             lastMessageTime: lastMsg ? new Date(lastMsg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''
           };
         });
 
-        setChats([...formattedPersonalChats, ...formattedGroupChats]);
-        setChatsLoading(false);
-      } else {
-        setChatsLoading(false);
-      }
-    };
+      // Б. 👥 Форматируем групповые чаты (беседы) С ЖЕЛЕЗНЫМ ВЫЧИСЛЕНИЕМ КОМНАТЫ
+      const formattedGroupChats = activeGroups.map((g: any) => {
+        const roomMessages = allMessages.filter(m => m.chatId === g.id);
+        const lastMsg = roomMessages[roomMessages.length - 1];
 
-    fetchAndMatchChats();
+        return {
+          id: g.id, 
+          name: g.name, 
+          avatarColor: g.avatarColor || '#5865F2',
+          isGroup: true, 
+          ownerId: g.ownerId,
+          lastMessage: lastMsg ? lastMsg.text : 'Нет сообщений',
+          lastMessageTime: lastMsg ? new Date(lastMsg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''
+        };
+      });
+
+      setChats([...formattedPersonalChats, ...formattedGroupChats]);
+      setChatsLoading(false);
+    } else {
+      setChatsLoading(false);
+    }
   }, [currentUser, allMessages]);
+
+  // 👥 2 & 4. МОНОЛИТНАЯ И БЕЗОШИБОЧНАЯ СБОРКА САЙДБАРА (ЛИЧНЫЕ ЧАТЫ + БЕСЕДЫ)
+  useEffect(() => {fetchAndMatchChats();}, [fetchAndMatchChats]);
 
   // 🚀 УМНАЯ ОТПРАВКА: Автоматически разделяет создание нового текста и РЕДАКТИРОВАНИЕ старого!
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -297,6 +295,217 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const handleAddUsersToGroup = async (groupId: string, userIds: string[]) => {
+    if (!currentUser || !groupId || userIds.length === 0) return;
+
+    try {
+      showToast('Добавление участников...', 'info');
+
+      // 1. Формируем массив объектов для вставки в связующую таблицу group_members
+      const rowsToInsert = userIds.map(id => ({
+        chatId: groupId,
+        userId: String(id)
+      }));
+
+      const { error: insertErr } = await supabase
+        .from('group_members')
+        .insert(rowsToInsert);
+
+      if (insertErr) throw insertErr;
+
+      // 2. Вычисляем красивые приватные имена для системного уведомления в чате
+      const { data: userData } = await supabase
+        .from('users')
+        .select('*')
+        .in('id', userIds);      
+
+      const showFullName = currentUser?.privacyNameFormat === 'full_name';
+      const hasNamesFilled = (currentUser?.firstName && currentUser.firstName.trim() !== '') || 
+                              (currentUser?.lastName && currentUser.lastName.trim() !== '');
+
+      const inviterName = (showFullName && hasNamesFilled)
+        ? `${currentUser?.firstName || ''} ${currentUser?.lastName || ''}`.trim()
+        : (currentUser?.username && currentUser.username.trim() !== '' ? currentUser.username : `@${currentUser?.uniqueId}`);
+
+      
+      // Перебираем добавленных людей и шлём системные бабблы по центру
+      if (userData) {
+        for (const user of userData) {
+          const showFullName = user.privacyNameFormat === 'full_name';
+          const hasNamesFilled = (user.firstName && user.firstName.trim() !== '') || 
+                                 (user.lastName && user.lastName.trim() !== '');
+
+          const invitedName = (showFullName && hasNamesFilled)
+            ? `${user.firstName || ''} ${user.lastName || ''}`.trim()
+            : (user.username && user.username.trim() !== '' ? user.username : `@${user.uniqueId}`);
+
+          await supabase.from('messages').insert({
+            chatId: groupId,
+            senderId: 'system',
+            text: `<b>${inviterName}</b> пригласил(а) <b>${invitedName}</b> в беседу`,
+            status: 'send'
+          });
+        }
+      }
+
+      showToast('Участники успешно добавлены! 👥', 'success');
+
+      // 3. Реактивно обновляем сайдбары, чтобы пересчитать счётчики
+      if (fetchAndMatchChats) {
+        await fetchAndMatchChats();
+      }
+
+    } catch (err: any) {
+      console.error('Ошибка добавления участников:', err);
+      showToast(`Не удалось пригласить: ${err.message}`, 'error');
+    }
+  };
+
+  const handleLeaveOrDeleteGroup = async (groupId: string, ownerId: string) => {
+    if (!currentUser || !groupId) return;
+    const myIdStr = String(currentUser.id);
+    const isOwner = String(ownerId) === myIdStr;
+
+    try {
+      if (isOwner) {
+        // --- СЦЕНАРИЙ А: ВЛАДЕЛЕЦ УДАЛЯЕТ БЕСЕДУ ДЛЯ ВСЕХ ---
+        showToast('Удаление беседы со всеми данными...', 'info');
+
+        // 1. Выжигаем все сообщения этой комнаты
+        const { error: msgErr } = await supabase
+          .from('messages')
+          .delete()
+          .eq('chatId', groupId);
+        if (msgErr) throw msgErr;
+
+        // 2. Очищаем список участников в связующей таблице
+        const { error: partErr } = await supabase
+          .from('group_members')
+          .delete()
+          .eq('chatId', groupId);
+        if (partErr) throw partErr;
+
+        // 3. Удаляем саму комнату чата
+        const { error: chatErr } = await supabase
+          .from('group_chats')
+          .delete()
+          .eq('id', groupId);
+        if (chatErr) throw chatErr;
+
+        // Удаляем локально из стейта переписки
+        setAllMessages((prev: any[]) => prev.filter(m => m.chatId !== groupId));
+        showToast('Беседа успешно удалена для всех участников! 🗑️', 'success');
+
+      } else {
+        // --- СЦЕНАРИЙ Б: ОБЫЧНЫЙ ЮЗЕР ПРОСТО ПОКИДАЕТ ЧАТ ---
+        showToast('Выход из беседы...', 'info');
+
+        // 1. Удаляем строчку связи текущего пользователя с этой группой
+        const { error: partErr } = await supabase
+          .from('group_members')
+          .delete()
+          .eq('chatId', groupId)
+          .eq('userId', myIdStr);
+        if (partErr) throw partErr;
+
+        const showFullName = currentUser?.privacyNameFormat === 'full_name';
+        const hasNamesFilled = (currentUser?.firstName && currentUser.firstName.trim() !== '') || 
+                               (currentUser?.lastName && currentUser.lastName.trim() !== '');
+
+        const systemDisplayName = (showFullName && hasNamesFilled)
+          ? `${currentUser?.firstName || ''} ${currentUser?.lastName || ''}`.trim()
+          : (currentUser?.username && currentUser.username.trim() !== '' ? currentUser.username : `@${currentUser?.uniqueId}`);
+
+        const { error: sysMsgErr } = await supabase
+          .from('messages')
+          .insert({
+            chatId: groupId,
+            senderId: 'system', // Твой системный тег рендера по центру
+            text: `<b>${systemDisplayName}</b> покинул(а) беседу`,
+            status: 'send',
+            createdAt: new Date().toISOString()
+          });
+        if (sysMsgErr) throw sysMsgErr;
+
+        showToast('Вы успешно покинули беседу! 🚪', 'success');
+      }
+
+      // Общий финал: сбрасываем активный чат на заглушку
+      setActiveChatId(null);
+      
+      // Перезапрашиваем актуальный список чатов с сервера
+      if (fetchAndMatchChats) {
+        await fetchAndMatchChats();
+      }
+
+    } catch (err: any) {
+      console.error('Ошибка при выходе/удалении беседы:', err);
+      showToast(`Не удалось выполнить действие: ${err.message}`, 'error');
+    }
+  };
+
+  const handleKickUserFromGroup = async (groupId: string, targetUserId: string) => {
+    if (!currentUser || !groupId || !targetUserId) return;
+
+    try {
+      showToast('Исключение участника...', 'info');
+
+      // 1. Удаляем запись из таблицы group_members
+      const { error: deleteErr } = await supabase
+        .from('group_members')
+        .delete()
+        .eq('chatId', groupId)
+        .eq('userId', String(targetUserId));
+
+      if (deleteErr) throw deleteErr;
+
+      // 2. Получаем имя исключённого для системного сообщения
+      const { data: targetUser } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', targetUserId)
+        .single();
+
+      const showFullName = currentUser?.privacyNameFormat === 'full_name';
+      const hasNamesFilled = (currentUser?.firstName && currentUser.firstName.trim() !== '') || 
+                              (currentUser?.lastName && currentUser.lastName.trim() !== '');
+
+      const adminName = (showFullName && hasNamesFilled)
+        ? `${currentUser?.firstName || ''} ${currentUser?.lastName || ''}`.trim()
+        : (currentUser?.username && currentUser.username.trim() !== '' ? currentUser.username : `@${currentUser?.uniqueId}`);
+      
+      if (targetUser) {
+        const showFullName = targetUser.privacyNameFormat === 'full_name';
+        const hasNamesFilled = (targetUser.firstName && targetUser.firstName.trim() !== '') || 
+                               (targetUser.lastName && targetUser.lastName.trim() !== '');
+
+        const kickedName = (showFullName && hasNamesFilled)
+          ? `${targetUser.firstName || ''} ${targetUser.lastName || ''}`.trim()
+          : (targetUser.username && targetUser.username.trim() !== '' ? targetUser.username : `@${targetUser.uniqueId}`);
+
+        // Шлём системный баббл по центру
+        await supabase.from('messages').insert({
+          chatId: groupId,
+          senderId: 'system',
+          text: `<b>${adminName}</b> исключил(а) <b>${kickedName}</b> из беседы`,
+          status: 'send'
+        });
+      }
+
+      showToast('Пользователь исключён из беседы! 🚪', 'success');
+
+      // 3. Реактивно обновляем список чатов
+      if (fetchAndMatchChats) {
+        await fetchAndMatchChats();
+      }
+
+    } catch (err: any) {
+      console.error('Ошибка при исключении участника:', err);
+      showToast(`Не удалось исключить: ${err.message}`, 'error');
+    }
+  };
+
+
   const handleLogout = () => {
     localStorage.removeItem('blyades_user_id');
     window.location.reload();
@@ -333,7 +542,9 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
         handleStartAudioCall: calls.handleStartAudioCall,
         handleAcceptCall: calls.handleAcceptCall,
         handleHangUp: calls.handleHangUp,
-        handleCreateGroupChat: groups.handleCreateGroupChat
+        handleCreateGroupChat: groups.handleCreateGroupChat,
+        handleLeaveOrDeleteGroup, handleAddUsersToGroup,
+        handleKickUserFromGroup
       }}
     >
       {children}
