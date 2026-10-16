@@ -33,7 +33,7 @@ export default function LandingPage() {
       </header>
 
       {/* 🚀 Главный блок (Hero Section) */}
-      <main style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', flex: 1, justifyContent: 'center', padding: '40px 24px', zIndex: 10, maxWidth: '800px', gap: '24px' }}>
+      <main style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', flex: 1, justifyContent: 'center', zIndex: 10, maxWidth: '965px', gap: '20px' }}>
         
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', backgroundColor: '#1e1f22', border: '1px solid #2b2d31', padding: '8px 16px', borderRadius: '20px', fontSize: '13px', color: '#2ec761', fontWeight: 600 }}>
           <Radio size={14} className="blink-anim" /> Релиз версии v1.48.8
@@ -44,7 +44,7 @@ export default function LandingPage() {
           <span style={{ background: 'linear-gradient(135deg, #ff453a 30%, #ff9f0a 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>НЕЙРОНКУ.</span>
         </h1>
 
-        <p style={{ fontSize: 'clamp(16px, 3vw, 20px)', color: '#9ca3af', maxWidth: '640px', margin: 0, lineHeight: 1.5 }}>
+        <p style={{ fontSize: 'clamp(16px, 3vw, 20px)', color: '#9ca3af', maxWidth: '734px', margin: 0, lineHeight: 1.5 }}>
           У нашей хуйни, пока ты читаешь этот текст, по-любому <b>УЖЕ</b> что-то отвалилось нахуй.
           Встречай <strong>Blyades Messenger</strong> — монолитный кусок говна на чистом энтузиазме без знаний нужных знаний языков и тупости автора.
         </p>
