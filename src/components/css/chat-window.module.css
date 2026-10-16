@@ -35,8 +35,8 @@
   line-clamp: 1;
   -webkit-box-orient: vertical;}
 
-.user-status.online {color: #00cc66; font-size: 12px;}
-.user-status.offline {color: #666666; font-size: 12px;}
+.user-status {color: #666666; font-size: 12px;}
+.user-status.online {color: #00cc66;}
 .chat-header-actions {display: flex; gap: 10px; }
 .header-btn {background: none; border: none; font-size: 18px; cursor: pointer; color: #a0a0ab; }
 
