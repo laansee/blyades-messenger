@@ -184,6 +184,7 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
             nameColor: u.nameColor || '#007aff',
             avatarColor: u.avatarColor || '#007aff',
             avatarUrl: u.avatarUrl,
+            updatedAt: u.updatedAt, 
             isContact: isContact,
             isGroup: false,
             phone: u.phone || '',
@@ -600,49 +601,64 @@ export default function useMessengerContext() {
 }
 
 // 🚀 УМНЫЙ ПАРСЕР ОНЛАЙНА: Вычисляет точное время визита по канонам Telegram Premium
-export function formatUserOnlineStatus(updatedAtString: string | undefined, privacyOnline: string = 'all'): string {
-  if (!updatedAtString || privacyOnline === 'none') return 'был(а) недавно';
+export function formatUserOnlineStatus(updatedAtString: string | undefined, privacyOnline: string = 'all'): { text: string, isOnline: boolean } {
+  const defaultRes = { text: 'был(а) недавно', isOnline: false };
+  if (!updatedAtString || privacyOnline === 'none') return defaultRes;
   
   try {
     const lastSeen = new Date(updatedAtString);
     const now = new Date();
+    
     const diffMs = now.getTime() - lastSeen.getTime();
     const diffMins = Math.floor(diffMs / 1000 / 60);
+    const safeMins = diffMins < 0 ? 0 : diffMins;
 
-    // 🎯 ШАГ 1: Если активность была меньше минуты назад — пользователь железно в сети!
-    if (diffMins < 1) return 'в сети';
+    if (safeMins < 1) return { text: 'в сети', isOnline: true };
 
-    // Если выставлена приватность "Только контакты", а логики проверки связи здесь нет,
-    // можно вернуть базовый расчет, но если юзер скрыл онлайн полностью, отсечка сработает выше.
-    if (diffMins < 60) {
-      // Склонение минут
-      const minsWord = diffMins % 10 === 1 && diffMins % 100 !== 11 
-        ? 'минуту' 
-        : [2, 3, 4].includes(diffMins % 10) && ![12, 13, 14].includes(diffMins % 100)
-        ? 'минуты' 
+    const hoursStr = String(lastSeen.getHours()).padStart(2, '0');
+    const minsStr = String(lastSeen.getMinutes()).padStart(2, '0');
+
+    // ШАГ 2: Меньше часа — рассчитываем минуты визита
+    if (safeMins < 60) {
+      const lastDigit = safeMins % 10;
+      const lastTwoDigits = safeMins % 100;
+      
+      const minsWord = (lastDigit === 1 && lastTwoDigits !== 11)
+        ? 'минуту'
+        : ([2, 3, 4].includes(lastDigit) && ![12, 13, 14].includes(lastTwoDigits))
+        ? 'минуты'
         : 'минут';
-      return `был(а) в сети ${diffMins} ${minsWord} назад`;
+        
+      return { text: `был(а) ${safeMins} ${minsWord} назад`, isOnline: false };
     }
 
-    const diffHours = Math.floor(diffMins / 60);
-    if (diffHours < 24 && lastSeen.getDate() === now.getDate()) {
-      const hoursStr = String(lastSeen.getHours()).padStart(2, '0');
-      const minsStr = String(lastSeen.getMinutes()).padStart(2, '0');
-      return `был(а) в сети сегодня в ${hoursStr}:${minsStr}`;
+    const diffHours = Math.floor(safeMins / 60);
+
+    // 🎯 3. Сегодня в ...
+    if (diffHours < 24 && lastSeen.getDate() === now.getDate() && lastSeen.getMonth() === now.getMonth() && lastSeen.getFullYear() === now.getFullYear()) {
+      return { text: `был(а) сегодня в ${hoursStr}:${minsStr}`, isOnline: false };
     }
 
-    // Если был вчера
+    // 🎯 4. Вчера в ...
     const yesterday = new Date();
     yesterday.setDate(now.getDate() - 1);
     if (lastSeen.getDate() === yesterday.getDate() && lastSeen.getMonth() === yesterday.getMonth() && lastSeen.getFullYear() === yesterday.getFullYear()) {
-      const hoursStr = String(lastSeen.getHours()).padStart(2, '0');
-      const minsStr = String(lastSeen.getMinutes()).padStart(2, '0');
-      return `был(а) в сети вчера в ${hoursStr}:${minsStr}`;
+      return { text: `был(а) вчера в ${hoursStr}:${minsStr}`, isOnline: false };
     }
 
-    // Более старый визит
-    return `был(а) в сети ${lastSeen.toLocaleDateString('ru-RU')} в ${String(lastSeen.getHours()).padStart(2, '0')}:${String(lastSeen.getMinutes()).padStart(2, '0')}`;
+    // 🎯 5. Более старый визит (В этом или прошлом году)
+    const isCurrentYear = lastSeen.getFullYear() === now.getFullYear();
+    
+    if (isCurrentYear) {
+      // Если в этом году — выводим строго "22 апреля" или "7 октября"
+      const dayAndMonth = lastSeen.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+      return { text: `был(а) ${dayAndMonth}`, isOnline: false };
+    } else {
+      // Если год прошлый — выводим полную дату "19.09.2025" без времени
+      return { text: `был(а) ${lastSeen.toLocaleDateString('ru-RU')}`, isOnline: false };
+    }
   } catch (e) {
-    return 'был(а) недавно ZZZ';
+    console.error('Ошибка парсинга онлайна:', e);
+    return defaultRes;
   }
 }
