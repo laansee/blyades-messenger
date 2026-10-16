@@ -108,6 +108,19 @@
   justify-content: center; 
   font-weight: bold; 
   font-size: 18px;}
+.chat-avatar-online {
+  position: absolute;
+  bottom: 0px;
+  right: 0px;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background-color: #24af1a;
+  border: 2px solid #111115;
+  box-shadow: #24af1a 0px 0px 2px;
+  box-sizing: border-box;
+  animation: 2s ease-in-out 0s infinite normal none running pulseOnline;
+}
 .user-status.online { color: var(--text-online-color); }
 .user-status.offline { color: var(--text-offline-color); }
 .online-badge {
@@ -175,3 +188,13 @@
 @keyframes popIn {
   0% { transform: scale(0); }
   100% { transform: scale(1); }}
+@keyframes pulseOnline {
+  0% {
+    box-shadow: 0 0 0 0 rgba(157, 123, 246, 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 5px rgba(157, 123, 246, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(157, 123, 246, 0);
+  }}
