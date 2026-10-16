@@ -304,7 +304,14 @@ export default function ChatWindow() {
             </h3>
 
             
-            <span className={styles['user-status']}>
+            <span 
+              className={`${styles['user-status']} ${
+                !isCurrentChatGroup ? (() => {
+                  const statusInfo = formatUserOnlineStatus(currentChatUser?.updatedAt, currentChatUser?.privacyOnline);
+                  return statusInfo.isOnline ? styles['online'] : '';
+                })() : ''
+              }`}
+            >
               {isCurrentChatGroup ? (
                 memberCount !== null ? (
                   `${memberCount} ${
@@ -318,7 +325,8 @@ export default function ChatWindow() {
                   'загрузка участников...'
                 )
               ) : (
-                formatUserOnlineStatus(currentChatUser?.updatedAt, currentChatUser?.privacyOnline)
+                /* Выводим чистый текст из нашего нового объекта-парсера */
+                formatUserOnlineStatus(currentChatUser?.updatedAt, currentChatUser?.privacyOnline).text
               )}
             </span>
 
