@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import styles from '../css/chat-window.module.css'; 
+import styles from '../css/profile.module.css';
 import useMessengerContext from '../../context/messengerContext';
 import { supabase } from '../../services/supabaseClient';
 import { X } from 'lucide-react';
@@ -132,7 +132,13 @@ export default function ProfileModal() {
           overflowY: 'auto'
         }}
       >
-        <button type="button" onClick={handleCloseModalSmooth} style={{ position: 'absolute', top: '24px', right: '24px', background: 'none', border: 'none', color: '#8e8e93', cursor: 'pointer', zIndex: 10 }}><X size={20} /></button>
+        <button 
+          className={styles['close-modal-btn']} 
+          type="button" 
+          onClick={handleCloseModalSmooth} 
+        >
+          <X size={20} />
+        </button>
 
         {/* 🎯 ДИСПЕТЧЕР ЭКРАНОВ */}
         {isEditing ? (
