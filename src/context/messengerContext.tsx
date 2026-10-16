@@ -89,8 +89,27 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
   const groups = useGroupChats(currentUser, showToast, setActiveChatId, setActiveTab);
   useRealtimeSubscription(currentUser, setAllMessages);
 
-  // 1. АВТОРИЗАЦИЯ: Холодный старт профиля из сессии
   useEffect(() => {
+    if (!currentUser?.id) return;
+
+    const sendHeartbeatPulse = async () => {
+      await supabase
+        .from('users')
+        .update({ updatedAt: new Date().toISOString() })
+        .eq('id', currentUser.id);
+    };
+
+    // Шлём первый импульс сразу при загрузке
+    sendHeartbeatPulse();
+
+    // Настраиваем бесконечный цикл на 30 секунд
+    const pulseInterval = setInterval(sendHeartbeatPulse, 30000);
+    
+    return () => clearInterval(pulseInterval);
+  }, [currentUser?.id]);
+
+  useEffect(() => {
+    // АВТОРИЗАЦИЯ: Холодный старт профиля из сессии
     const fetchSessionUser = async () => {
       const storedId = localStorage.getItem('blyades_user_id');
       if (!storedId) {
@@ -112,17 +131,14 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
       }
     };
     fetchSessionUser();
-  }, []);
-
-  // Накатываем холодную выгрузку всей истории сообщений для прогрева кэша
-  useEffect(() => {
+    
+    // Накатываем холодную выгрузку всей истории сообщений для прогрева кэша
     const fetchHistory = async () => {
       const { data } = await supabase.from('messages').select('*').order('id', { ascending: true });
       if (data) setAllMessages(data);
     };
     fetchHistory();
   }, []);
-
 
   const fetchAndMatchChats = React.useCallback(async () => {
     if (!currentUser) return;
@@ -207,7 +223,6 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
     }
   }, [currentUser, allMessages]);
 
-  // 👥 2 & 4. МОНОЛИТНАЯ И БЕЗОШИБОЧНАЯ СБОРКА САЙДБАРА (ЛИЧНЫЕ ЧАТЫ + БЕСЕДЫ)
   useEffect(() => {fetchAndMatchChats();}, [fetchAndMatchChats]);
 
   // 🚀 УМНАЯ ОТПРАВКА: Автоматически разделяет создание нового текста и РЕДАКТИРОВАНИЕ старого!
@@ -505,7 +520,6 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-
   const handleLogout = () => {
     localStorage.removeItem('blyades_user_id');
     window.location.reload();
@@ -583,4 +597,52 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
 
 export default function useMessengerContext() {
   return useContext(MessengerContext);
+}
+
+// 🚀 УМНЫЙ ПАРСЕР ОНЛАЙНА: Вычисляет точное время визита по канонам Telegram Premium
+export function formatUserOnlineStatus(updatedAtString: string | undefined, privacyOnline: string = 'all'): string {
+  if (!updatedAtString || privacyOnline === 'none') return 'был(а) недавно';
+  
+  try {
+    const lastSeen = new Date(updatedAtString);
+    const now = new Date();
+    const diffMs = now.getTime() - lastSeen.getTime();
+    const diffMins = Math.floor(diffMs / 1000 / 60);
+
+    // 🎯 ШАГ 1: Если активность была меньше минуты назад — пользователь железно в сети!
+    if (diffMins < 1) return 'в сети';
+
+    // Если выставлена приватность "Только контакты", а логики проверки связи здесь нет,
+    // можно вернуть базовый расчет, но если юзер скрыл онлайн полностью, отсечка сработает выше.
+    if (diffMins < 60) {
+      // Склонение минут
+      const minsWord = diffMins % 10 === 1 && diffMins % 100 !== 11 
+        ? 'минуту' 
+        : [2, 3, 4].includes(diffMins % 10) && ![12, 13, 14].includes(diffMins % 100)
+        ? 'минуты' 
+        : 'минут';
+      return `был(а) в сети ${diffMins} ${minsWord} назад`;
+    }
+
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24 && lastSeen.getDate() === now.getDate()) {
+      const hoursStr = String(lastSeen.getHours()).padStart(2, '0');
+      const minsStr = String(lastSeen.getMinutes()).padStart(2, '0');
+      return `был(а) в сети сегодня в ${hoursStr}:${minsStr}`;
+    }
+
+    // Если был вчера
+    const yesterday = new Date();
+    yesterday.setDate(now.getDate() - 1);
+    if (lastSeen.getDate() === yesterday.getDate() && lastSeen.getMonth() === yesterday.getMonth() && lastSeen.getFullYear() === yesterday.getFullYear()) {
+      const hoursStr = String(lastSeen.getHours()).padStart(2, '0');
+      const minsStr = String(lastSeen.getMinutes()).padStart(2, '0');
+      return `был(а) в сети вчера в ${hoursStr}:${minsStr}`;
+    }
+
+    // Более старый визит
+    return `был(а) в сети ${lastSeen.toLocaleDateString('ru-RU')} в ${String(lastSeen.getHours()).padStart(2, '0')}:${String(lastSeen.getMinutes()).padStart(2, '0')}`;
+  } catch (e) {
+    return 'был(а) недавно ZZZ';
+  }
 }
