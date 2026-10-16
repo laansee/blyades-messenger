@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import styles from '../../components/css/chat-window.module.css';
 import ContextMenu from '../../components/contextMenu';
-import useMessengerContext from '../../context/messengerContext';
+import useMessengerContext, { formatUserOnlineStatus } from '../../context/messengerContext';
 import { DropdownMenu, AddParticipantsModal } from '../../components/GlobalUI'; 
 import { supabase } from '../../services/supabaseClient';
 import { renderUserStatusBadge } from '../../utils/statusBadge';
@@ -34,6 +34,27 @@ export default function ChatWindow() {
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [existingUsers, setExistingUsers] = useState<string[]>([]);
+  const [memberCount, setMemberCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!ctx.activeChatId || !String(ctx.activeChatId).startsWith('group_')) {
+      setMemberCount(null);
+      return;
+    }
+
+    const fetchMemberCount = async () => {
+      const { count, error } = await supabase
+        .from('group_members')
+        .select('*', { count: 'exact', head: true })
+        .eq('chatId', ctx.activeChatId);
+
+      if (!error && count !== null) {
+        setMemberCount(count);
+      }
+    };
+
+    fetchMemberCount();
+  }, [ctx.activeChatId, ctx.allMessages]);
 
   const currentChatUser = ctx.chats.find((c: any) => String(c.id) === String(ctx.activeChatId));
   const myId = String(ctx.currentUser?.id);
@@ -186,12 +207,7 @@ export default function ChatWindow() {
             setShowAddModal(true); // 👥 Открываем окно!
           }
         },
-        {
-          id: 'group-info',
-          text: 'Информация о беседе',
-          icon: Users, // Передаем иконку из lucide-react напрямую
-          onClick: () => ctx.setShowUserModal(true)
-        },
+        { id: 'group-info', text: 'Информация о беседе', icon: Users, onClick: () => ctx.setShowUserModal(true) },
         { id: 'to-top', text: 'Наверх', icon: ArrowUp, isSeparatorBefore: true, onClick: scrollInToTop },
         {
           id: 'leave-group',
@@ -286,9 +302,26 @@ export default function ChatWindow() {
               {renderUserStatusBadge(currentChatUser)} 
               {currentChatUser?.name || currentChatUser?.username || 'Загрузка...'}
             </h3>
-            <span style={{ color: '#9ca3af', fontSize: '12px' }}>
-              {currentChatUser?.isGroup ? 'группа беседы' : 'был(а) недавно'}
+
+            
+            <span className={styles['user-status']}>
+              {isCurrentChatGroup ? (
+                memberCount !== null ? (
+                  `${memberCount} ${
+                    memberCount % 10 === 1 && memberCount % 100 !== 11
+                      ? 'участник'
+                      : [2, 3, 4].includes(memberCount % 10) && ![12, 13, 14].includes(memberCount % 100)
+                      ? 'участника'
+                      : 'участников'
+                  }`
+                ) : (
+                  'загрузка участников...'
+                )
+              ) : (
+                formatUserOnlineStatus(currentChatUser?.updatedAt, currentChatUser?.privacyOnline)
+              )}
             </span>
+
           </div>
         </div>
         <div className={styles['chat-header-actions']}>
@@ -435,7 +468,7 @@ export default function ChatWindow() {
                     
                     return currentMsgDate !== prevMsgDate;
                   })();
-                  
+
                   const messageBubbleContent = (
                     <div 
                       className={`${styles.message} ${isMyMsg ? styles['message-outgoing'] : styles['message-incoming']}`}
