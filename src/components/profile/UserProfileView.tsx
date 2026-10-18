@@ -1,5 +1,7 @@
-import React from 'react';
-import styles from '../css/chat-window.module.css';
+import React, { useState } from 'react';
+import useMessengerContext from '../../context/messengerContext';
+import { formatUserOnlineStatus } from '../../context/messengerContext';
+import styles from '../css/profile.module.css';
 
 interface UserProfileViewProps {
   currentChatUser: any;
@@ -19,49 +21,62 @@ export default function UserProfileView({
   onEditToggle,
   onClose,
   ctx
-}: UserProfileViewProps) {
+}: UserProfileViewProps) {  
+  if (!currentChatUser) return null;
+
   return (
     <div className={styles['view-mode']}>
-      <div className={styles['profile-avatar-wrapper']}>
-        {currentChatUser.avatarUrl ? (
-          <img
-            src={currentChatUser.avatarUrl}
-            alt="Avatar"
-            style={{ width: '90px', height: '90px', borderRadius: '50%', objectFit: 'cover', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}
-          />
-        ) : (
-          <div className={styles['profile-avatar']} style={{ backgroundColor: currentChatUser.avatarColor || '#007aff' }}>
-            {baseName.substring(0, 1).toUpperCase()}
-          </div>
-        )}
-      </div>
+      
+      <div style={{ padding: '24px'}}>
+        <div className={styles['profile-avatar-wrapper']}>
+          {currentChatUser.avatarUrl ? (
+            <img
+              src={currentChatUser.avatarUrl}
+              alt="Avatar"
+            />
+          ) : (
+            <div className={styles['profile-avatar']} style={{ backgroundColor: currentChatUser.avatarColor || '#007aff' }}>
+              {baseName.substring(0, 1).toUpperCase()}
+            </div>
+          )}
+        </div>
 
-      <h2 className={styles['profile-name']}>{baseName}</h2>
-      <span className={styles['profile-status']}>был(а) недавно</span>
-
-      <div className={styles['action-buttons-row']}>
-        <button 
-          type="button" 
-          className={styles['action-btn']} 
-          onClick={() => { ctx.setActiveChatId(currentChatUser.id); onClose(); }}
+        <h2 className={styles['profile-name']}>{baseName}</h2>
+        <span 
+          className={`${styles['profile-status']} ${
+            (() => {
+              const statusInfo = formatUserOnlineStatus(currentChatUser?.updatedAt, currentChatUser?.privacyOnline);
+              return statusInfo.isOnline ? styles['online'] : '';
+            })()
+          }`}
         >
-          <span className={styles['btn-icon']}>💬</span>
-          <span className={styles['btn-text']}>Чат</span>
-        </button>
-        <button type="button" className={styles['action-btn']}>
-          <span className={styles['btn-icon']}>🔔</span>
-          <span className={styles['btn-text']}>Звук</span>
-        </button>
-        <button type="button" onClick={onStartCall} className={styles['action-btn']}>
-          <span className={styles['btn-icon']}>📞</span>
-          <span className={styles['btn-text']}>Звонок</span>
-        </button>
-        <button type="button" className={styles['action-btn']} onClick={onEditToggle}>
-          <span className={styles['btn-icon']}>{currentChatUser.isContact ? '⚙️' : '➕'}</span>
-          <span className={styles['btn-text']}>
-            {currentChatUser.isContact ? 'Изменить' : 'Добавить'}
-          </span>
-        </button>
+          {formatUserOnlineStatus(currentChatUser?.updatedAt, currentChatUser?.privacyOnline).text}
+        </span>
+
+        <div className={styles['action-buttons-row']}>
+          <button 
+            type="button" 
+            className={styles['action-btn']} 
+            onClick={() => { ctx.setActiveChatId(currentChatUser.id); onClose(); }}
+          >
+            <span className={styles['btn-icon']}>💬</span>
+            <span className={styles['btn-text']}>Чат</span>
+          </button>
+          <button type="button" className={styles['action-btn']}>
+            <span className={styles['btn-icon']}>🔔</span>
+            <span className={styles['btn-text']}>Звук</span>
+          </button>
+          <button type="button" onClick={onStartCall} className={styles['action-btn']}>
+            <span className={styles['btn-icon']}>📞</span>
+            <span className={styles['btn-text']}>Звонок</span>
+          </button>
+          <button type="button" className={styles['action-btn']} onClick={onEditToggle}>
+            <span className={styles['btn-icon']}>{currentChatUser.isContact ? '⚙️' : '➕'}</span>
+            <span className={styles['btn-text']}>
+              {currentChatUser.isContact ? 'Изменить' : 'Добавить'}
+            </span>
+          </button>
+        </div>
       </div>
 
       <div className={styles['info-section']}>
