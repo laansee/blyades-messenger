@@ -1,5 +1,5 @@
 import React from 'react';
-import styles from '../css/chat-window.module.css';
+import styles from '../css/profile.module.css';
 
 interface ContactEditModeProps {
   currentChatUser: any;
@@ -27,12 +27,12 @@ export default function ContactEditMode({
   onDeleteContact
 }: ContactEditModeProps) {
   return (
-    <div className={styles['tg-edit-mode']}>
-      <h3 className={styles['tg-edit-title']}>
+    <div className={styles['profile-edit-mode']}>
+      <h3 className={styles['profile-edit-title']}>
         {currentChatUser.isGroup ? 'Настройки беседы' : (currentChatUser.isContact ? 'Изменить контакт' : 'Добавить контакт')}
       </h3>
 
-      <div className={styles['tg-edit-header']}>
+      <div className={styles['profile-edit-header']}>
         {currentChatUser.avatarUrl ? (
           <img
             src={currentChatUser.avatarUrl}
@@ -40,60 +40,79 @@ export default function ContactEditMode({
             style={{ width: '54px', height: '54px', borderRadius: '50%', objectFit: 'cover', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}
           />
         ) : (
-          <div className={styles['tg-edit-avatar']} style={{ backgroundColor: currentChatUser.avatarColor }}>
+          <div className={styles['profile-edit-avatar']} style={{ backgroundColor: currentChatUser.avatarColor }}>
             {editFirstName.substring(0, 1).toUpperCase() || '?'}
           </div>
         )}
         {/* <div className={styles['tg-edit-avatar']} style={{ backgroundColor: currentChatUser.avatarColor }}>
           {editFirstName.substring(0, 1).toUpperCase() || '?'}
         </div> */}
-        <div className={styles['tg-edit-user-meta']}>
-          <div className={styles['tg-meta-name']}>{editFirstName} {editLastName}</div>
-          <div className={styles['tg-meta-phone']}>@{currentChatUser.uniqueId || currentChatUser.username}</div>
+        <div className={styles['profile-edit-user-meta']}>
+          {currentChatUser.isGroup ? 
+            <div className={styles['profile-meta-name']}>{editFirstName}</div>
+          : 
+            <div className={styles['profile-meta-name']}>{editFirstName} {editLastName}</div>
+          }
+          {!currentChatUser.isGroup &&
+            <div className={styles['profile-meta-phone']}>@{currentChatUser.uniqueId || currentChatUser.username}</div>
+          }
+          {/* <div className={styles['profile-meta-phone']}>@{currentChatUser.uniqueId || currentChatUser.username}</div> */}
         </div>
       </div>
 
-      <div className={styles['tg-inputs-list']}>
-        <div className={styles['tg-input-field']}>
-          <label className={styles['tg-field-label']} htmlFor='editFirstName-input'>
+      <div className={styles['profile-inputs-list']}>
+        <div className={styles['profile-input-field']}>
+          <input 
+            type="text" 
+            value={editFirstName}
+            onChange={(e) => setEditFirstName(e.target.value)}
+            placeholder=" "
+            className={styles['profile-line-input']} 
+            id='editFirstName-input' 
+          />
+          <label className={styles['profile-field-label']} htmlFor='editFirstName-input'>
             {currentChatUser.isGroup ? 'Название беседы' : 'Имя'}
           </label>
-          <input 
-            type="text" className={styles['tg-line-input']} value={editFirstName}
-            id='editFirstName-input' onChange={(e) => setEditFirstName(e.target.value)}
-          />
         </div>
 
         {!currentChatUser.isGroup && (
           <>
-            <div className={styles['tg-input-field']}>
-              <label className={styles['tg-field-label']} htmlFor='editLastName-input'>Фамилия</label>
+            <div className={styles['profile-input-field']}>
               <input 
-                type="text" className={styles['tg-line-input']} value={editLastName}
-                id='editLastName-input' onChange={(e) => setEditLastName(e.target.value)}
+                type="text" 
+                value={editLastName} 
+                onChange={(e) => setEditLastName(e.target.value)}
+            placeholder=" "
+                className={styles['profile-line-input']}
+                id='editLastName-input'
               />
+              <label className={styles['profile-field-label']} htmlFor='editLastName-input'>Фамилия</label>
             </div>
 
-            <div className={styles['tg-input-field']}>
-              <label className={styles['tg-field-label']} htmlFor='editNote-input'>Заметка</label>
+            <div className={styles['profile-input-field']}>
               <input 
-                type="text" className={styles['tg-line-input']} placeholder="Заметку видите только Вы." value={editNote}
-                id='editNote-input' onChange={(e) => setEditNote(e.target.value)}
+                type="text" 
+                value={editNote}
+                onChange={(e) => setEditNote(e.target.value)}
+                placeholder=" " 
+                className={styles['profile-line-input']} 
+                id='editNote-input' 
               />
+              <label className={styles['profile-field-label']} htmlFor='editNote-input'>Заметка</label>
             </div>
           </>
         )}
       </div>
 
       {currentChatUser.isContact && onDeleteContact && (
-        <button type="button" className={styles['tg-delete-link']} onClick={onDeleteContact}>
+        <button type="button" className={styles['profile-delete-link']} onClick={onDeleteContact}>
           Удалить контакт
         </button>
       )}
 
-      <div className={styles['tg-edit-footer']}>
-        <button type="button" className={styles['tg-footer-cancel-btn']} onClick={onCancel}>Отмена</button>
-        <button type="button" className={styles['tg-footer-ready-btn']} onClick={onSave}>Готово</button>
+      <div className={styles['profile-edit-footer']}>
+        <button type="button" className={styles['profile-footer-cancel-btn']} onClick={onCancel}>Отмена</button>
+        <button type="button" className={styles['profile-footer-ready-btn']} onClick={onSave}>Готово</button>
       </div>
     </div>
   );
