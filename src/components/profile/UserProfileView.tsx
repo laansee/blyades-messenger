@@ -82,7 +82,7 @@ export default function UserProfileView({
       <div className={styles['info-section']}>
 
         {currentChatUser.privacyNameFormat === 'username' && 
-         shouldShowField(currentChatUser.privacyFullName, currentChatUser.isContact) && 
+         shouldShowField(currentChatUser.privacyFullName, currentChatUser.isAmHisContact) && 
          (currentChatUser.firstName || currentChatUser.lastName) && (
           <div className={styles['info-item']}>
             <span className={styles['info-value']}>
@@ -104,14 +104,14 @@ export default function UserProfileView({
           </div>
         )}
         
-        {shouldShowField(currentChatUser.privacyPhone, currentChatUser.isContact) && currentChatUser.phone && currentChatUser.phone.trim() !== '' && (
+        {shouldShowField(currentChatUser.privacyPhone, currentChatUser.isAmHisContact) && currentChatUser.phone && currentChatUser.phone.trim() !== '' && (
           <div className={styles['info-item']}>
             <span className={styles['info-value']}>{currentChatUser.phone}</span>
             <span className={styles['info-label']}>Телефон</span>
           </div>
         )}
 
-        {shouldShowField(currentChatUser.privacyEmail, currentChatUser.isContact) && currentChatUser.email && currentChatUser.email.trim() !== '' && (
+        {shouldShowField(currentChatUser.privacyEmail, currentChatUser.isAmHisContact) && currentChatUser.email && currentChatUser.email.trim() !== '' && (
           <div className={styles['info-item']}>
             <span className={styles['info-value']}>{currentChatUser.email}</span>
             <span className={styles['info-label']}>Электронная почта</span>
@@ -124,6 +124,36 @@ export default function UserProfileView({
             <span className={styles['info-label']}>Ваша заметка</span>
           </div>
         )}
+
+        {/* В БУДУЩЕМ ДОБАВИТЬ ВИДИМОСТЬ ЭТОГО БЛОКА ТОЛЬКО ДЛЯ АДМИНА */}
+        {/* <div style={{ backgroundColor: '#2c1a1a', border: '1px solid #ff453a', padding: '10px', borderRadius: '8px', margin: '10px 0', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <span style={{ fontSize: '11px', color: '#ff453a', fontWeight: 'bold', textTransform: 'uppercase' }}>Отладчик приватности Блидес</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+            <span style={{ color: '#aaa' }}>Добавлен ли он у меня (isContact):</span>
+            <span style={{ color: currentChatUser.isContact ? '#34c759' : '#ff453a', fontWeight: 'bold' }}>
+              {currentChatUser.isContact ? 'ДА (true)' : 'НЕТ (false)'}
+            </span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+            <span style={{ color: '#aaa' }}>Добавлен ли я у него (isAmHisContact):</span>
+            <span style={{ color: currentChatUser.isAmHisContact ? '#34c759' : '#ff453a', fontWeight: 'bold' }}>
+              {currentChatUser.isAmHisContact ? 'ДА (true)' : 'НЕТ (false)'}
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginTop: '4px', borderTop: '1px solid #3a1a1a', paddingTop: '4px', color: '#8e8e93' }}>
+            <span>Настройка отображения имени (и приватность):</span>
+            <span style={{width: 'min-content'}}>{currentChatUser.privacyNameFormat} ({currentChatUser.privacyFullName})</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginTop: '4px', borderTop: '1px solid #3a1a1a', paddingTop: '4px', color: '#8e8e93' }}>
+            <span>Настройка телефона:</span>
+            <span>{currentChatUser.privacyPhone}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginTop: '4px', borderTop: '1px solid #3a1a1a', paddingTop: '4px', color: '#8e8e93' }}>
+            <span>Настройка эл. почты:</span>
+            <span>{currentChatUser.privacyEmail}</span>
+          </div>
+        </div> */}
       </div>
     </div>
   );
