@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import mainStyle from '../../components/css/main.module.css';
 import style from '../../components/css/settings.module.css';
 import chatStyles from '../../components/css/chat-window.module.css';
+import profileStyles from '../../components/css/profile.module.css';
 import useMessengerContext from '../../context/messengerContext';
 import NavSidebar from '../channels/nav-sidebar';
 import { renderUserStatusBadge } from '../../utils/statusBadge';
@@ -74,14 +75,6 @@ export default function SettingsPage() {
   const previewDisplayName = (showFullName && hasNamesFilled)
     ? `${firstName || ''} ${lastName || ''}`.trim()
     : (username.trim() !== '' ? username : `@${uniqueId}`);
-
-  // const handleTabChangeSafe = (targetTab: 'profile' | 'privacy' | 'chats') => {
-  //   if (targetTab === activeSettingsTab) return;
-    
-  //   // Временный пропуск проверки изменений, так как стейты теперь инкапсулированы внутри дочерних модалок
-  //   setActiveSettingsTab(targetTab);
-  //   document.title = targetTab === 'profile' ? 'Аккаунт | Blyades' : 'Конфиденциальность | Blyades';
-  // };
 
   return (
     <div className={mainStyle['messenger-container']}>
@@ -183,44 +176,80 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        <div className={chatStyles['profile-modal-card']} style={{ width: '100%', position: 'relative', boxShadow: '0 8px 32px rgba(0,0,0,0.4)', animation: 'none' }}>
-          <div className={chatStyles['profile-avatar-wrapper']}>
-            {avatarUrl ? (
-              <img src={avatarUrl} alt="Avatar" style={{ width: '90px', height: '90px', borderRadius: '50%', objectFit: 'cover' }} />
-            ) : (
-              <div className={chatStyles['profile-avatar']} style={{ backgroundColor: avatarColor }}>
-                {previewDisplayName.substring(0, 1).toUpperCase()}
-              </div>
-            )}
+        <div className={profileStyles['profile-modal-card']} style={{ width: '100%', position: 'relative', boxShadow: '0 8px 32px rgba(0,0,0,0.4)', animation: 'none' }}>
+
+          <div style={{ padding: '24px'}}>
+            <div className={profileStyles['profile-avatar-wrapper']}>
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="Avatar" style={{ width: '90px', height: '90px', borderRadius: '50%', objectFit: 'cover' }} />
+              ) : (
+                <div className={profileStyles['profile-avatar']} style={{ backgroundColor: avatarColor }}>
+                  {previewDisplayName.substring(0, 1).toUpperCase()}
+                </div>
+              )}
+            </div>
+
+            <h2 className={profileStyles['profile-name']}>
+              {renderUserStatusBadge(currentUser)}
+              {previewDisplayName}
+            </h2>
+            <span className={profileStyles['profile-status']} style={{ margin: 'none', color: shouldShowFieldInPreview(privacyOnline) ? '#2ec761' : '#707579' }}>
+              {shouldShowFieldInPreview(privacyOnline) ? 'в сети' : 'был(а) недавно'}
+            </span>
           </div>
 
-          <h2 className={chatStyles['profile-name']}
-          //  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
-          >
-            {renderUserStatusBadge(currentUser)}
-            {previewDisplayName}
-          </h2>
-          <span className={chatStyles['profile-status']} style={{ color: shouldShowFieldInPreview(privacyOnline) ? '#2ec761' : '#707579' }}>
-            {shouldShowFieldInPreview(privacyOnline) ? 'в сети' : 'был(а) недавно'}
-          </span>
-
-          <div className={chatStyles['info-section']}>
+          <div className={profileStyles['info-section']}>
             {privacyNameFormat === 'username' && shouldShowFieldInPreview(privacyFullName) && hasNamesFilled && (
-              <div className={chatStyles['info-item']}><span className={chatStyles['info-value']}>{`${firstName || ''} ${lastName || ''}`.trim()}</span><span className={chatStyles['info-label']}>Настоящие Имя и Фамилия</span></div>
+              <div className={profileStyles['info-item']}>
+                <span className={profileStyles['info-value']}>
+                  {`${firstName || ''} ${lastName || ''}`.trim()}
+                </span>
+                <span className={profileStyles['info-label']}>
+                  Настоящие Имя и Фамилия
+                </span>
+              </div>
             )}
 
-            <div className={chatStyles['info-item']}><span className={chatStyles['info-value']}>@{uniqueId || 'не указан'}</span><span className={chatStyles['info-label']}>Имя пользователя</span></div>
+            <div className={profileStyles['info-item']}>
+              <span className={profileStyles['info-value']}>
+                @{uniqueId || 'не указан'}
+              </span>
+              <span className={profileStyles['info-label']}>
+                Имя пользователя
+              </span>
+            </div>
             
             {shouldShowFieldInPreview(privacyPhone) && phone && phone.trim() !== '' && (
-              <div className={chatStyles['info-item']}><span className={chatStyles['info-value']}>{phone}</span><span className={chatStyles['info-label']}>Телефон</span></div>
+              <div className={profileStyles['info-item']}>
+                <span className={profileStyles['info-value']}>
+                  {phone}
+                </span>
+                <span className={profileStyles['info-label']}>
+                  Телефон
+                </span>
+              </div>
             )}
             
             {shouldShowFieldInPreview(privacyEmail) && email && email.trim() !== '' && (
-              <div className={chatStyles['info-item']}><span className={chatStyles['info-value']}>{email}</span><span className={chatStyles['info-label']}>Электронная почта</span></div>
+              <div className={profileStyles['info-item']}>
+                <span className={profileStyles['info-value']}>
+                  {email}
+                </span>
+                <span className={profileStyles['info-label']}>
+                  Электронная почта
+                </span>
+              </div>
             )}
 
             {aboutMe.trim() !== '' && (
-              <div className={chatStyles['info-item']}><span className={chatStyles['info-value']} style={{ wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>{aboutMe}</span><span className={chatStyles['info-label']}>О себе</span></div>
+              <div className={profileStyles['info-item']}>
+                <span className={profileStyles['info-value']} style={{ wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>
+                  {aboutMe}
+                </span>
+              <span className={profileStyles['info-label']}>
+                О себе
+              </span>
+            </div>
             )}
           </div>
         </div>
