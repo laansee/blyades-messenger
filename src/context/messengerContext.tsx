@@ -166,7 +166,9 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
 
           let calculatedName = u.username;
           if (isContact) {
-            calculatedName = `${contactMeta.firstName || ''} ${contactMeta.lastName || ''}`.trim() || u.username;
+            const cFirst = (contactMeta?.firstName && contactMeta.firstName !== 'EMPTY') ? contactMeta.firstName : '';
+            const cLast = (contactMeta?.lastName && contactMeta.lastName !== 'EMPTY') ? contactMeta.lastName : '';
+            calculatedName = `${cFirst} ${cLast}`.trim() || u.username;
           } else if (u.privacyNameFormat === 'full_name' && (u.firstName || u.lastName)) {
             calculatedName = `${u.firstName || ''} ${u.lastName || ''}`.trim();
           }
@@ -184,6 +186,10 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
             nameColor: u.nameColor || '#007aff',
             avatarColor: u.avatarColor || '#007aff',
             avatarUrl: u.avatarUrl,
+            aboutMe: u.aboutMe || '',
+            note: myContacts?.find((c: any) => String(c.contactId).trim() === String(u.id).trim())?.note || '',
+            contactFirstName: (contactMeta?.firstName && contactMeta.firstName !== 'EMPTY') ? contactMeta.firstName : '',
+            contactLastName: (contactMeta?.lastName && contactMeta.lastName !== 'EMPTY') ? contactMeta.lastName : '',
             updatedAt: u.updatedAt, 
             isContact: isContact,
             isGroup: false,
