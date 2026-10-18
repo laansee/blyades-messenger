@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { supabase } from '../services/supabaseClient';
-import { Analytics } from "@vercel/analytics/next"
+import { Analytics } from "@vercel/analytics/react"
 import { ToastNotification, ConfirmModal } from '../components/GlobalUI'; 
 import ProfileModal from '../components/profile/profileModal'; 
 import CallModal from '../features/calls/callOverlay'; 
