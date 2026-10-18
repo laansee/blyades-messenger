@@ -243,7 +243,8 @@ export default function ChatWindow() {
           id: 'pin-chat', 
           text: 'Закрепить переписку (заглушка)', 
           icon: Pin, 
-          onClick: scrollInToTop},
+          onClick: scrollInToTop
+        },
         {
           id: 'profile',
           text: 'Профиль пользователя',
@@ -352,7 +353,7 @@ export default function ChatWindow() {
           >
             <Search />
           </button>
-          <div style={{ position: 'relative', display: 'inline-block' }}>
+          <div style={{ position: 'relative', display: 'inline-flex' }}>
             <button 
               className={`${styles['header-btn']} dropdown-trigger-btn`} 
               onClick={handleOpenDropdown}
