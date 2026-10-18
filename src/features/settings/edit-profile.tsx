@@ -186,10 +186,10 @@ export default function EditProfile({ onBack, state, setters }: any) {
       fields = [{ key: 'aboutMe', label: 'Любые подробности, например: возраст, род занятий...', type: 'textarea', maxLength: 70 }];
       initialValues = { aboutMe };
       onSaveAction = async (v) => {
-        const { error } = await supabase.from('users').update({ about_me: v.aboutMe.trim() || null }).eq('id', currentUser.id);
+        const { error } = await supabase.from('users').update({ aboutMe: v.aboutMe.trim() || null }).eq('id', currentUser.id);
         if (!error) {
           setAboutMe(v.aboutMe.trim());
-          ctx.setCurrentUser({ ...currentUser, about_me: v.aboutMe.trim() || null });
+          ctx.setCurrentUser({ ...currentUser, aboutMe: v.aboutMe.trim() || null });
           ctx.showToast('Информация "О себе" обновлена', 'success');
         }
       };
@@ -215,7 +215,7 @@ export default function EditProfile({ onBack, state, setters }: any) {
           lastName: lastName.trim() || null,
           email: email.trim() || null,
           phone: phone.trim() || null,
-          about_me: aboutMe.trim() || null,
+          aboutMe: aboutMe.trim() || null,
           avatarUrl: avatarUrl,
           avatarColor,
           updatedAt: new Date().toISOString()
@@ -231,7 +231,7 @@ export default function EditProfile({ onBack, state, setters }: any) {
           lastName: lastName.trim() || null,
           email: email.trim() || null,
           phone: phone.trim() || null,
-          about_me: aboutMe.trim() || null,
+          aboutMe: aboutMe.trim() || null,
           avatarUrl: avatarUrl,
           avatarColor
         });
