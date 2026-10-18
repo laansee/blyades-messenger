@@ -30,9 +30,19 @@ export default function ProfileModal() {
       if (currentChatUser.isGroup) {
         setEditFirstName(currentChatUser.name || '');
       } else {
-        setEditFirstName(currentChatUser.contactFirstName || (isNameVisible && currentChatUser.firstName) || currentChatUser.username || '');
-        setEditLastName(currentChatUser.contactLastName || (isNameVisible && currentChatUser.lastName) || '');
-        setEditNote(currentChatUser.note || '');
+        // 🎯 Если контакт уже существует, выводим СТРОГО то, что сохранено (даже если там пустая строка "")
+        // Оператор ?? (в отличие от ||) считает пустую строку "" валидным текстом и НЕ перепрыгнет дальше!
+        if (currentChatUser.isContact) {
+          setEditFirstName(currentChatUser.contactFirstName ?? '');
+          setEditLastName(currentChatUser.contactLastName ?? '');
+          setEditNote(currentChatUser.note ?? '');
+        } else {
+          // Если добавляем контакт в самый первый раз — подтягиваем глобальный профиль как заготовку
+          const isNameVisible = currentChatUser.privacyFullName === 'all';
+          setEditFirstName(currentChatUser.firstName || currentChatUser.username || '');
+          setEditLastName(isNameVisible ? (currentChatUser.lastName || '') : '');
+          setEditNote('');
+        }
       }
     }
   }, [isEditing, currentChatUser]);
@@ -64,9 +74,9 @@ export default function ProfileModal() {
     }, 200);
   };
 
-  const shouldShowField = (privacySetting: string | undefined, isPartnerContact: boolean) => {
+  const shouldShowField = (privacySetting: string | undefined, isMeInHisContacts: boolean) => {
     if (!privacySetting || privacySetting === 'all') return true;
-    if (privacySetting === 'contacts') return !!isPartnerContact;
+    if (privacySetting === 'contacts') return !!isMeInHisContacts; // Смотрим строго на то, добавил ли ОН меня к себе!
     return false;
   };
 
@@ -143,15 +153,34 @@ export default function ProfileModal() {
         {/* 🎯 ДИСПЕТЧЕР ЭКРАНОВ */}
         {isEditing ? (
           <ContactEditMode 
-            currentChatUser={currentChatUser} editFirstName={editFirstName} setEditFirstName={setEditFirstName}
-            editLastName={editLastName} setEditLastName={setEditLastName} editNote={editNote} setEditNote={setEditNote}
-            onCancel={() => setIsEditing(false)} onSave={handleSaveContactOrGroup} onDeleteContact={handleDeleteContact}
+            currentChatUser={currentChatUser} 
+            editFirstName={editFirstName} setEditFirstName={setEditFirstName}
+            editLastName={editLastName} setEditLastName={setEditLastName} 
+            editNote={editNote} setEditNote={setEditNote}
+            onCancel={() => setIsEditing(false)} 
+            onSave={handleSaveContactOrGroup} 
+            onDeleteContact={handleDeleteContact}
           />
         ) : currentChatUser.isGroup ? (
-          <GroupProfileView currentChatUser={currentChatUser} baseName={baseName} onEditToggle={() => setIsEditing(true)} onClose={handleCloseModalSmooth} ctx={ctx} />
+          <GroupProfileView 
+            currentChatUser={currentChatUser} 
+            baseName={baseName} 
+            onEditToggle={() => setIsEditing(true)} 
+            onClose={handleCloseModalSmooth} 
+            ctx={ctx} 
+          />
         ) : (
-          <UserProfileView currentChatUser={currentChatUser} baseName={baseName} shouldShowField={shouldShowField} onStartCall={() => ctx.handleStartAudioCall(currentChatUser.id)} onEditToggle={() => setIsEditing(true)} onClose={handleCloseModalSmooth} ctx={ctx} />
-        )}
+          <UserProfileView 
+            currentChatUser={currentChatUser} 
+            baseName={baseName} 
+            shouldShowField={shouldShowField}
+            onStartCall={() => ctx.handleStartAudioCall(currentChatUser.id)} 
+            onEditToggle={() => setIsEditing(true)} 
+            onClose={handleCloseModalSmooth} 
+            ctx={ctx} 
+          />
+        )
+        }
       </div>
     </div>
   );
