@@ -202,6 +202,7 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
             updatedAt: u.updatedAt, 
             isContact: isContact,
             isAmHisContact: amIInHisContacts, 
+            userStatus: u.userStatus,
             isGroup: false,
             phone: u.phone || '',
             email: u.email || '',
