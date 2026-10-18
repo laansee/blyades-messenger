@@ -335,137 +335,6 @@ form.chat-input-zone {
   pointer-events: auto;
 }
 
-
-
-
-
-
-
-
-
-
-
-
-/* Кнопки футера в режиме редактирования */
-.tg-edit-mode {
-  display: flex;
-  flex-direction: column;
-  color: #ffffff;
-}
-
-.tg-edit-title {
-  font-size: 18px;
-  font-weight: 500;
-  margin: 0 0 24px 0;
-}
-
-.tg-edit-header {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 24px;
-}
-
-.tg-edit-avatar {
-  width: 54px;
-  height: 54px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  font-weight: 600;
-}
-
-.tg-meta-name {
-  font-size: 16px;
-  font-weight: 500;
-}
-
-.tg-meta-phone {
-  font-size: 13px;
-  color: #707579;
-  margin-top: 2px;
-}
-
-.tg-inputs-list {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  margin-bottom: 20px;
-}
-
-.tg-input-field {
-  display: flex;
-  flex-direction: column;
-}
-
-.tg-field-label {
-  font-size: 13px;
-  color: #707579;
-  margin-bottom: 4px;
-}
-
-.tg-label-with-emoji {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.tg-emoji-icon {
-  color: #707579;
-  cursor: pointer;
-}
-
-/* 🚀 СТИЛЬ ИНПУТОВ ИЗ ТЕЛИКА: Просто линия снизу */
-.tg-line-input {
-  background: transparent;
-  border: none;
-  border-bottom: 1px solid #2d2d37;
-  color: #ffffff;
-  padding: 6px 0;
-  font-size: 15px;
-  outline: none;
-  transition: border-bottom-color 0.2s;}
-.tg-line-input:focus {border-bottom-color: #007aff;}
-.tg-input-hint {
-  font-size: 12px;
-  color: #505559;
-  margin-top: 4px;}
-.tg-delete-link {
-  background: transparent;
-  border: none;
-  color: #ef4444;
-  font-size: 14px;
-  cursor: pointer;
-  text-align: left;
-  padding: 8px 0;
-  width: max-content;}
-.tg-delete-link:hover {text-decoration: underline;}
-.tg-edit-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 24px;
-  margin-top: 16px;}
-.tg-footer-cancel-btn {
-  background: transparent;
-  border: none;
-  color: #8b5cf6; /* Фиолетовые аккуратные кнопки ТГ */
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;}
-.tg-footer-ready-btn {
-  background: transparent;
-  border: none;
-  color: #8b5cf6;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;}
-
-
-
-
-
 /* 🚀 СТИЛИ ДЛЯ СИСТЕМНЫХ ПЛАШЕК ПОЦЕНТРУ */
 .system-message-container {
   display: flex;
@@ -475,7 +344,7 @@ form.chat-input-zone {
 }
 
 .system-message-bubble {
-  background-color: rgba(30, 31, 34, 0.6); /* Полупрозрачный темный фон Discord */
+  background-color: rgba(30, 31, 34, 0.6);
   border: 1px solid rgba(43, 45, 49, 0.5);
   color: #a2a2b5;
   padding: 6px 16px;
@@ -488,7 +357,7 @@ form.chat-input-zone {
 }
 
 .system-message-bubble b {
-  color: #fff; /* Выделяем жирный текст белым цветом */
+  color: #fff;
   font-weight: 600;
 }
 
