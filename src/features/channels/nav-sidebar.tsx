@@ -69,12 +69,19 @@ export default function NavSidebar() {
           <Phone strokeWidth="2" color='#aaa8a8' size={30}/>
           <p>Звонки</p>
         </NavLink>
-        {ctx.currentUser?.isAdmin && (
+        {ctx.currentUser?.userStatus === 'administrator' && (
           <NavLink 
             to="/admin" 
             className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`} 
             onClick={() => ctx.setActiveTab('admin')}
-            title="Панель администратора"
+            // title="Панель администратора"
+            // title={ctx.currentUser?.userStatus === 'administrator' && 'админ'}
+            title={
+              ctx.currentUser?.userStatus === 'administrator' ? 'админ' : 
+              ctx.currentUser?.userStatus === 'moderator' ? 'модер' : 
+              ctx.currentUser?.userStatus === 'default' ? 'дефолт' : 
+              ctx.currentUser?.userStatus === 'test' && 'тест'
+            }
             tabIndex={10}
           >
             <ShieldAlert strokeWidth="2" color='#ffcc00' size={30}/>
