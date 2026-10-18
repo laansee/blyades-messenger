@@ -25,7 +25,7 @@ export default function SettingsPage() {
   const [lastName, setLastName] = useState(currentUser?.lastName || '');
   const [email, setEmail] = useState(currentUser?.email || '');
   const [phone, setPhone] = useState(currentUser?.phone || '');
-  const [aboutMe, setAboutMe] = useState(currentUser?.about_me || '');
+  const [aboutMe, setAboutMe] = useState(currentUser?.aboutMe || '');
   const [avatarColor, setAvatarColor] = useState(currentUser?.avatarColor || '#007aff');
   const [nameColor, setNameColor] = useState(currentUser?.avatarColor || '#440101');
   const [avatarUrl, setAvatarUrl] = useState(currentUser?.avatarUrl || null);
@@ -46,7 +46,7 @@ export default function SettingsPage() {
       setLastName(currentUser.lastName || '');
       setEmail(currentUser.email || '');
       setPhone(currentUser.phone || '');
-      setAboutMe(currentUser.about_me || '');
+      setAboutMe(currentUser.aboutMe || '');
       setAvatarColor(currentUser.avatarColor || '#007aff');
       setNameColor(currentUser.nameColor || '#440101');
       setAvatarUrl(currentUser.avatarUrl || null);
