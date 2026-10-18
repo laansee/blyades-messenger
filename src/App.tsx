@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router';
-import { Analytics } from "@vercel/analytics/next"
 // import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { type User } from '@supabase/supabase-js';
 // import { PageLoader } from './components/PageLoader';
