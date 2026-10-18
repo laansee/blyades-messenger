@@ -97,9 +97,9 @@ export default function UserProfileView({
           <span className={styles['info-label']}>Имя пользователя</span>
         </div>
 
-        {currentChatUser.about_me && currentChatUser.about_me.trim() !== '' && (
+        {currentChatUser.aboutMe && currentChatUser.aboutMe.trim() !== '' && (
           <div className={styles['info-item']}>
-            <span className={styles['info-value']}>{currentChatUser.about_me}</span>
+            <span className={styles['info-value']}>{currentChatUser.aboutMe}</span>
             <span className={styles['info-label']}>О себе</span>
           </div>
         )}
