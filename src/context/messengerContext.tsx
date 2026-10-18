@@ -145,6 +145,7 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
     const myId = String(currentUser.id);
 
     const { data: myContacts } = await supabase.from('contacts').select('*').eq('userId', myId);
+    const { data: whoAddedMe } = await supabase.from('contacts').select('userId').eq('contactId', myId);
     const { data: allUsers } = await supabase.from('users').select('*');
     const { data: myGroupMemberships } = await supabase.from('group_members').select('chatId').eq('userId', myId);
 
@@ -178,6 +179,12 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
           const roomMessages = allMessages.filter(m => m.chatId === roomName);
           const lastMsg = roomMessages[roomMessages.length - 1];
 
+          // 🚀 ПРОВЕРКА ВЗАИМНОЙ ПРИВАТНОСТИ: Добавил ли этот пользователь МЕНЯ в свои контакты?
+          // Ищем запись в таблице contacts, где хозяин — собеседник (u.id), а гость — это я (myId)
+          const amIInHisContacts = whoAddedMe 
+            ? whoAddedMe.some((c: any) => Number(c.userId) === Number(partnerId)) 
+            : false;
+
           return {
             id: String(u.id),
             username: u.username,
@@ -192,6 +199,7 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
             contactLastName: (contactMeta?.lastName && contactMeta.lastName !== 'EMPTY') ? contactMeta.lastName : '',
             updatedAt: u.updatedAt, 
             isContact: isContact,
+            isAmHisContact: amIInHisContacts, 
             isGroup: false,
             phone: u.phone || '',
             email: u.email || '',
