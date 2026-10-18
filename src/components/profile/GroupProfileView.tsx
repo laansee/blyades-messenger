@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styles from '../css/profile.module.css';
 import { supabase } from '../../services/supabaseClient';
 import { Search, UserPlus, Users } from 'lucide-react';
+import { AddParticipantsModal } from '../GlobalUI';
 
 interface GroupProfileViewProps {
   currentChatUser: any;
@@ -11,9 +12,52 @@ interface GroupProfileViewProps {
   ctx: any;
 }
 
-export default function GroupProfileView({ currentChatUser, baseName, onEditToggle, onClose, ctx }: GroupProfileViewProps) {
+export default function GroupProfileView({ 
+  currentChatUser,
+  baseName,
+  onEditToggle,
+  onClose,
+  ctx
+}: GroupProfileViewProps) {
   const [groupMembers, setGroupMembers] = useState<any[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
+  
+  // 🎯 СТЕЙТЫ ДЛЯ РАБОТЫ ЖИВОГО ПОИСКА УЧАСТНИКОВ
+  const [searchQuery, setSeachQuery] = useState('');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [existingUsers, setExistingUsers] = useState<string[]>([]);
+
+  // 🚀 ЖИВАЯ ФИЛЬТРАЦИЯ: На лету фильтруем массив по имени или юзернейму
+  const filteredMembers = groupMembers.filter((member) => {
+    const name = (member.name || '').toLowerCase();
+    const username = (member.username || '').toLowerCase();
+    const uniqueId = (member.uniqueId || '').toLowerCase();
+    const query = searchQuery.toLowerCase().trim();
+
+    return name.includes(query) || username.includes(query) || uniqueId.includes(query);
+  });
+
+  // 🎯 2. ФУНКЦИЯ КЛИКА НА ИКОНКУ ПЛЮСА (Полная адаптация твоего кода!)
+  const handleOpenAddModal = async () => {
+    try {
+      // Прямо отсюда запрашиваем из базы список тех, кто УЖЕ в этой группе
+      const { data, error } = await supabase
+        .from('group_members')
+        .select('userId')
+        .eq('chatId', currentChatUser.id); // Везём ID текущей комнаты
+
+      if (!error && data) {
+        setExistingUsers(data.map(m => String(m.userId)));
+      }
+      
+      // Открываем локальное окно добавления поверх текущего инфо-окна
+      setShowAddModal(true);
+    } catch (err) {
+      console.error('Ошибка при получении участников группы:', err);
+    }
+  };
 
   useEffect(() => {
     const fetchGroupMembers = async () => {
@@ -65,7 +109,6 @@ export default function GroupProfileView({ currentChatUser, baseName, onEditTogg
         ? `${ownerObject.firstName || ''} ${ownerObject.lastName || ''}`.trim()
         : ownerObject.username)
     : `Пользователь #${currentChatUser.ownerId}`;
-
   return (
     <div className={styles['view-mode']}> 
 
@@ -119,37 +162,83 @@ export default function GroupProfileView({ currentChatUser, baseName, onEditTogg
         <div className={styles['info-users']}>
           <div className={styles['info-users-header']}>
             <span>
-              <Users/>
+              <Users size={20} />
             </span>
             <span>Участники группы ({groupMembers.length})</span>
             <span>
-              <div>
-                <Search/>
+              {/* 🔍 Иконка Поиска (Лупа) */}
+              <div 
+                onClick={() => {
+                  setIsSearchOpen(!isSearchOpen);
+                  if (isSearchOpen) setSeachQuery(''); // Очищаем строку при закрытии поиска
+                }} 
+                style={{ cursor: 'pointer', transition: 'color 0.15s' }}
+                onMouseEnter={e => e.currentTarget.style.color = '#9d7bf6'}
+                onMouseLeave={e => e.currentTarget.style.color = '#8e8e93'}
+              >
+                <Search size={20} />
               </div>
-              <div>
-                <UserPlus/>
+
+              {/* ➕ Иконка Добавления (UserPlus) */}
+              <div 
+                onClick={handleOpenAddModal} 
+                style={{ cursor: 'pointer', transition: 'color 0.15s' }}
+                onMouseEnter={e => e.currentTarget.style.color = '#9d7bf6'}
+                onMouseLeave={e => e.currentTarget.style.color = '#8e8e93'}
+              >
+                <UserPlus size={20} />
               </div>
             </span>
           </div>
-          
+
+          {/* 🔍 ВЫЕЗЖАЮЩИЙ СТИЛЬНЫЙ ИНПУТ ЖИВОГО ПОИСКА */}
+          {isSearchOpen && (
+            <div style={{ width: '100%', marginBottom: '12px', position: 'relative' }}>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSeachQuery(e.target.value)}
+                placeholder="Поиск участников по имени или @id..."
+                style={{
+                  width: '100%', padding: '8px 12px', backgroundColor: '#18181e',
+                  border: '1px solid #383842', borderRadius: '8px', color: '#fff',
+                  fontSize: '13px', outline: 'none', boxSizing: 'border-box'
+                }}
+              />
+              {searchQuery && (
+                <button 
+                  type="button" 
+                  onClick={() => setSeachQuery('')}
+                  style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#636366', cursor: 'pointer', fontSize: '14px' }}
+                >
+                  ×
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* ======================================================== */}
+          {/* 🚀 ВЫВОД ФИЛЬТРОВАННОГО СПИСКА УЧАСТНИКОВ               */}
+          {/* ======================================================== */}
           {loadingMembers ? (
             <span style={{ color: '#636366', fontSize: '13px' }}>Синхронизация участников...</span>
           ) : (
-            <div className={styles['info-users-section']} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {groupMembers.map((member) => {
-                const isOwner = String(member.id) === String(currentChatUser.ownerId);
-                const isMe = String(member.id) === String(ctx?.currentUser?.id);
-                // Проверяем, являемся ли МЫ создателем (админом) этой конкретной беседы
-                const amIOwner = String(currentChatUser.ownerId) === String(ctx?.currentUser?.id);
-                
-                // Вычисляем, как отобразить имя участника по его правилам конфиденциальности
-                const useFullNameMode = member.privacyNameFormat === 'full_name' && shouldShowMemberFullName(member);
-                
-                const displayName = useFullNameMode && (member.firstName || member.lastName)
-                  ? `${member.firstName || ''} ${member.lastName || ''}`.trim()
-                  : member.username;
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {filteredMembers.length === 0 ? (
+                <span style={{ color: '#636366', fontSize: '13px', textAlign: 'center', padding: '10px 0' }}>Никого не найдено</span>
+              ) : (
+                // 🎯 ВМЕСТО groupMembers.map запускаем filteredMembers.map!
+                filteredMembers.map((member) => {
+                  const isOwner = String(member.id) === String(currentChatUser.ownerId);
+                  const isMe = String(member.id) === String(ctx?.currentUser?.id);
+                  const amIOwner = String(currentChatUser.ownerId) === String(ctx?.currentUser?.id);
+                  const useFullNameMode = member.privacyNameFormat === 'full_name' && shouldShowMemberFullName(member);
+                  
+                  const displayName = useFullNameMode && (member.firstName || member.lastName)
+                    ? `${member.firstName || ''} ${member.lastName || ''}`.trim()
+                    : member.username;
 
-                return (
+                  return (
                   <div 
                     key={member.id} 
                     className={styles['info-users-item']} 
@@ -212,12 +301,37 @@ export default function GroupProfileView({ currentChatUser, baseName, onEditTogg
                     </div>
 
                   </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
           )}
         </div>
       </div>
+      <AddParticipantsModal
+        show={showAddModal}
+        existingUserIds={existingUsers}
+        onClose={() => setShowAddModal(false)}
+        onAdd={async (selectedIds) => {
+          // Вызываем метод массового инсерта из глобального контекста ядра
+          if (ctx.handleAddUsersToGroup) {
+            await ctx.handleAddUsersToGroup(currentChatUser.id, selectedIds);
+            
+            // После успешного добавления запрашиваем из базы обновленный список участников,
+            // чтобы они мгновенно дорендерились в списке на экране без перезагрузки модалки!
+            const { data } = await supabase
+              .from('group_members')
+              .select('userId')
+              .eq('chatId', currentChatUser.id);
+              
+            if (data && ctx.fetchAndMatchChats) {
+              // Перезапрашиваем профили участников для живого обновления стейта groupMembers
+              // (или пушим вызов обновления участников, который у тебя написан в useEffect модалки)
+              ctx.showToast('Пользователи успешно приглашены!', 'success');
+            }
+          }
+        }}
+      />
     </div>
   );
 }
