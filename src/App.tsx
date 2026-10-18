@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router';
 // import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { type User } from '@supabase/supabase-js';
+import { Analytics } from '@vercel/analytics/react';
 // import { PageLoader } from './components/PageLoader';
 import AuthPage from './features/auth/AuthPage';
 import ChatLayout from './features/chat/chatLayout';
@@ -56,6 +57,7 @@ export default function App() {
   return (
     <MessengerProvider>
       <AppContent />
+      <Analytics />
     </MessengerProvider>
   );
 }
