@@ -120,6 +120,7 @@ export default function ChatsSidebar({ onOpenCreateGroup }: { onOpenCreateGroup:
                   id: 'create-group', 
                   text: 'Создать чат', 
                   icon: Users, 
+                  tabIndex: 50,
                   onClick: () => {
                     setShowCreateMenu(false);
                     onOpenCreateGroup(); 
@@ -129,6 +130,7 @@ export default function ChatsSidebar({ onOpenCreateGroup }: { onOpenCreateGroup:
                   id: 'create-channel', 
                   text: 'Создать канал', 
                   icon: Megaphone, 
+                  tabIndex: 50,
                   onClick: () => {
                     ctx.showToast('Функция создания каналов в разработке', 'info');
                     setShowCreateMenu(false);
@@ -138,6 +140,7 @@ export default function ChatsSidebar({ onOpenCreateGroup }: { onOpenCreateGroup:
                   id: 'write-by-phone', 
                   text: 'Написать по номеру', 
                   icon: PhoneCall, 
+                  tabIndex: 50,
                   onClick: () => {
                     ctx.showToast('Поиск по номеру телефона в разработке', 'info');
                     setShowCreateMenu(false);
