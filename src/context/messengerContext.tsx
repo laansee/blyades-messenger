@@ -1,7 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { supabase } from '../services/supabaseClient';
-import { Analytics } from "@vercel/analytics/react"
-import { SpeedInsights } from "@vercel/speed-insights/react"
 import { ToastNotification, ConfirmModal } from '../components/GlobalUI'; 
 import ProfileModal from '../components/profile/profileModal'; 
 import CallModal from '../features/calls/callOverlay'; 
@@ -688,8 +686,6 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
       <div style={{ position: 'fixed', zIndex: 888888 }}>
         <ConfirmModal confirm={confirm} setConfirm={setConfirm} />
       </div>
-      <Analytics />
-      <SpeedInsights/>
     </MessengerContext.Provider>
   );
 }
