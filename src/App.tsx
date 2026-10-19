@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router';
 import { Analytics } from '@vercel/analytics/react';
+import { SpeedInsights } from "@vercel/speed-insights/react"
 import AuthPage from './features/auth/AuthPage';
 import ChatLayout from './features/chat/chatLayout';
 import SettingsPage from './features/settings/settingsPage';
@@ -62,6 +63,8 @@ export default function App() {
   return (
     <MessengerProvider>
       <AppContent />
+      <Analytics />
+      <SpeedInsights/>
     </MessengerProvider>
   );
 }
