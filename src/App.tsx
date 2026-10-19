@@ -1,9 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router';
-// import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { type User } from '@supabase/supabase-js';
 import { Analytics } from '@vercel/analytics/react';
-// import { PageLoader } from './components/PageLoader';
 import AuthPage from './features/auth/AuthPage';
 import ChatLayout from './features/chat/chatLayout';
 import SettingsPage from './features/settings/settingsPage';
@@ -13,42 +10,50 @@ import AdminDashboard from './features/admin/admin-dashboard';
 import LandingPage from './components/LandingPage';
 import useMessengerContext, { MessengerProvider } from './context/messengerContext';
 
+function ProtectedRoute({ element }: { element: React.ReactElement }) {
+  const { currentUser } = useMessengerContext();
+  return currentUser ? element : <Navigate to="/auth" replace />;
+}
+
 function AppContent() {
-  const ctx = useMessengerContext();
-  const [session, setSession] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { currentUser, authLoading } = useMessengerContext();
 
   useEffect(() => {
-    const savedUserId = localStorage.getItem('blyades_user_id');
-    const savedUniqueId = localStorage.getItem('blyades_unique_id');
-    if (savedUserId && savedUniqueId) setSession({ id: savedUserId, email: savedUniqueId } as any);
-    else setSession(null);
-    setLoading(false);
+    document.title = "Blyades Messenger";
   }, []);
 
-  // if (loading) return <PageLoader />;
+  if (authLoading) {
+    return (
+      <div style={{ minHeight: '100vh', backgroundColor: '#0e0f11', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontFamily: 'sans-serif' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+          <span style={{ fontSize: '13px', color: '#8e8e93', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1.5px' }}>
+            Синхронизация ключей Blyades...
+          </span>
+          {/* Твой кастомный лоадер или простая анимация */}
+          <div style={{ width: '24px', height: '24px', border: '2.5px solid #2b2d31', borderTopColor: '#9d7bf6', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+        </div>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
 
   return (
     <Router>
       <Routes>
+        {/* Публичные страницы */}
         <Route path="/" element={<LandingPage />} />
-        {!ctx.currentUser ? (
-          <>
-            <Route path="/auth" element={<AuthPage />} />
-            <Route path="*" element={<Navigate to="/auth" replace />} />
-          </>
-        ) : (
-          <>
-            <Route path="/chat" element={<ChatLayout />} />
-            <Route path="/contacts" element={<ContactsPage />} />
-            <Route path="/calls" element={<CallsPage />} />
-            <Route path="/settings" element={<SettingsPage />} /> 
-            <Route path="/admin" element={<AdminDashboard />} />
-              <Route path="/auth" element={<Navigate to="/chat" replace />} />
-              <Route path="*" element={<Navigate to="/chat" replace />} />
-          </>
-        )}
-      </Routes>
+
+        {/* Страница авторизации: если залогинен — редиректим в чат, если нет — показываем форму */}
+        <Route path="/auth" element={!currentUser ? <AuthPage /> : <Navigate to="/chat" replace />} />
+
+        <Route path="/chat" element={<ProtectedRoute element={<ChatLayout />} />} />
+        <Route path="/contacts" element={<ProtectedRoute element={<ContactsPage />} />} />
+        <Route path="/calls" element={<ProtectedRoute element={<CallsPage />} />} />
+        <Route path="/settings" element={<ProtectedRoute element={<SettingsPage />} />} />
+        <Route path="/admin" element={<ProtectedRoute element={<AdminDashboard />} />} />
+
+        <Route path="*" element={<Navigate to={currentUser ? "/chat" : "/auth"} replace />} />
+     </Routes>
     </Router>
   );
 }

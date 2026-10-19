@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { supabase } from '../services/supabaseClient';
+import { Analytics } from "@vercel/analytics/react"
+import { SpeedInsights } from "@vercel/speed-insights/react"
 import { ToastNotification, ConfirmModal } from '../components/GlobalUI'; 
 import ProfileModal from '../components/profile/profileModal'; 
 import CallModal from '../features/calls/callOverlay'; 
@@ -15,48 +17,11 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
   const [activeTab, setActiveTab] = useState('chats');
   const [theme, setTheme] = useState('dark');
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [authLoading, setAuthLoading] = useState(true); 
   const [chatsLoading, setChatsLoading] = useState(true);
   const [chats, setChats] = useState<any[]>([]);
   const [allMessages, setAllMessages] = useState<any[]>([]);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
-
-  // 🚀 АВТОМАТИЧЕСКИЙ СБРОС СЧЁТЧИКОВ И ГАЛОК: Срабатывает при выборе любого чата!
-  useEffect(() => {
-    if (!activeChatId || !currentUser) return;
-
-    const myIdStr = String(currentUser.id);
-    const isGroup = String(activeChatId).startsWith('group_');
-
-    const markMessagesAsRead = async () => {
-      try {
-        if (isGroup) {
-          // 👥 В БЕСЕДЕ: Переводим все чужие сообщения этой группы из 'send' в 'read'
-          await supabase
-            .from('messages')
-            .update({ status: 'read' })
-            .eq('chatId', activeChatId)
-            .not('senderId', 'eq', myIdStr) // 🎯 ВАЖНО: Не читаем свои собственные сообщения!
-            .eq('status', 'send');
-        } else {
-          // 👤 В ЛИЧНЫХ ЧАТАХ (ЛС): Вычисляем имя комнаты
-          const currentJoinedRoom = Number(myIdStr) < Number(activeChatId) 
-            ? `${myIdStr}_${activeChatId}` 
-            : `${activeChatId}_${myIdStr}`;
-
-          await supabase
-            .from('messages')
-            .update({ status: 'read' })
-            .eq('chatId', currentJoinedRoom)
-            .not('senderId', 'eq', myIdStr)
-            .eq('status', 'send');
-        }
-      } catch (err) {
-        console.error('Ошибка сброса счётчиков в базе:', err);
-      }
-    };
-
-    markMessagesAsRead();
-  }, [activeChatId, currentUser, allMessages]); // Пересчитываем в реалтайме при новых сообщениях!
 
   const [searchQuery, setSearchQuery] = useState('');
   const [messageSearchQuery, setMessageSearchQuery] = useState('');
@@ -109,30 +74,35 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
   }, [currentUser?.id]);
 
   useEffect(() => {
-    // АВТОРИЗАЦИЯ: Холодный старт профиля из сессии
     const fetchSessionUser = async () => {
       const storedId = localStorage.getItem('blyades_user_id');
       if (!storedId) {
         setCurrentUser(null);
+        setAuthLoading(false);
         return;
       }
-      const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', storedId)
-      .single();
 
-      if (!error && data)
-        setCurrentUser(data);
-      else {
-        // Если в базе юзер был удален админом, чистим сессию
-        localStorage.removeItem('blyades_user_id');
-        setCurrentUser(null);
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', storedId)
+          .single();
+
+        if (!error && data) {
+          setCurrentUser(data);
+        } else {
+          localStorage.removeItem('blyades_user_id');
+          setCurrentUser(null);
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setAuthLoading(false);
       }
     };
     fetchSessionUser();
     
-    // Накатываем холодную выгрузку всей истории сообщений для прогрева кэша
     const fetchHistory = async () => {
       const { data } = await supabase.from('messages').select('*').order('id', { ascending: true });
       if (data) setAllMessages(data);
@@ -200,6 +170,7 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
             updatedAt: u.updatedAt, 
             isContact: isContact,
             isAmHisContact: amIInHisContacts, 
+            userStatus: u.userStatus,
             isGroup: false,
             phone: u.phone || '',
             email: u.email || '',
@@ -216,9 +187,26 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
         });
 
       // Б. 👥 Форматируем групповые чаты (беседы) С ЖЕЛЕЗНЫМ ВЫЧИСЛЕНИЕМ КОМНАТЫ
+      // 1. Сначала выкачиваем из message_reads айдишники всех сообщений, которые прочитал ТЕКУЩИЙ юзер
+      const { data: myReadsData } = await supabase
+        .from('message_reads')
+        .select('messageId')
+        .eq('userId', Number(myId));
+
+      const myReadMessageIds = myReadsData ? myReadsData.map(r => Number(r.messageId)) : [];
+
       const formattedGroupChats = activeGroups.map((g: any) => {
-        const roomMessages = allMessages.filter(m => m.chatId === g.id);
+        const roomMessages = allMessages.filter(m => String(m.chatId).trim() === String(g.id).trim());
         const lastMsg = roomMessages[roomMessages.length - 1];
+
+        let calculatedUnreadCount = roomMessages.filter(m => 
+          String(m.senderId) !== myId && 
+          !myReadMessageIds.includes(Number(m.id))
+        ).length;
+
+        if (String(g.id).trim() === String(activeChatId).trim()) {
+          calculatedUnreadCount = 0; // Насильно тушим кружок в сайдбаре для активного экрана!
+        }
 
         return {
           id: g.id, 
@@ -226,6 +214,7 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
           avatarColor: g.avatarColor || '#5865F2',
           isGroup: true, 
           ownerId: g.ownerId,
+          unreadCount: calculatedUnreadCount,
           lastMessage: lastMsg ? lastMsg.text : 'Нет сообщений',
           lastMessageTime: lastMsg ? new Date(lastMsg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''
         };
@@ -236,9 +225,102 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
     } else {
       setChatsLoading(false);
     }
-  }, [currentUser, allMessages]);
+  }, [currentUser, allMessages, activeChatId]);
 
   useEffect(() => {fetchAndMatchChats();}, [fetchAndMatchChats]);
+
+  // 🚀 АВТОМАТИЧЕСКИЙ СБРОС СЧЁТЧИКОВ И ГАЛОК: Срабатывает при выборе любого чата!
+  useEffect(() => {
+    if (!activeChatId || !currentUser) return;
+
+    const myIdStr = String(currentUser.id);
+    const myIdNum = Number(currentUser.id);
+    const isGroup = String(activeChatId).startsWith('group_');
+
+    const markMessagesAsRead = async () => {
+      try {
+        if (isGroup) {
+          // ========================================================
+          // 👥 СЦЕНАРИЙ А: ГРУППОВАЯ БЕСЕДЕ (Индивидуальные логи)
+          // ========================================================
+          
+          setChats(prevChats => 
+            prevChats.map(c => String(c.id).trim() === String(activeChatId).trim() ? { ...c, unreadCount: 0 } : c)
+          );
+          
+          // 1. Вместо стейта Реакта, запрашиваем из базы ПРЯМО СЕЙЧАС все чужие сообщения этой группы
+          const { data: currentRoomMsgs } = await supabase
+            .from('messages')
+            .select('id, senderId')
+            .eq('chatId', activeChatId);
+
+          if (!currentRoomMsgs || currentRoomMsgs.length === 0) return;
+
+          // Фильтруем только чужие сообщения
+          const foreignMessages = currentRoomMsgs.filter(m => String(m.senderId) !== myIdStr);
+          if (foreignMessages.length === 0) return;
+
+          const messageIdsToCheck = foreignMessages.map(m => Number(m.id));
+          console.log('🛡️ [Read_Debug] Айдишники чужих сообщений для проверки:', messageIdsToCheck);
+
+          // 2. Узнаем, какие из них мы уже читали ранее, чтобы не плодить дубликаты
+          const { data: alreadyReadData } = await supabase
+            .from('message_reads')
+            .select('messageId')
+            .eq('userId', myIdNum)
+            .in('messageId', messageIdsToCheck); // 🎯 МЕГА-ФИКС: Исправили опечатку в имени переменной!
+
+          const alreadyReadIds = alreadyReadData ? alreadyReadData.map(r => Number(r.messageId)) : [];
+
+          // 3. Находим сообщения, которые мы видим впервые
+          const newMessagesToMark = foreignMessages.filter(m => !alreadyReadIds.includes(Number(m.id)));
+
+          if (newMessagesToMark.length > 0) {
+            const readsToInsert = newMessagesToMark.map(m => ({
+              messageId: Number(m.id),
+              userId: myIdNum
+            }));
+
+
+            // Делаем инсерт пакетов в message_reads
+            const { error: insertError } = await supabase
+              .from('message_reads')
+              .insert(readsToInsert);
+
+            if (insertError) {
+              console.error('🛡️ [Read_Debug] ❌ Ошибка INSERT в message_reads:', insertError.message);
+            } else {
+              console.log('🛡️ [Read_Debug] 🎉 ИНСЕРТ УСПЕШНО СРАБОТАЛ! Перезапрашиваю чаты...');
+              if (fetchAndMatchChats) fetchAndMatchChats();
+            }
+          }
+
+          // await supabase
+          //   .from('messages')
+          //   .update({ status: 'read' })
+          //   .eq('chatId', activeChatId)
+          //   .not('senderId', 'eq', myIdStr) // 🎯 ВАЖНО: Не читаем свои собственные сообщения!
+          //   .eq('status', 'send');
+        } else {
+          // 👤 В ЛИЧНЫХ ЧАТАХ (ЛС): Вычисляем имя комнаты
+          const currentJoinedRoom = Number(myIdStr) < Number(activeChatId) 
+            ? `${myIdStr}_${activeChatId}` 
+            : `${activeChatId}_${myIdStr}`;
+
+          await supabase
+            .from('messages')
+            .update({ status: 'read' })
+            .eq('chatId', currentJoinedRoom)
+            .not('senderId', 'eq', myIdStr)
+            .eq('status', 'send');
+        }
+      } catch (err) {
+        console.error('🛡️ [Read_Debug] Критическая ошибка внутри markMessagesAsRead:', err);
+      }
+    };
+
+    markMessagesAsRead();
+  }, [activeChatId, currentUser, allMessages, fetchAndMatchChats]); // Пересчитываем в реалтайме при новых сообщениях!
 
   // 🚀 УМНАЯ ОТПРАВКА: Автоматически разделяет создание нового текста и РЕДАКТИРОВАНИЕ старого!
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -560,7 +642,7 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
         ctxMenu, setCtxMenu,
         toast, setToast,
         confirm, setConfirm,
-        messagesEndRef, chatsLoading,
+        messagesEndRef, chatsLoading, authLoading,
         showToast, showConfirm, closeContextMenu,
         handleCopyMessageText, handleSendMessage,
         handleKeyDown, handleLogout,
@@ -606,6 +688,8 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
       <div style={{ position: 'fixed', zIndex: 888888 }}>
         <ConfirmModal confirm={confirm} setConfirm={setConfirm} />
       </div>
+      <Analytics />
+      <SpeedInsights/>
     </MessengerContext.Provider>
   );
 }

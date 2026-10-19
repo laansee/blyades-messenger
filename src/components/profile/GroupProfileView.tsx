@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styles from '../css/profile.module.css';
 import { supabase } from '../../services/supabaseClient';
 import { Search, UserPlus, Users } from 'lucide-react';
+import { renderUserStatusBadge } from '../../utils/statusBadge';
 import { AddParticipantsModal } from '../GlobalUI';
 
 interface GroupProfileViewProps {
@@ -75,7 +76,7 @@ export default function GroupProfileView({
           // 🚀 ИСПРАВЛЕНИЕ: Выкачиваем ВСЕ поля приватности и правильный uniqueId из таблицы users!
           const { data: usersData, error: uError } = await supabase
             .from('users')
-            .select('id, username, uniqueId, firstName, lastName, avatarColor, avatarUrl, privacyNameFormat, privacyFullName')
+            .select('id, username, uniqueId, firstName, lastName, avatarColor, avatarUrl, privacyNameFormat, privacyFullName, userStatus')
             .in('id', userIds);
 
           if (!uError && usersData) {
@@ -256,7 +257,10 @@ export default function GroupProfileView({
                         </div>
                       )}
                       <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ color: '#fff', fontSize: '14px', fontWeight: '500' }}>{displayName}</span>
+                        <span style={{ color: '#fff', fontSize: '14px', fontWeight: '500' }}>
+                          {renderUserStatusBadge(member)}                          
+                          {displayName}
+                        </span>
                         <span style={{ color: '#636366', fontSize: '12px' }}>
                           @{member.uniqueId || member.username}
                         </span>

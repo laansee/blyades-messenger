@@ -74,8 +74,6 @@ export default function NavSidebar() {
             to="/admin" 
             className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`} 
             onClick={() => ctx.setActiveTab('admin')}
-            // title="Панель администратора"
-            // title={ctx.currentUser?.userStatus === 'administrator' && 'админ'}
             title={
               ctx.currentUser?.userStatus === 'administrator' ? 'админ' : 
               ctx.currentUser?.userStatus === 'moderator' ? 'модер' : 
