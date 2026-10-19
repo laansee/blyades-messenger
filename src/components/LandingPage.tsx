@@ -80,7 +80,7 @@ export default function LandingPage() {
 
         <p style={{ fontSize: 'clamp(16px, 3vw, 20px)', color: '#9ca3af', maxWidth: '734px', margin: 0, lineHeight: 1.5 }}>
           У нашей хуйни, пока ты читаешь этот текст, по-любому <b>УЖЕ</b> что-то отвалилось нахуй.
-          Встречай <strong>Blyades Messenger</strong> — монолитный кусок говна на чистом энтузиазме без знаний нужных знаний языков и тупости автора.
+          Встречай <strong>Blyades Messenger</strong> — монолитный кусок говна на чистом энтузиазме без нужных знаний языков и тупости автора.
         </p>
 
         <div style={{ marginTop: '16px' }}>
