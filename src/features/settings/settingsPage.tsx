@@ -6,10 +6,11 @@ import profileStyles from '../../components/css/profile.module.css';
 import useMessengerContext from '../../context/messengerContext';
 import NavSidebar from '../navigation/nav-sidebar';
 import { renderUserStatusBadge } from '../../utils/statusBadge';
+import SmartAvatar from '../../components/common/SmartAvatar';
 
 import EditProfile from './edit-profile';
 import PrivacySettings from './privacy-settings';
-import { Lock, User } from 'lucide-react';
+import { Lock, User, Menu, Copy, QrCode, Hash } from 'lucide-react';
 
 export default function SettingsPage() {
   const ctx = useMessengerContext();
@@ -78,13 +79,36 @@ export default function SettingsPage() {
     ? `${firstName || ''} ${lastName || ''}`.trim()
     : (username.trim() !== '' ? username : `@${uniqueId}`);
 
+  const myIdDisplay = currentUser?.id ? `#${currentUser.id}` : currentUser?.uuid?.slice(0, 8);
+
   return (
     <div className={mainStyle['messenger-container']}>
       <NavSidebar />
 
       <section className={style.setSidebar}>
-        <div className={style.setSidebarHeader}>
-          <h2>Настройки</h2>
+        <div className={style.setSidebarHeader} style={{ display: 'flex', alignItems: 'center', gap: '12px', flexDirection: 'row' }}>
+          <button 
+            type="button" 
+            onClick={() => ctx.setIsNavOpen?.(true)}
+            title="Открыть меню"
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#8e8e93',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '6px',
+              borderRadius: '8px',
+              transition: 'background 0.15s ease'
+            }}
+            onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)')}
+            onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
+          >
+            <Menu size={22} />
+          </button>
+          <h2 style={{ margin: 0 }}>Настройки</h2>
         </div>
 
         <div className={style.setSidebarList}>
@@ -133,7 +157,6 @@ export default function SettingsPage() {
       </section>
 
       <div className={style.settingsContainer} style={{ backgroundColor: '#13131a', overflowY: 'auto' }}>
-        
         {activeSettingsTab === 'profile' && (
           <EditProfile 
             onBack={() => setActiveSettingsTab('profile')}
@@ -176,108 +199,128 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        <div className={profileStyles['profile-modal-card']} style={{ width: '100%', position: 'relative', boxShadow: '0 8px 32px rgba(0,0,0,0.4)', animation: 'none' }}>
-          <div style={{ padding: '24px' }}>
+        <div 
+          className={profileStyles['view-mode']} 
+          style={{ 
+            width: '100%', 
+            borderRadius: '16px', 
+            overflow: 'hidden', 
+            border: '1px solid #2b2d31',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+            backgroundColor: '#1c1c24'
+          }}
+        >
+          <div className={profileStyles['profile-header-gradient']}>
             <div className={profileStyles['profile-avatar-wrapper']}>
-              {avatarUrl ? (
-                <img src={avatarUrl} alt="Avatar" style={{ width: '90px', height: '90px', borderRadius: '50%', objectFit: 'cover' }} />
-              ) : (
-                <div className={profileStyles['profile-avatar']} style={{ backgroundColor: avatarColor }}>
-                  {previewDisplayName.substring(0, 1).toUpperCase()}
-                </div>
-              )}
+              <SmartAvatar
+                size={84}
+                avatarUrl={avatarUrl}
+                avatarColor={avatarColor}
+                name={previewDisplayName}
+                isChannel={false}
+              />
             </div>
 
             <h2 className={profileStyles['profile-name']}>
               {renderUserStatusBadge(currentUser)}
               {previewDisplayName}
             </h2>
-            <span className={profileStyles['profile-status']} style={{ color: shouldShowFieldInPreview(privacyOnline) ? '#2ec761' : '#707579' }}>
+            <span 
+              className={`${profileStyles['profile-status']} ${
+                shouldShowFieldInPreview(privacyOnline) ? profileStyles['online'] : ''
+              }`}
+            >
               {shouldShowFieldInPreview(privacyOnline) ? 'в сети' : 'был(а) недавно'}
             </span>
           </div>
 
           <div className={profileStyles['info-section']}>
+            {/* Настоящие Имя и Фамилия */}
             {privacyNameFormat === 'username' && shouldShowFieldInPreview(privacyFullName) && hasNamesFilled && (
               <div className={profileStyles['info-item']}>
-                <span className={profileStyles['info-value']}>
-                  {`${firstName || ''} ${lastName || ''}`.trim()}
-                </span>
-                <span className={profileStyles['info-label']}>
-                  Настоящие Имя и Фамилия
-                </span>
+                <div className={profileStyles['info-item-content']}>
+                  <span className={profileStyles['info-value']}>
+                    {`${firstName || ''} ${lastName || ''}`.trim()}
+                  </span>
+                  <span className={profileStyles['info-label']}>Настоящие Имя и Фамилия</span>
+                </div>
+                <Copy size={16} className={profileStyles['info-icon']} />
               </div>
             )}
 
-            <div className={profileStyles['info-item']}>
-              <span className={profileStyles['info-value']}>
-                @{uniqueId || 'не указан'}
-              </span>
-              <span className={profileStyles['info-label']}>
-                Имя пользователя
-              </span>
-            </div>
-            
+            {/* Телефон */}
             {shouldShowFieldInPreview(privacyPhone) && phone && phone.trim() !== '' && (
               <div className={profileStyles['info-item']}>
-                <span className={profileStyles['info-value']}>
-                  {phone}
-                </span>
-                <span className={profileStyles['info-label']}>
-                  Телефон
-                </span>
+                <div className={profileStyles['info-item-content']}>
+                  <span className={profileStyles['info-value']}>{phone}</span>
+                  <span className={profileStyles['info-label']}>Телефон</span>
+                </div>
+                <Copy size={18} className={profileStyles['info-icon']} />
               </div>
             )}
             
+            {/* Электронная почта */}
             {shouldShowFieldInPreview(privacyEmail) && email && email.trim() !== '' && (
               <div className={profileStyles['info-item']}>
-                <span className={profileStyles['info-value']}>
-                  {email}
-                </span>
-                <span className={profileStyles['info-label']}>
-                  Электронная почта
-                </span>
+                <div className={profileStyles['info-item-content']}>
+                  <span className={profileStyles['info-value']}>{email}</span>
+                  <span className={profileStyles['info-label']}>Электронная почта</span>
+                </div>
+                <Copy size={18} className={profileStyles['info-icon']} />
+              </div>
+            )}
+            
+            {/* О себе */}
+            {aboutMe.trim() !== '' && (
+              <div className={profileStyles['info-item']} style={{ cursor: 'default' }}>
+                <div className={profileStyles['info-item-content']}>
+                  <span className={`${profileStyles['info-value']} ${profileStyles['multiline']}`}>
+                    {aboutMe}
+                  </span>
+                  <span className={profileStyles['info-label']} style={{ marginTop: '4px' }}>О себе</span>
+                </div>
               </div>
             )}
 
-            {aboutMe.trim() !== '' && (
-              <div className={profileStyles['info-item']}>
-                <span className={profileStyles['info-value']} style={{ wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>
-                  {aboutMe}
+            {/* Идентификатор профиля */}
+            <div className={profileStyles['info-item']}>
+              <div className={profileStyles['info-item-content']}>
+                <span className={`${profileStyles['info-value']} ${profileStyles['mono']}`}>
+                  {myIdDisplay}
                 </span>
-                <span className={profileStyles['info-label']}>
-                  О себе
-                </span>
+                <span className={profileStyles['info-label']}>Идентификатор профиля</span>
               </div>
-            )}
+              <Hash size={16} className={profileStyles['info-icon']} />
+            </div>
           </div>
         </div>
 
-
-
-        <div className={chatStyles['message-with-avatar']} style={{background: '#616161', padding: '10px', borderRadius: '9px',}}>
-          <div 
-            className={chatStyles['group-msg-avatar']} 
-            style={{ backgroundColor: avatarColor }}
-          >
-            {avatarUrl ? (
-              <img 
-                src={avatarUrl} 
-                alt="Avatar" 
-                style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
-              />
-            ) : (
-              previewDisplayName.substring(0, 1).toUpperCase()
-            )}
-          </div>
+        <div 
+          className={chatStyles['message-with-avatar']} 
+          style={{ 
+            background: '#616161', 
+            padding: '12px 14px', 
+            borderRadius: '12px',
+            border: '1px solid #2b2d31',
+            width: '100%',
+            boxSizing: 'border-box'
+          }}
+        >
+          <SmartAvatar
+            size={36}
+            avatarUrl={avatarUrl}
+            avatarColor={avatarColor}
+            name={previewDisplayName}
+            isChannel={false}
+          />
           <div 
             className={chatStyles['message-bubble']}
-            style={{ background: '#1c1c24' }}
+            style={{ background: '#22232b', border: '1px solid #2b2d31', marginLeft: '6px' }}
           >
             <div className={chatStyles['message-text']}>
               <span 
                 className={chatStyles['group-msg-sender-name']} 
-                style={{ color: nameColor }}
+                style={{ color: nameColor, fontWeight: '600' }}
               >
                 {renderUserStatusBadge(currentUser)}
                 {previewDisplayName}

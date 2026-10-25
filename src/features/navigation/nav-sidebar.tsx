@@ -16,7 +16,8 @@ import {
   ChevronDown, 
   ChevronUp,
   ShieldAlert,
-  LogOut
+  LogOut,
+  MessagesCircle
 } from 'lucide-react';
 import useMessengerContext from '../../context/messengerContext';
 import SmartAvatar from '../../components/common/SmartAvatar';
@@ -70,6 +71,7 @@ export default function NavSidebar({
         {/* ======================================================== */}
         {/* 1. ВЕРХНЯЯ ШАПКА: АВАТАР И СЕЛЕКТОР АККАУНТОВ            */}
         {/* ======================================================== */}
+
         <div className={styles.headerProfile}>
           <div 
             className={styles.avatarMain}
@@ -139,6 +141,19 @@ export default function NavSidebar({
         {/* 2. ОСНОВНОЙ СПИСОК ПУНКТОВ МЕНЮ                         */}
         {/* ======================================================== */}
         <div className={styles.menuList}>
+
+          {/* Настройки */}
+          <NavLink 
+            to="/chat" 
+            className={({ isActive }) => `${styles.menuItem} ${isActive ? styles.active : ''}`}
+            onClick={() => {
+              ctx.setActiveTab('chat');
+              closeNav();
+            }}
+          >
+            <MessagesCircle size={20} className={styles.itemIcon} />
+            <span className={styles.itemText}>Чат</span>
+          </NavLink>
           
           {/* Архив (не реализован) */}
           <button 
