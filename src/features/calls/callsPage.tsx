@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import mainStyle from '../../components/css/main.module.css';
 import useMessengerContext from '../../context/messengerContext';
 import { supabase } from '../../services/supabaseClient';
-import NavSidebar from '../channels/nav-sidebar';
+import NavSidebar from '../navigation/nav-sidebar';
 import CallsSidebar from './callsSidebar';
 import CallsWindow from './callsWindow';
 

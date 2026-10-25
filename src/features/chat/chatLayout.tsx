@@ -1,15 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import mainStyle from '../../components/css/main.module.css';
-import useMessengerContext, { MessengerProvider } from '../../context/messengerContext';
-import NavSidebar from '../channels/nav-sidebar';
+import useMessengerContext from '../../context/messengerContext';
+import NavSidebar from '../navigation/nav-sidebar';
 import ChatsSidebar from './chats-sidebar'; 
 import ChatWindow from './chat-window';
-import CreateGroupModal from '../../components/create-group-modal';
-// import { CreateGroupModal } from '../../components/GlobalUI'
+import CreateGroupModal from '../../components/modals/CreateGroupModal';
+import CreateChannelModal from '../../components/modals/CreateChannelModal';
 
-function ChatContent() {
+export default function ChatLayout() {
   const ctx = useMessengerContext();
   const [showGroupModal, setShowGroupModal] = useState(false);
+  const [showChannelModal, setShowChannelModal] = useState(false);
   
   useEffect(() => {
     document.title = 'Чаты | Blyades';
@@ -17,14 +18,15 @@ function ChatContent() {
 
   return (
     <div className={`${mainStyle['messenger-container']} ${ctx.activeChatId ? mainStyle['chat-opened'] : ''}`}>
-      <NavSidebar />
-      <ChatsSidebar onOpenCreateGroup={() => setShowGroupModal(true)} />
+      <NavSidebar 
+        onOpenCreateGroup={() => setShowGroupModal(true)} 
+        onOpenCreateChannel={() => setShowChannelModal(true)}
+      />
+      <ChatsSidebar />
       <ChatWindow />
+      
       <CreateGroupModal show={showGroupModal} onClose={() => setShowGroupModal(false)} />
+      <CreateChannelModal show={showChannelModal} onClose={() => setShowChannelModal(false)} />
     </div>
   );
-}
-
-export default function ChatLayout() {
-  return <ChatContent />;
 }

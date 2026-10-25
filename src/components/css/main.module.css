@@ -1,5 +1,3 @@
-
-
 html, body, #root {
   margin: 0;
   padding: 0;
@@ -56,35 +54,20 @@ html, body, #root {
   overflow: hidden;
 }
 
-/* .messenger-container[data-theme='light'] {
-  --bg-main: #ffffff;
-  --bg-sidebar: #f3f4f6;
-  --text-color: #111827;
-}
-
-.messenger-container[data-theme='dark'] {
-  --bg-main: #121216;
-  --bg-sidebar: #1e1e24;
-  --text-color: #f9fafb;
-}  */
-
 @media (max-width: 739px) {
+  /* По умолчанию на мобилках скрываем окно переписки, пока чат не выбран */
   .messenger-container > main {
     display: none !important;
   }
-  
-  .messenger-container > section,
-  .messenger-container > aside {
-    display: flex !important;
-    width: calc(100% - 70px) !important;
-  }
-  .chat-opened > section {
+
+  /* Когда чат открыт — скрываем сайдбар со списком чатов и показываем само окно переписки */
+  .messenger-container.chat-opened > section {
     display: none !important;
   }
 
-  .chat-opened > main {
+  .messenger-container.chat-opened > main {
     display: flex !important;
-        flex-direction: column;
+    flex-direction: column;
     width: 100% !important;
   }
 }

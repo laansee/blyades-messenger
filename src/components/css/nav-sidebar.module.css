@@ -1,216 +1,331 @@
-@media (max-width: 1024px) {
-  .navSidebar {
-    min-width: 70px;
-    width: 70px;
-    max-width: 70px;
-    background-color: var(--bg-nav-sidebar);
-    border-right: 1px solid var(--border);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 20px 0;
-    justify-content: space-between;
-  }
-  .navLogo p, .navMenu p {display: none;}
-  .navItem.active, .navItem.active:hover {
-    background: #232327;
-    transition: none;
-  }
-  .avatarContainer {padding: 0 4px;}
-  .avatarContainer p {display: none;}
-}
-@media (min-width: 1025px) {
-  .navSidebar {width: 220px;}
-  .navItem.active, .navItem.active:hover {background: linear-gradient(90deg, #232327 33%, #23232700 94%);}
-  .navMenu p {
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 1;
-    line-clamp: 1;
-    -webkit-box-orient: vertical;
-    text-overflow: ellipsis;
-    padding: 0 0 3px 10px;}
-  .avatarContainer {
-    padding: 10px;
-    border-radius: 14px;}
-  .avatarContainer:hover {background-color: #232327;}
-  .avatarContainer p {
-    color: var(--text-color);
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 1;
-    line-clamp: 1;
-    -webkit-box-orient: vertical;
-    text-overflow: ellipsis;
-    transition: transform 0.2s ease;}
+/* Затемняющая подложка */
+.drawerOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
+  z-index: 9998;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
 }
 
-.navSidebar {
-  background-color: var(--bg-nav-sidebar);
-  border-right: 1px solid var(--border);
+.drawerOverlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Выдвижное окно в стилистике Telegram / AyuGram */
+.drawerContainer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 280px;
+  max-width: 85vw;
+  height: 100vh;
+  background-color: #171821;
+  border-right: 1px solid #232430;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  padding: 20px 10px;
-  justify-content: space-between;
-  transition: all 200ms ease;}
-.navLogo { 
-  font-size: 24px; 
-  margin-bottom: 20px; 
-  user-select: none;
-  display: inline-flex;
-  padding: 0 10px;
-  gap: 5px;
-  font-family: "Raleway", sans-serif;}
-.navMenu { 
-  display: flex; 
-  flex-direction: column; 
-  gap: 20px; 
-  width: 100%; 
-  align-items: flex-start;}
-.navMenu svg { min-width: 30px; min-height: 30px;}
-.navItem {
-  background: none; 
-  border: none; 
-  font-size: 20px; 
-  cursor: pointer;
-  padding: 10px;
-  width: stretch;
-  height: 50px; 
-  border-radius: 14px;
-  display: flex; 
-  align-items: center; 
-  justify-content: flex-start;
-  transition: background 0.2s;}
-.navItem:hover, .navItem:focus-within { background-color: #232327; }
-a.navItem {
-  text-decoration: none;
   box-sizing: border-box;
   user-select: none;
-  cursor: default;}
-.avatarContainer {
-    width: stretch;
-  user-select: none;
-  position: relative;
-  margin-top: auto; /* Прижимает всю конструкцию к низу сайдбара */
-  display: flex;
-  justify-content: flex-start;
-  align-items: center;
-  gap: 5px;
-  cursor: pointer;
-  box-sizing: border-box;}
-.avatarContainer img {
-  width: 38px !important;
-  height: 38px !important;
-  min-width: 38px !important;
-  min-height: 38px !important;
-  border-radius: 50% !important;
-  object-fit: cover !important;
-  display: block !important;}
+  z-index: 9999;
+  transform: translateX(-100%);
+  transition: transform 0.22s cubic-bezier(0.1, 0.9, 0.2, 1);
+  box-shadow: 10px 0 35px rgba(0, 0, 0, 0.6);
+  overflow-y: auto;
+}
 
-.avatarContainer:hover > .navAvatar,
-.avatarContainer:hover > avatarContainer img {
-  transform: scale(1.08); box-shadow: 0 0 12px rgba(255, 255, 255, 0.15);}
-.avatarContainer:active > .navAvatar,
-.avatarContainer:hover > avatarContainer img {
-  transform: scale(0.95);}
-.navAvatar {
-  min-width: 38px;
-  width: 38px !important;
-  height: 38px !important;
-  border-radius: 50% !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  color: #ffffff;
-  font-weight: 700;
-  font-size: 15px;
-  cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  user-select: none;
-  cursor: default;}
+.drawerContainer.open {
+  transform: translateX(0);
+}
 
-/* Контейнер-обертка */
-
-/* .avatarContainer:hover > p {font-weight: 500;}
-.avatarContainer:active > p {} */
-
-/* Всплывающее окошко профиля */
-.profilePopup {
-  position: absolute;
-  bottom: 50px; /* Приподнимаем над нижней аватаркой */
-  left: 10px;   /* Легкий отступ от края экрана */
-  background-color: #1e1e24; /* Такой же темный цвет, как у карточек чатов */
-  border: 1px solid #383842;  /* Тонкая рамка, чтобы окно выделялось */
-  padding: 16px;
-  border-radius: 12px;
-  width: 180px;
+/* Шапка с профилем */
+.headerProfile {
+  padding: 24px 20px 14px 20px;
   display: flex;
   flex-direction: column;
+  gap: 14px;
+}
+
+.avatarMain {
+  cursor: pointer;
+  width: fit-content;
+  transition: transform 0.15s ease;
+}
+
+.avatarMain:hover {
+  transform: scale(1.04);
+}
+
+.headerMetaRow {
+  display: flex;
   align-items: center;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-  z-index: 100;
-  animation: popupSlideIn 0.2s ease-out; /* Плавное появление снизу вверх */}
+  justify-content: space-between;
+}
 
-/* Анимация появления окошка */
-@keyframes popupSlideIn {
-  0% { transform: translateY(10px); opacity: 0; }
-  100% { transform: translateY(0); opacity: 1; }}
+.headerText {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
 
-/* Большой аватар внутри окошка */
-.profilePopupAvatar {
-  width: 50px;
-  height: 50px;
+.displayName {
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.subText {
+  color: #8374be;
+  font-size: 13px;
+  margin-top: 2px;
+  font-weight: 500;
+}
+
+.accordionBtn {
+  background: none;
+  border: none;
+  color: #8e8e93;
+  cursor: pointer;
+  padding: 4px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #ffffff;
-  font-weight: 700;
-  font-size: 20px;
-  margin-bottom: 10px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-  user-select: none;}
+  transition: background-color 0.15s, color 0.15s;
+}
 
-/* Стиль имени пользователя */
-.profilePopupName {
-  color: #f9fafb;
-  font-weight: 600;
-  font-size: 15px;
-  margin-bottom: 12px;
-  text-align: center;
-  max-width: 100%;
+.accordionBtn:hover {
+  background-color: #232430;
+  color: #fff;
+}
+
+/* Выпадающий список нескольких аккаунтов */
+.accountsDropdown {
+  display: flex;
+  flex-direction: column;
+  padding: 0 10px 6px 10px;
+}
+
+.accountRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.accountRow:hover {
+  background-color: #21222e;
+}
+
+.accountActive {
+  background-color: #1e1f2b;
+}
+
+.accountRowName {
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 500;
+  flex: 1;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
-  user-select: none;}
+}
 
-/* Разделительная линия */
-.profilePopupDivider {
-  width: 100%;
-  height: 1px;
-  background-color: #383842;
-  margin-bottom: 12px;}
-
-/* Кнопка "Выйти" */
-.profileLogoutBtn {
-  width: 100%;
-  background: none;
-  border: none;
-  color: #ef4444; /* Красный неоновый цвет для предупреждения */
-  font-size: 13px;
+.accountBadge {
+  background-color: #272838;
+  color: #9d7bf6;
+  font-size: 11px;
   font-weight: 600;
-  padding: 8px;
-  border-radius: 6px;
-  cursor: pointer;
+  padding: 2px 7px;
+  border-radius: 8px;
+}
+
+.addAccountCircle {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background-color: #232432;
+  color: #9d7bf6;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  transition: background-color 0.2s ease;
-  user-select: none;
-  cursor: default;}
+}
 
-/* Эффект наведения на кнопку выхода */
-.profileLogoutBtn:hover {
-  background-color: rgba(239, 68, 68, 0.1); /* Легкий красный фон */}
+/* Разделительная черта */
+.menuDivider {
+  height: 1px;
+  background-color: #242533;
+  margin: 6px 14px;
+}
+
+/* Список пунктов */
+.menuList {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 10px;
+  flex: 1;
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 11px 14px;
+  border-radius: 10px;
+  color: #d8d8de;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  background: transparent;
+  border: none;
+  width: 100%;
+  cursor: pointer;
+  box-sizing: border-box;
+  text-align: left;
+  transition: background-color 0.12s ease, color 0.12s ease;
+  font-family: inherit;
+}
+
+.menuItem:hover {
+  background-color: #21222e;
+  color: #ffffff;
+}
+
+.menuItem.active {
+  background-color: #242534;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.itemIcon {
+  color: #8b8d9b;
+  flex-shrink: 0;
+}
+
+.menuItem:hover .itemIcon,
+.menuItem.active .itemIcon {
+  color: #ffffff;
+}
+
+.itemText {
+  flex: 1;
+}
+
+/* Бейдж непрочитанных (как у Архива) */
+.unreadPill {
+  background-color: #2d2e3f;
+  color: #9d7bf6;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 10px;
+}
+
+/* Заблокированные кнопки (В разработке) */
+.disabledItem {
+  opacity: 0.55;
+  cursor: not-allowed !important;
+}
+
+.disabledItem:hover {
+  background-color: transparent !important;
+}
+
+.dangerItem {
+  color: #ff453a;
+}
+
+.dangerItem .itemIcon {
+  color: #ff453a;
+}
+
+.dangerItem:hover {
+  background-color: rgba(255, 69, 58, 0.1);
+  color: #ff453a;
+}
+
+/* Строки свитчей (Ночной режим / Режим призрака) */
+.switchRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  color: #d8d8de;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 0.12s ease;
+}
+
+.switchRow:hover {
+  background-color: #21222e;
+  color: #ffffff;
+}
+
+.switchLeft {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.switchTrack {
+  width: 40px;
+  height: 22px;
+  border-radius: 12px;
+  background-color: #313342;
+  position: relative;
+  transition: background-color 0.2s ease;
+}
+
+.switchTrack.switchOn {
+  background-color: #7d65c4;
+}
+
+.switchThumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background-color: #ffffff;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.switchTrack.switchOn .switchThumb {
+  transform: translateX(18px);
+}
+
+/* Подвал версии */
+.drawerFooter {
+  padding: 16px 22px 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.footerAppTitle {
+  color: #636575;
+  font-size: 13px;
+  font-weight: 500;
+  margin: 0;
+}
+
+.footerVersion {
+  color: #4a4b57;
+  font-size: 11px;
+  margin: 0;
+}

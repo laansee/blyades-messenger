@@ -1,7 +1,7 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import mainStyle from '../../components/css/main.module.css';
 import useMessengerContext from '../../context/messengerContext';
-import NavSidebar from '../channels/nav-sidebar';
+import NavSidebar from '../navigation/nav-sidebar';
 import ContactsSidebar from './contacts-sidebar';
 import ChatWindow from '../chat/chat-window';
 

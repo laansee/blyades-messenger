@@ -1,9 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import styles from '../css/profile.module.css';
 import { supabase } from '../../services/supabaseClient';
-import { Search, UserPlus, Users } from 'lucide-react';
+import { userService, type AppUser } from '../../services/userService';
+import { Search, UserPlus, Users, X, Pencil, Copy, Hash } from 'lucide-react';
 import { renderUserStatusBadge } from '../../utils/statusBadge';
-import { AddParticipantsModal } from '../GlobalUI';
+import { formatUserOnlineStatus } from '../../context/messengerContext';
+import { AddParticipantsModal } from '../common/GlobalUI';
+import SmartAvatar from '../common/SmartAvatar';
 
 interface GroupProfileViewProps {
   currentChatUser: any;
@@ -20,122 +23,145 @@ export default function GroupProfileView({
   onClose,
   ctx
 }: GroupProfileViewProps) {
-  const [groupMembers, setGroupMembers] = useState<any[]>([]);
+  const [groupMembers, setGroupMembers] = useState<AppUser[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
   
-  // 🎯 СТЕЙТЫ ДЛЯ РАБОТЫ ЖИВОГО ПОИСКА УЧАСТНИКОВ
-  const [searchQuery, setSeachQuery] = useState('');
+  // Стейты поиска участников
+  const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   
   const [showAddModal, setShowAddModal] = useState(false);
   const [existingUsers, setExistingUsers] = useState<string[]>([]);
 
-  // 🚀 ЖИВАЯ ФИЛЬТРАЦИЯ: На лету фильтруем массив по имени или юзернейму
-  const filteredMembers = groupMembers.filter((member) => {
-    const name = (member.name || '').toLowerCase();
-    const username = (member.username || '').toLowerCase();
-    const uniqueId = (member.uniqueId || '').toLowerCase();
-    const query = searchQuery.toLowerCase().trim();
+  const chatIdNumeric = Number(currentChatUser.internalChatId || currentChatUser.id);
+  const myUuid = String(ctx.currentUser?.uuid || ctx.currentUser?.id || '');
 
-    return name.includes(query) || username.includes(query) || uniqueId.includes(query);
-  });
+  const handleCopy = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    ctx.showToast?.(`${label} скопирован в буфер`, 'success');
+  };
 
-  // 🎯 2. ФУНКЦИЯ КЛИКА НА ИКОНКУ ПЛЮСА (Полная адаптация твоего кода!)
+  // 🚀 Загрузка участников группы через единый userService
+  const fetchGroupMembers = async () => {
+    if (!chatIdNumeric) return;
+    setLoadingMembers(true);
+    try {
+      const { data: membersData, error: mError } = await supabase
+        .from('chat_members')
+        .select('userId')
+        .eq('chatId', chatIdNumeric);
+
+      if (!mError && membersData) {
+        const userUuids = membersData.map((m: any) => String(m.userId));
+        const users = await userService.getUsersByUuids(userUuids);
+        setGroupMembers(users);
+      }
+    } catch (err) {
+      console.error('Ошибка загрузки участников группы:', err);
+    } finally {
+      setLoadingMembers(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchGroupMembers();
+  }, [chatIdNumeric]);
+
+  // 🎯 Открытие окна добавления участников
   const handleOpenAddModal = async () => {
     try {
-      // Прямо отсюда запрашиваем из базы список тех, кто УЖЕ в этой группе
       const { data, error } = await supabase
-        .from('group_members')
+        .from('chat_members')
         .select('userId')
-        .eq('chatId', currentChatUser.id); // Везём ID текущей комнаты
+        .eq('chatId', chatIdNumeric);
 
       if (!error && data) {
-        setExistingUsers(data.map(m => String(m.userId)));
+        setExistingUsers(data.map((m: any) => String(m.userId)));
       }
-      
-      // Открываем локальное окно добавления поверх текущего инфо-окна
       setShowAddModal(true);
     } catch (err) {
       console.error('Ошибка при получении участников группы:', err);
     }
   };
 
-  useEffect(() => {
-    const fetchGroupMembers = async () => {
-      setLoadingMembers(true);
-      try {
-        // 1. Вытягиваем список ID участников
-        const { data: membersData, error: mError } = await supabase
-          .from('group_members')
-          .select('userId')
-          .eq('chatId', currentChatUser.id);
+  // 🔍 Фильтрация участников по запросу
+  const filteredMembers = useMemo(() => {
+    const query = searchQuery.toLowerCase().trim();
+    if (!query) return groupMembers;
 
-        if (!mError && membersData) {
-          const userIds = membersData.map(m => String(m.userId));
-          
-          // 🚀 ИСПРАВЛЕНИЕ: Выкачиваем ВСЕ поля приватности и правильный uniqueId из таблицы users!
-          const { data: usersData, error: uError } = await supabase
-            .from('users')
-            .select('id, username, uniqueId, firstName, lastName, avatarColor, avatarUrl, privacyNameFormat, privacyFullName, userStatus')
-            .in('id', userIds);
+    return groupMembers.filter((member) => {
+      const name = (member.username || '').toLowerCase();
+      const uniqueId = (member.uniqueId || '').toLowerCase();
+      const fullName = `${member.firstName || ''} ${member.lastName || ''}`.toLowerCase();
 
-          if (!uError && usersData) {
-            setGroupMembers(usersData);
-          }
-        }
-      } catch (err) {
-        console.error('Ошибка загрузки участников группы:', err);
-      } finally {
-        setLoadingMembers(false);
-      }
-    };
+      return name.includes(query) || uniqueId.includes(query) || fullName.includes(query);
+    });
+  }, [groupMembers, searchQuery]);
 
-    fetchGroupMembers();
-  }, [currentChatUser.id]);
+  // 👑 Имя создателя беседы
+  const ownerUser = groupMembers.find(m => m.uuid === String(currentChatUser.ownerId));
+  const ownerNameText = ownerUser 
+    ? userService.resolveDisplayName(ownerUser)
+    : `Пользователь #${String(currentChatUser.ownerId).slice(0, 8)}`;
 
-  // 🔒 Умная функция проверки приватности внутри списка участников
-  const shouldShowMemberFullName = (member: any) => {
-    // Если это мы сами — имя скрывать от себя не нужно
-    if (String(member.id) === String(ctx?.currentUser?.id)) return true;
-    // Если разрешено всем — показываем
-    if (!member.privacyFullName || member.privacyFullName === 'all') return true;
-    // Временная заглушка (пока не проверим связи контактов внутри модалки)
-    return false;
-  };
+  function formatMembersCountUpper(count: number): string {
+    const mod10 = count % 10;
+    const mod100 = count % 100;
+    if (mod100 >= 11 && mod100 <= 19) return `${count} УЧАСТНИКОВ`;
+    if (mod10 === 1) return `${count} УЧАСТНИК`;
+    if (mod10 >= 2 && mod10 <= 4) return `${count} УЧАСТНИКА`;
+    return `${count} УЧАСТНИКОВ`;
+  }
 
-  // 🚀 НАХОДИМ ИМЯ СОЗДАТЕЛЯ БЕСЕДЫ ПО ЕГО ownerId
-  const ownerObject = groupMembers.find(m => String(m.id) === String(currentChatUser.ownerId));
-  const ownerNameText = ownerObject 
-    ? (ownerObject.privacyNameFormat === 'full_name' && (ownerObject.firstName || ownerObject.lastName)
-        ? `${ownerObject.firstName || ''} ${ownerObject.lastName || ''}`.trim()
-        : ownerObject.username)
-    : `Пользователь #${currentChatUser.ownerId}`;
   return (
     <div className={styles['view-mode']}> 
+      {/* 🔮 ВЕРХНЯЯ ШАПКА В ЕДИНОМ СТИЛЕ */}
+      <div className={styles['profile-header-gradient']}>
+        <div className={styles['profile-header-actions']}>
+          <button
+            type="button"
+            onClick={onClose}
+            title="Закрыть"
+            className={styles['close-modal-btn']}
+          >
+            <X size={18} />
+          </button>
+        </div>
 
-      <div style={{ padding: '24px'}}>
         <div className={styles['profile-avatar-wrapper']}>
-          <div className={styles['profile-avatar']} style={{ backgroundColor: currentChatUser.avatarColor || '#5865F2' }}>
-            {baseName.substring(0, 1).toUpperCase()}
-          </div>
+          <SmartAvatar
+            size={84}
+            avatarUrl={currentChatUser.avatarUrl}
+            avatarColor={currentChatUser.avatarColor || '#5865F2'}
+            name={baseName}
+            isChannel={false}
+          />
         </div>
 
         <h2 className={styles['profile-name']}>{baseName}</h2>
-        <span className={styles['profile-status']}>группа беседы</span>
+        <span className={styles['profile-status']}>
+          {groupMembers.length} {groupMembers.length === 1 ? 'участник' : (groupMembers.length >= 2 && groupMembers.length <= 4) ? 'участника' : 'участников'}
+        </span>
 
         <div className={styles['action-buttons-row']}>
           <button 
             type="button" 
             className={styles['action-btn']} 
-            onClick={() => { ctx.setActiveChatId(currentChatUser.id); onClose(); }}
+            onClick={() => { ctx.setActiveChatId(String(currentChatUser.id)); onClose(); }}
           >
             <span className={styles['btn-icon']}>💬</span>
             <span className={styles['btn-text']}>Чат</span>
           </button>
-          <button type="button" className={styles['action-btn']}>
+
+          <button 
+            type="button" 
+            className={styles['action-btn']}
+            onClick={() => ctx.showToast('Настройки уведомлений в разработке', 'info')}
+          >
             <span className={styles['btn-icon']}>🔔</span>
             <span className={styles['btn-text']}>Звук</span>
           </button>
+
           <button type="button" className={styles['action-btn']} onClick={onEditToggle}>
             <span className={styles['btn-icon']}>⚙️</span>
             <span className={styles['btn-text']}>Настройки</span>
@@ -143,168 +169,178 @@ export default function GroupProfileView({
         </div>
       </div>
 
+      {/* 📋 СЕКЦИЯ ИНФОРМАЦИИ */}
       <div className={styles['info-section']}>
-        <div className={styles['info-item']}>
-          <span className={styles['info-value']}>Групповая беседа</span>
-          <span className={styles['info-label']}>Тип чата</span>
+        {/* Описание группы (если заполнено) */}
+        {(currentChatUser.aboutMe || currentChatUser.description) && (
+          <div className={styles['info-item']} style={{ cursor: 'default' }}>
+            <div className={styles['info-item-content']}>
+              <span className={`${styles['info-value']} ${styles['multiline']}`}>
+                {currentChatUser.aboutMe || currentChatUser.description}
+              </span>
+              <span className={styles['info-label']}>Описание группы</span>
+            </div>
+          </div>
+        )}
+
+        <div className={styles['info-item']} style={{ cursor: 'default' }}>
+          <div className={styles['info-item-content']}>
+            <span className={styles['info-value']}>Групповая беседа</span>
+            <span className={styles['info-label']}>Тип чата</span>
+          </div>
         </div>
-        <div className={styles['info-item']}>
-          <span className={styles['info-value']}>#{currentChatUser.id}</span>
-          <span className={styles['info-label']}>Идентификатор комнаты</span>
-        </div>
-        <div className={styles['info-item']}>
-          {/* 🚀 ИСПРАВЛЕНИЕ ШАПКИ: Выводим реальное имя создателя вместо сухого номера ID! */}
-          <span className={styles['info-value']}>{ownerNameText}</span>
-          <span className={styles['info-label']}>Создатель беседы</span>
+        
+        {/* Создатель беседы */}
+        <div 
+          onClick={() => handleCopy(ownerNameText, 'Создатель')}
+          className={styles['info-item']}
+        >
+          <div className={styles['info-item-content']}>
+            <span className={`${styles['info-value']} ${styles['accent']}`}>{ownerNameText}</span>
+            <span className={styles['info-label']}>Создатель беседы</span>
+          </div>
+          <Copy size={16} className={styles['info-icon']} />
         </div>
 
-        <div className={styles['info-divider']}></div>
+        {/* Идентификатор комнаты */}
+        <div 
+          onClick={() => handleCopy(String(chatIdNumeric), 'ID комнаты')}
+          className={styles['info-item']}
+        >
+          <div className={styles['info-item-content']}>
+            <span className={`${styles['info-value']} ${styles['mono']}`}>#{chatIdNumeric}</span>
+            <span className={styles['info-label']}>Идентификатор комнаты</span>
+          </div>
+          <Hash size={16} className={styles['info-icon']} />
+        </div>
 
+        <div className={styles['info-divider']} />
+
+        {/* 👥 СПИСОК УЧАСТНИКОВ */}
         <div className={styles['info-users']}>
+          
+          {/* ШАПКА СПИСКА */}
           <div className={styles['info-users-header']}>
-            <span>
-              <Users size={20} />
+            <div className={styles['info-users-header-icon']}>
+              <Users size={22} />
+            </div>
+
+            <span className={styles['info-users-title']}>
+              {formatMembersCountUpper(groupMembers.length)}
             </span>
-            <span>Участники группы ({groupMembers.length})</span>
-            <span>
-              {/* 🔍 Иконка Поиска (Лупа) */}
-              <div 
+            
+            <div className={styles['info-users-header-actions']}>
+              <button
+                type="button"
+                className={styles['info-users-action-btn']}
                 onClick={() => {
                   setIsSearchOpen(!isSearchOpen);
-                  if (isSearchOpen) setSeachQuery(''); // Очищаем строку при закрытии поиска
-                }} 
-                style={{ cursor: 'pointer', transition: 'color 0.15s' }}
-                onMouseEnter={e => e.currentTarget.style.color = '#9d7bf6'}
-                onMouseLeave={e => e.currentTarget.style.color = '#8e8e93'}
+                  if (isSearchOpen) setSearchQuery('');
+                }}
+                title="Поиск участников"
               >
                 <Search size={20} />
-              </div>
+              </button>
 
-              {/* ➕ Иконка Добавления (UserPlus) */}
-              <div 
-                onClick={handleOpenAddModal} 
-                style={{ cursor: 'pointer', transition: 'color 0.15s' }}
-                onMouseEnter={e => e.currentTarget.style.color = '#9d7bf6'}
-                onMouseLeave={e => e.currentTarget.style.color = '#8e8e93'}
+              <button
+                type="button"
+                className={styles['info-users-action-btn']}
+                onClick={handleOpenAddModal}
+                title="Добавить участников"
               >
                 <UserPlus size={20} />
-              </div>
-            </span>
+              </button>
+            </div>
           </div>
 
-          {/* 🔍 ВЫЕЗЖАЮЩИЙ СТИЛЬНЫЙ ИНПУТ ЖИВОГО ПОИСКА */}
+          {/* Инпут поиска по участникам */}
           {isSearchOpen && (
-            <div style={{ width: '100%', marginBottom: '12px', position: 'relative' }}>
+            <div style={{ width: '100%', marginBottom: '10px', position: 'relative' }}>
               <input
                 type="text"
                 value={searchQuery}
-                onChange={(e) => setSeachQuery(e.target.value)}
-                placeholder="Поиск участников по имени или @id..."
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Поиск по участникам..."
                 style={{
                   width: '100%', padding: '8px 12px', backgroundColor: '#18181e',
                   border: '1px solid #383842', borderRadius: '8px', color: '#fff',
                   fontSize: '13px', outline: 'none', boxSizing: 'border-box'
                 }}
+                autoComplete="off"
+                autoFocus
               />
               {searchQuery && (
                 <button 
                   type="button" 
-                  onClick={() => setSeachQuery('')}
+                  onClick={() => setSearchQuery('')}
                   style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#636366', cursor: 'pointer', fontSize: '14px' }}
                 >
-                  ×
+                  <X size={20} />
                 </button>
               )}
             </div>
           )}
 
-          {/* ======================================================== */}
-          {/* 🚀 ВЫВОД ФИЛЬТРОВАННОГО СПИСКА УЧАСТНИКОВ               */}
-          {/* ======================================================== */}
+          {/* Список участников */}
           {loadingMembers ? (
-            <span style={{ color: '#636366', fontSize: '13px' }}>Синхронизация участников...</span>
+            <span style={{ color: '#636366', fontSize: '13px', padding: '8px 0' }}>
+              Синхронизация участников...
+            </span>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div className={styles['info-users-list']}>
               {filteredMembers.length === 0 ? (
-                <span style={{ color: '#636366', fontSize: '13px', textAlign: 'center', padding: '10px 0' }}>Никого не найдено</span>
+                <span style={{ color: '#636366', fontSize: '13px', textAlign: 'center', padding: '14px 0' }}>
+                  Никого не найдено
+                </span>
               ) : (
-                // 🎯 ВМЕСТО groupMembers.map запускаем filteredMembers.map!
                 filteredMembers.map((member) => {
-                  const isOwner = String(member.id) === String(currentChatUser.ownerId);
-                  const isMe = String(member.id) === String(ctx?.currentUser?.id);
-                  const amIOwner = String(currentChatUser.ownerId) === String(ctx?.currentUser?.id);
-                  const useFullNameMode = member.privacyNameFormat === 'full_name' && shouldShowMemberFullName(member);
-                  
-                  const displayName = useFullNameMode && (member.firstName || member.lastName)
-                    ? `${member.firstName || ''} ${member.lastName || ''}`.trim()
-                    : member.username;
+                  const isOwner = member.uuid === String(currentChatUser.ownerId);
+                  const isMe = member.uuid === myUuid;
+                  const amIOwner = String(currentChatUser.ownerId) === myUuid;
+                  const displayName = userService.resolveDisplayName(member);
+
+                  const isOnline = ctx.isUserOnline ? ctx.isUserOnline(member) : false;
+                  const statusInfo = formatUserOnlineStatus(member.updatedAt, member.privacyOnline);
 
                   return (
-                  <div 
-                    key={member.id} 
-                    className={styles['info-users-item']} 
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }} className={styles['info-users-meta']} >
-                      {member.avatarUrl ? (
-                        <img
-                          src={member.avatarUrl}
-                          alt="Avatar"
-                          style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}
+                    <div 
+                      key={member.uuid} 
+                      className={styles['info-users-item']}
+                      onClick={() => ctx.setShowUserModal(member.uuid)}
+                    >
+                      {/* Колонка 1: Аватар (ровно 42px) */}
+                      <div className={styles['info-users-avatar-col']}>
+                        <SmartAvatar
+                          size={42}
+                          avatarUrl={member.avatarUrl}
+                          avatarColor={member.avatarColor}
+                          name={displayName}
                         />
-                      ) : (
-                        <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: member.avatarColor || '#007aff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 'bold', fontSize: '13px' }}>
-                          {displayName.substring(0, 1).toUpperCase()}
-                        </div>
-                      )}
-                      <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ color: '#fff', fontSize: '14px', fontWeight: '500' }}>
-                          {renderUserStatusBadge(member)}                          
+                      </div>
+
+                      {/* Колонка 2: Имя и статус (на одной линии с 19 УЧАСТНИКОВ) */}
+                      <div className={styles['info-users-text-col']}>
+                        <span className={styles['info-users-name']}>
+                          {renderUserStatusBadge(member)}
                           {displayName}
                         </span>
-                        <span style={{ color: '#636366', fontSize: '12px' }}>
-                          @{member.uniqueId || member.username}
+                        <span className={`${styles['info-users-status']} ${isOnline ? styles['online'] : ''}`}>
+                          {isOnline ? 'в сети' : statusInfo.text}
                         </span>
                       </div>
+                      
+                      <div className={styles['info-users-badge-col']}>
+                        {isOwner ? (
+                          <span className={styles['role-badge-owner']}>
+                            владелец
+                          </span>
+                        ) : (member.userStatus === 'administrator' || member.userStatus === 'moderator') ? (
+                          <span className={styles['role-badge-admin']}>
+                            админ
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
-                    
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} className={styles['info-users-stat']} >
-                      {isOwner ? (
-                        <span style={{ fontSize: '10px', backgroundColor: 'rgba(255,204,0,0.1)', color: '#ffcc00', padding: '2px 8px', borderRadius: '10px', fontWeight: 'bold' }}>владелец</span>
-                      ) : (
-                        amIOwner && !isMe && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              ctx.showConfirm(
-                                'Исключение из беседы',
-                                `Вы действительно хотите исключить пользователя ${displayName} из беседы "${currentChatUser.name}"?`,
-                                async () => {
-                                  if (ctx.handleKickUserFromGroup) {
-                                    await ctx.handleKickUserFromGroup(currentChatUser.id, member.id);
-                                    // Локально вырезаем юзера из текущего стейта списка на экране для моментального отклика
-                                    setGroupMembers(prev => prev.filter(m => m.id !== member.id));
-                                    ctx.setConfirm((prev: any) => ({ ...prev, show: false }));
-                                  }
-                                },
-                                true
-                              );
-                            }}
-                            style={{
-                              background: 'none', border: 'none', color: '#ff453a', 
-                              fontSize: '12px', fontWeight: '600', cursor: 'pointer',
-                              padding: '2px 8px', borderRadius: '6px', backgroundColor: 'rgba(255, 69, 58, 0.05)',
-                              transition: 'all 0.15s ease', fontFamily: 'sans-serif'
-                            }}
-                            onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(255, 69, 58, 0.12)'}
-                            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'rgba(255, 69, 58, 0.05)'}
-                          >
-                            Исключить
-                          </button>
-                        )
-                      )}
-                    </div>
-
-                  </div>
                   );
                 })
               )}
@@ -312,27 +348,16 @@ export default function GroupProfileView({
           )}
         </div>
       </div>
+
       <AddParticipantsModal
         show={showAddModal}
         existingUserIds={existingUsers}
         onClose={() => setShowAddModal(false)}
-        onAdd={async (selectedIds) => {
-          // Вызываем метод массового инсерта из глобального контекста ядра
+        onAdd={async (selectedUuids) => {
           if (ctx.handleAddUsersToGroup) {
-            await ctx.handleAddUsersToGroup(currentChatUser.id, selectedIds);
-            
-            // После успешного добавления запрашиваем из базы обновленный список участников,
-            // чтобы они мгновенно дорендерились в списке на экране без перезагрузки модалки!
-            const { data } = await supabase
-              .from('group_members')
-              .select('userId')
-              .eq('chatId', currentChatUser.id);
-              
-            if (data && ctx.fetchAndMatchChats) {
-              // Перезапрашиваем профили участников для живого обновления стейта groupMembers
-              // (или пушим вызов обновления участников, который у тебя написан в useEffect модалки)
-              ctx.showToast('Пользователи успешно приглашены!', 'success');
-            }
+            await ctx.handleAddUsersToGroup(currentChatUser.id, selectedUuids);
+            await fetchGroupMembers();
+            ctx.showToast('Пользователи успешно приглашены!', 'success');
           }
         }}
       />

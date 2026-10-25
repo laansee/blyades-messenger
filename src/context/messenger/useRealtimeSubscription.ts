@@ -1,77 +1,119 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { supabase } from '../../services/supabaseClient';
 
-let isMessagesGlobalChannelInitialized = false;
-
-export function useRealtimeSubscription(currentUser: any, setAllMessages: React.Dispatch<React.SetStateAction<any[]>>) {
+export function useRealtimeSubscription(
+  currentUser: any,
+  setMessages: React.Dispatch<React.SetStateAction<any[]>>,
+  activeChatId: string | null,
+  setChats: React.Dispatch<React.SetStateAction<any[]>>
+) {
+  const activeChatIdRef = useRef(activeChatId);
   useEffect(() => {
-    const myId = currentUser ? String(currentUser.id) : localStorage.getItem('blyades_user_id');
+    activeChatIdRef.current = activeChatId;
+  }, [activeChatId]);
+
+  useEffect(() => {
+    const myId = String(currentUser?.uuid || currentUser?.id || localStorage.getItem('blyades_user_id') || '');
     if (!myId) return;
 
-    const channelName = 'global-messages-live';
-    
-    if (isMessagesGlobalChannelInitialized) {
-      return;
-    }
+    const channelName = 'messages-global-live';
 
-    isMessagesGlobalChannelInitialized = true; 
-    const msgChannel = supabase.channel(channelName);
-
-    msgChannel
-      // А. Стрим сообщений
+    const messageChannel = supabase
+      .channel(channelName)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'messages' },
         (payload) => {
-          console.log('[Messages_Realtime] Поймали событие базы данных Сообщений:', payload.eventType, payload);
+          const changedMessage: any = payload.eventType === 'DELETE' ? payload.old : payload.new;
+          const changedChatId = String(changedMessage?.chatId);
+          const currentActiveId = activeChatIdRef.current;
+
+          setChats((prevChats) => {
+            const chatIndex = prevChats.findIndex((c) => String(c.id) === changedChatId);
+            if (chatIndex === -1) return prevChats;
+
+            const targetChat = { ...prevChats[chatIndex] };
+
+            if (payload.eventType === 'INSERT') {
+              targetChat.lastMessageId = payload.new.id;
+              targetChat.lastMessageText = payload.new.text;
+              targetChat.lastMessageAt = payload.new.createdAt;
+              targetChat.lastMessageSenderId = payload.new.senderId;
+
+              if (String(currentActiveId) !== changedChatId && String(payload.new.senderId) !== myId) {
+                targetChat.unreadCount = (Number(targetChat.unreadCount) || 0) + 1;
+              }
+
+              const updatedList = [...prevChats];
+              updatedList.splice(chatIndex, 1);
+              return [targetChat, ...updatedList];
+            }
+
+            if (payload.eventType === 'UPDATE') {
+              if (String(targetChat.lastMessageId) === String(payload.new.id)) {
+                targetChat.lastMessageText = payload.new.text;
+              }
+              const updatedList = [...prevChats];
+              updatedList[chatIndex] = targetChat;
+              return updatedList;
+            }
+
+            if (payload.eventType === 'DELETE') {
+              if (String(targetChat.lastMessageId) === String(payload.old.id)) {
+                targetChat.lastMessageText = 'Сообщение удалено';
+              }
+              const updatedList = [...prevChats];
+              updatedList[chatIndex] = targetChat;
+              return updatedList;
+            }
+
+            return prevChats;
+          });
+
+          if (!currentActiveId || String(changedChatId) !== String(currentActiveId)) {
+            return;
+          }
 
           if (payload.eventType === 'INSERT') {
-            setAllMessages((prev) => {
-              const tempMatchIndex = prev.findIndex(m => 
-                String(m.id).startsWith('temp-') && 
-                m.text === payload.new.text && 
-                String(m.senderId) === String(payload.new.senderId)
+            setMessages((previousMessages) => {
+              const tempIndex = previousMessages.findIndex(
+                (m) =>
+                  String(m.id).startsWith('temp-') &&
+                  m.text === payload.new.text &&
+                  String(m.senderId) === String(payload.new.senderId)
               );
 
-              if (tempMatchIndex !== -1) {
-                const updated = [...prev];
-                updated[tempMatchIndex] = payload.new;
+              if (tempIndex !== -1) {
+                const updated = [...previousMessages];
+                updated[tempIndex] = payload.new;
                 return updated;
               }
 
-              const isAlreadyExist = prev.some(m => m.id === payload.new.id);
-              return isAlreadyExist ? prev : [...prev, payload.new];
+              if (previousMessages.some((m) => String(m.id) === String(payload.new.id))) {
+                return previousMessages;
+              }
+
+              return [...previousMessages, payload.new];
             });
+            return;
           }
+          
           if (payload.eventType === 'UPDATE') {
-            setAllMessages((prev) => prev.map(m => m.id === payload.new.id ? payload.new : m));
+            setMessages((prev) =>
+              prev.map((m) => (String(m.id) === String(payload.new.id) ? payload.new : m))
+            );
+            return;
           }
+
           if (payload.eventType === 'DELETE') {
-            setAllMessages((prev) => prev.filter(m => m.id !== payload.old.id));
+            setMessages((prev) => prev.filter((m) => String(m.id) !== String(payload.old.id)));
           }
-        }
-      )
-      // Б. Стрим добавления в группы
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'group_members' },
-        (payload) => {
-          if (String(payload.new.userId) === String(myId)) {
-            console.log('[Groups_Realtime] Нас добавили в группу через сокеты!');
-            setAllMessages((prev) => [...prev]); 
-          }
-        }
-      )
-      // В. Стрим изменения метаданных групп
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'group_chats' },
-        () => {
-          setAllMessages((prev) => [...prev]);
         }
       )
       .subscribe();
 
-    return () => {};
-  }, [currentUser, setAllMessages]);
+    return () => {
+      supabase.removeChannel(messageChannel);
+    };
+  }, [currentUser?.uuid, setMessages, setChats]);
 }

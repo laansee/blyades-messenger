@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import mainStyle from '../../components/css/main.module.css';
 import style from '../../components/css/settings.module.css';
 import chatStyles from '../../components/css/chat-window.module.css';
 import profileStyles from '../../components/css/profile.module.css';
 import useMessengerContext from '../../context/messengerContext';
-import NavSidebar from '../channels/nav-sidebar';
+import NavSidebar from '../navigation/nav-sidebar';
 import { renderUserStatusBadge } from '../../utils/statusBadge';
 
 import EditProfile from './edit-profile';
@@ -27,7 +27,7 @@ export default function SettingsPage() {
   const [phone, setPhone] = useState(currentUser?.phone || '');
   const [aboutMe, setAboutMe] = useState(currentUser?.aboutMe || '');
   const [avatarColor, setAvatarColor] = useState(currentUser?.avatarColor || '#007aff');
-  const [nameColor, setNameColor] = useState(currentUser?.avatarColor || '#440101');
+  const [nameColor, setNameColor] = useState(currentUser?.nameColor || '#5eaddf');
   const [avatarUrl, setAvatarUrl] = useState(currentUser?.avatarUrl || null);
 
   // 🚀 ОБЩИЕ СТЕЙТЫ НАСТРОЕК КОНФИДЕНЦИАЛЬНОСТИ
@@ -36,6 +36,7 @@ export default function SettingsPage() {
   const [privacyOnline, setPrivacyOnline] = useState(currentUser?.privacyOnline || 'all');
   const [privacyNameFormat, setPrivacyNameFormat] = useState(currentUser?.privacyNameFormat || 'username');
   const [privacyFullName, setPrivacyFullName] = useState(currentUser?.privacyFullName || 'all');
+  const [privacySearch, setPrivacySearch] = useState(currentUser?.privacySearch || 'all');
 
   // Синхронизация данных с базой при холодном старте
   useEffect(() => {
@@ -48,13 +49,14 @@ export default function SettingsPage() {
       setPhone(currentUser.phone || '');
       setAboutMe(currentUser.aboutMe || '');
       setAvatarColor(currentUser.avatarColor || '#007aff');
-      setNameColor(currentUser.nameColor || '#440101');
+      setNameColor(currentUser.nameColor || '#5eaddf');
       setAvatarUrl(currentUser.avatarUrl || null);
       setPrivacyPhone(currentUser.privacyPhone || 'all');
       setPrivacyEmail(currentUser.privacyEmail || 'all');
       setPrivacyOnline(currentUser.privacyOnline || 'all');
       setPrivacyNameFormat(currentUser.privacyNameFormat || 'username');
       setPrivacyFullName(currentUser.privacyFullName || 'all');
+      setPrivacySearch(currentUser.privacySearch || 'all');
     }
   }, [currentUser]);
 
@@ -123,38 +125,36 @@ export default function SettingsPage() {
             className={style.setSidebarItem} 
             onClick={ctx.handleLogout}
             aria-exit
+            style={{ cursor: 'pointer', color: '#ff453a' }}
           >
             🚪 Выйти
           </div>
         </div>
       </section>
 
-      <div className={style.settingsContainer} style={{ backgroundColor: '#13131a', overflow: 'hidden'}}>
+      <div className={style.settingsContainer} style={{ backgroundColor: '#13131a', overflowY: 'auto' }}>
         
-          {activeSettingsTab === 'profile' && (
-            <EditProfile 
-              onBack={() => setActiveSettingsTab('profile')}
-              state={{ uniqueId, username, firstName, lastName, email, phone, aboutMe, avatarColor, avatarUrl }}
-              setters={{ setUniqueId, setUsername, setFirstName, setLastName, setEmail, setPhone, setAboutMe, setAvatarColor, setAvatarUrl }}
-             />
-          )}
+        {activeSettingsTab === 'profile' && (
+          <EditProfile 
+            onBack={() => setActiveSettingsTab('profile')}
+            state={{ uniqueId, username, firstName, lastName, email, phone, aboutMe, avatarColor, avatarUrl, nameColor }}
+            setters={{ setUniqueId, setUsername, setFirstName, setLastName, setEmail, setPhone, setAboutMe, setAvatarColor, setAvatarUrl, setNameColor }}
+            title="Личные данные аккаунта"
+            Icon={<User />}
+          />
+        )}
 
-          {activeSettingsTab === 'privacy' && (
-            <PrivacySettings 
-              onBack={() => setActiveSettingsTab('privacy')}
-              state={{ privacyPhone, privacyEmail, privacyOnline, privacyNameFormat, privacyFullName }}
-              setters={{ setPrivacyPhone, setPrivacyEmail, setPrivacyOnline, setPrivacyNameFormat, setPrivacyFullName }}
-            />
-          )}
-        
-
-        {/* {activeSettingsTab === 'chats' && (
-          <div style={{ color: '#636366', padding: '40px', textAlign: 'center', width: '100%', fontFamily: 'sans-serif' }}>
-            <h2>💬 Внешний вид чатов</h2>
-            <p style={{ color: '#48484a', fontSize: '14px' }}>Кастомизация тем оформления, фонов и кастомных стилей сайта появится в следующем апдейте.</p>
-          </div>
-        )} */}
+        {activeSettingsTab === 'privacy' && (
+          <PrivacySettings 
+            onBack={() => setActiveSettingsTab('privacy')}
+            state={{ privacyPhone, privacyEmail, privacyOnline, privacyNameFormat, privacyFullName, privacySearch }}
+            setters={{ setPrivacyPhone, setPrivacyEmail, setPrivacyOnline, setPrivacyNameFormat, setPrivacyFullName, setPrivacySearch }}
+            title="Приватность"
+            Icon={<Lock />}
+          />
+        )}
       </div>
+
       <div className={style.settingsPreview}>
         <div className={style.settingsPreviewChange}>
           <span>👁️ Предпросмотр профиля:</span>
@@ -177,8 +177,7 @@ export default function SettingsPage() {
         </div>
 
         <div className={profileStyles['profile-modal-card']} style={{ width: '100%', position: 'relative', boxShadow: '0 8px 32px rgba(0,0,0,0.4)', animation: 'none' }}>
-
-          <div style={{ padding: '24px'}}>
+          <div style={{ padding: '24px' }}>
             <div className={profileStyles['profile-avatar-wrapper']}>
               {avatarUrl ? (
                 <img src={avatarUrl} alt="Avatar" style={{ width: '90px', height: '90px', borderRadius: '50%', objectFit: 'cover' }} />
@@ -193,7 +192,7 @@ export default function SettingsPage() {
               {renderUserStatusBadge(currentUser)}
               {previewDisplayName}
             </h2>
-            <span className={profileStyles['profile-status']} style={{ margin: 'none', color: shouldShowFieldInPreview(privacyOnline) ? '#2ec761' : '#707579' }}>
+            <span className={profileStyles['profile-status']} style={{ color: shouldShowFieldInPreview(privacyOnline) ? '#2ec761' : '#707579' }}>
               {shouldShowFieldInPreview(privacyOnline) ? 'в сети' : 'был(а) недавно'}
             </span>
           </div>
@@ -246,10 +245,10 @@ export default function SettingsPage() {
                 <span className={profileStyles['info-value']} style={{ wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>
                   {aboutMe}
                 </span>
-              <span className={profileStyles['info-label']}>
-                О себе
-              </span>
-            </div>
+                <span className={profileStyles['info-label']}>
+                  О себе
+                </span>
+              </div>
             )}
           </div>
         </div>
@@ -273,7 +272,7 @@ export default function SettingsPage() {
           </div>
           <div 
             className={chatStyles['message-bubble']}
-            style={{ background: '#232327'}}
+            style={{ background: '#1c1c24' }}
           >
             <div className={chatStyles['message-text']}>
               <span 
@@ -285,9 +284,7 @@ export default function SettingsPage() {
               </span>
               Привет, теперь моё сообщение будет выглядеть так!
               <span className={chatStyles['message-meta']}>
-                <span className={chatStyles['message-time']}>
-                  13:37
-                </span>
+                <span className={chatStyles['message-time']}>13:37</span>
               </span>
             </div>
           </div>

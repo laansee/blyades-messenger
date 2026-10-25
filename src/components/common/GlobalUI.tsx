@@ -1,8 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import useMessengerContext from '../context/messengerContext';
-import GlobalUIStyles from './css/global-ui.module.css';
-import { X, Users, Check } from 'lucide-react';
+import useMessengerContext from '../../context/messengerContext';
+import GlobalUIStyles from '../css/global-ui.module.css';
 
 
 // ========================================================
@@ -95,74 +94,12 @@ export function ConfirmModal({ confirm, setConfirm }: ConfirmModalProps) {
 }
 
 // ========================================================
-// 🖱️ 3. КОНТЕКСТНОЕ МЕНЮ КЛИКА МЫШИ (ContextMenu)
-// ========================================================
-interface ContextMenuProps {
-  show: boolean;
-  x: number;
-  y: number;
-  onClose: () => void;
-  items: any[];
-}
-
-export function ContextMenu({ show, x, y, onClose, items }: ContextMenuProps) {
-  const menuRef = useRef<HTMLDivElement>(null);
-  const [coords, setCoords] = useState({ top: y, left: x });
-
-  useEffect(() => {
-    if (show && menuRef.current) {
-      const menuWidth = menuRef.current.offsetWidth || 180;
-      const menuHeight = menuRef.current.offsetHeight || 150;
-      let finalX = x;
-      let finalY = y;
-
-      if (x + menuWidth > window.innerWidth) finalX = window.innerWidth - menuWidth - 10;
-      if (y + menuHeight > window.innerHeight) finalY = window.innerHeight - menuHeight - 10;
-
-      setCoords({ top: finalY, left: finalX });
-    }
-  }, [show, x, y, items]);
-
-  if (!show || !items || items.length === 0) return null;
-
-  return (
-    <div className={GlobalUIStyles['menu-overlay']} onClick={onClose} onContextMenu={(e) => { e.preventDefault(); onClose(); }}>
-      <div 
-        ref={menuRef}
-        className={GlobalUIStyles['menu-card']} 
-        style={{ top: `${coords.top}px`, left: `${coords.left}px` }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {items.map((item, index) => {
-          if (item.isDivider) return <div key={`divider-${index}`} className={GlobalUIStyles['menu-divider']} />;
-          return (
-            <button
-              key={`item-${index}`}
-              className={`${GlobalUIStyles['menu-item']} ${item.isDanger ? GlobalUIStyles['menu-item-danger'] : ''}`}
-              onClick={() => {
-                item.onClick();
-                setTimeout(() => {
-                  onClose();
-                }, 10);
-              }}
-            >
-              {item.icon && <span className={GlobalUIStyles['menu-item-icon']}>{item.icon}</span>}
-              <span className={GlobalUIStyles['menu-text']}>{item.label}</span>
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// ========================================================
-// 🗂️ 4. ВЫПАДАЮЩИЙ СПИСОК ДЕЙСТВИЙ (DropdownMenu)
+// 3. 🗂️ ВЫПАДАЮЩИЙ СПИСОК ДЕЙСТВИЙ (DropdownMenu)
 // ========================================================
 export interface DropdownItem {
   id: string;
   text: string;
-  tabIndex: number;
+  tabIndex?: number;
   icon?: React.ComponentType<any>;
   danger?: boolean;
   arrow?: boolean;
@@ -215,7 +152,7 @@ export function DropdownMenu({ show, onClose, x, y, items }: DropdownMenuProps) 
           return (
             <button
               key={item.id}
-              tabIndex={item.tabIndex}
+              tabIndex={item.tabIndex ?? 0}
               onClick={() => { item.onClick(); onClose(); }}
               className={`${GlobalUIStyles['dropdown-item']} ${item.danger ? GlobalUIStyles['danger'] : ''} ${item.isSeparatorBefore ? GlobalUIStyles['separator'] : ''}`}
             >
@@ -235,208 +172,7 @@ export function DropdownMenu({ show, onClose, x, y, items }: DropdownMenuProps) 
 }
 
 // ========================================================
-// 👥 5. МОДАЛКА СОЗДАНИЯ НОВЫХ БЕСЕД (CreateGroupModal)
-// ========================================================
-interface CreateGroupModalProps {
-  show: boolean;
-  onClose: () => void;
-}
-
-export function CreateGroupModal({ show, onClose }: CreateGroupModalProps) {
-  const ctx = useMessengerContext();
-  const [groupName, setGroupName] = useState('');
-  const [selectedUsers, setSelectedUserIds] = useState<string[]>([]);
-
-  if (!show) return null;
-
-  const toggleUserSelection = (userId: string) => {
-    setSelectedUserIds((prev) =>
-      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
-    );
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!groupName.trim()) {
-      ctx.showToast('Введите название беседы', 'warning');
-      return;
-    }
-
-    if (ctx.handleCreateGroupChat) {
-      await ctx.handleCreateGroupChat(groupName, selectedUsers);
-      setGroupName('');
-      setSelectedUserIds([]);
-      onClose();
-    }
-  };
-
-  return createPortal(
-    <div 
-      onClick={onClose} 
-      style={{ 
-        position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
-        backgroundColor: 'rgba(0, 0, 0, 0.75)', display: 'flex', 
-        alignItems: 'center',  justifyContent: 'center', zIndex: 999999,
-        transition: 'opacity 0.2s ease'
-      }}
-    >
-      <div 
-        onClick={(e) => e.stopPropagation()} 
-        style={{ 
-          backgroundColor: '#1c1c24', border: '1px solid #2b2d31',
-          borderRadius: '16px', padding: '24px',  maxWidth: '420px',  width: '100%',
-          boxShadow: '0 16px 40px rgba(0,0,0,0.6)', position: 'relative',
-          display: 'flex', flexDirection: 'column', gap: '16px'
-        }}
-      >
-        
-        {/* Шапка модалки */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #2b2d31', paddingBottom: '14px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#fff' }}>
-            <Users size={20} color="#007aff" />
-            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', fontFamily: 'sans-serif' }}>
-              Создание беседы
-            </h3>
-          </div>
-          <button 
-            type="button" onClick={onClose} 
-            style={{ background: 'none', border: 'none', color: '#8e8e93', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-          >
-            <X size={20} />
-          </button>
-        </div>
-
-        <form 
-          onSubmit={handleSubmit} 
-          style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}
-        >
-          {/* Инпут названия */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <label style={{ fontSize: '12px', color: '#9ca3af', fontWeight: 'bold', textTransform: 'uppercase', fontFamily: 'sans-serif' }}
-            >
-              Название беседы
-            </label>
-            <input 
-              type="text" 
-              placeholder="Например: Конференция..."
-              value={groupName}
-              onChange={(e) => setGroupName(e.target.value)}
-              style={{ width: '100%', backgroundColor: '#1e1f22', color: '#fff', border: '1px solid #2b2d31', borderRadius: '6px', padding: '12px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }}
-              autoComplete="off"
-            />
-          </div>
-
-          {/* Список контактов с чекбоксами */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <label style={{ fontSize: '12px', color: '#9ca3af', fontWeight: 'bold', textTransform: 'uppercase', fontFamily: 'sans-serif' }}>
-              Пригласить участников ({selectedUsers.length})
-            </label>
-            {/* <div style={{ maxHeight: '200px', overflowY: 'auto', backgroundColor: '#1e1f22', border: '1px solid #2b2d31', borderRadius: '6px', padding: '6px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-              {ctx.chats.length === 0 ? (
-                <div style={{ color: '#636366', fontSize: '13px', textAlign: 'center', padding: '20px', fontFamily: 'sans-serif' }}>
-                  У вас пока нет контактов
-                </div>
-              ) : (
-                ctx.chats.map((user: any) => {
-                  const isChecked = selectedUsers.includes(user.id);
-                  return (
-                    <div 
-                      key={user.id} 
-                      onClick={() => toggleUserSelection(user.id)}
-                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px', borderRadius: '4px', cursor: 'pointer', backgroundColor: isChecked ? 'rgba(0, 122, 255, 0.08)' : 'transparent', transition: 'background-color 0.15s ease' }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: user.avatarColor, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 'bold', fontSize: '12px', fontFamily: 'sans-serif' }}>
-                          {user.name.substring(0, 1).toUpperCase()}
-                        </div>
-                        <span style={{ color: isChecked ? '#fff' : '#dbdee1', fontSize: '14px', fontWeight: isChecked ? '600' : '500', fontFamily: 'sans-serif' }}>
-                          {user.name}
-                        </span>
-                      </div>
-                      
-                      <div style={{ width: '20px', height: '20px', borderRadius: '50%', border: isChecked ? 'none' : '2px solid #3a3a3c', backgroundColor: isChecked ? '#007aff' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s ease' }}>
-                        {isChecked && <Check size={12} color="#fff" strokeWidth={3} />}
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div> */}
-            {/* 🚀 ГАРАНТИРОВАННЫЙ ФИКС: Оставляем только реальных людей, отсекая группы с помощью .filter */}
-            <div style={{ maxHeight: '200px', overflowY: 'auto', backgroundColor: '#1e1f22', border: '1px solid #2b2d31', borderRadius: '6px', padding: '6px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-              {ctx.chats.filter((c: any) => {
-                const chatIdStr = String(c.id);
-                
-                const isGroupFlag = c.isGroup === true;
-                const isGroupPrefix = chatIdStr.startsWith('group_');
-
-                return !isGroupFlag && !isGroupPrefix
-              }).length === 0 ? (
-                <div style={{ color: '#636366', fontSize: '13px', textAlign: 'center', padding: '20px', fontFamily: 'sans-serif' }}>
-                  У вас пока нет доступных пользователей
-                </div>
-              ) : (
-                ctx.chats
-                  .filter((c: any) => {
-                    const chatIdStr = String(c.id);
-                    
-                    const isGroupFlag = c.isGroup === true;
-                    const isGroupPrefix = chatIdStr.startsWith('group_');
-                    return !isGroupFlag && !isGroupPrefix
-                  })
-                  .map((user: any) => {
-                    const isChecked = selectedUsers.includes(user.id);
-                    return (
-                      <div 
-                        key={user.id} 
-                        onClick={() => toggleUserSelection(user.id)}
-                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px', borderRadius: '4px', cursor: 'pointer', backgroundColor: isChecked ? 'rgba(0, 122, 255, 0.08)' : 'transparent', transition: 'background-color 0.15s ease' }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: user.avatarColor, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 'bold', fontSize: '12px', fontFamily: 'sans-serif' }}>
-                            {user.name.substring(0, 1).toUpperCase()}
-                          </div>
-                          <span style={{ color: isChecked ? '#fff' : '#dbdee1', fontSize: '14px', fontWeight: isChecked ? '600' : '500', fontFamily: 'sans-serif' }}>
-                            {user.name || user.username}
-                          </span>
-                        </div>
-                        
-                        <div style={{ width: '20px', height: '20px', borderRadius: '50%', border: isChecked ? 'none' : '2px solid #3a3a3c', backgroundColor: isChecked ? '#007aff' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s ease' }}>
-                          {isChecked && <Check size={12} color="#fff" strokeWidth={3} />}
-                        </div>
-                      </div>
-                    );
-                  })
-              )}
-            </div>
-
-          </div>
-
-          {/* Кнопки футера */}
-          <div style={{ display: 'flex', gap: '12px', marginTop: '10px', borderTop: '1px solid #2b2d31', paddingTop: '16px' }}>
-            <button 
-              type="button" 
-              onClick={onClose}
-              style={{ flex: 1, backgroundColor: 'transparent', color: '#fff', border: '1px solid #3a3a3c', borderRadius: '6px', padding: '10px', cursor: 'pointer', fontSize: '14px', fontWeight: '500', fontFamily: 'sans-serif' }}
-            >
-              Отмена
-            </button>
-            <button 
-              type="submit"
-              style={{ flex: 1, backgroundColor: '#007aff', color: '#fff', border: 'none', borderRadius: '6px', padding: '10px', cursor: 'pointer', fontSize: '14px', fontWeight: '600', fontFamily: 'sans-serif' }}
-            >
-              Создать
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>,
-    document.body
-  );
-}
-
-// ========================================================
-// 📝 6. УНИВЕРСАЛЬНАЯ МОДАЛКА РЕДАКТИРОВАНИЯ (EditorModal)
+// 📝 4. УНИВЕРСАЛЬНАЯ МОДАЛКА РЕДАКТИРОВАНИЯ (EditorModal)
 // ========================================================
 export interface EditorInputField {
   key: string;
@@ -542,7 +278,7 @@ export function EditorModal({ show, title, fields, initialValues, onClose, onSav
 }
 
 // ========================================================
-// 🔒 7. МОДАЛКА ВЫБОРА НАСТРОЕК ПРИВАТНОСТИ (PrivacySelectorModal)
+// 🔒 5. МОДАЛКА ВЫБОРА НАСТРОЕК ПРИВАТНОСТИ (PrivacySelectorModal)
 // ========================================================
 export interface PrivacyOption {
   value: string;
@@ -631,15 +367,17 @@ export function PrivacySelectorModal({ show, title, subtitle, options, selectedV
 }
 
 // ========================================================
-// 📸 8. МОДАЛКА ВЫБОРА И ДРОП-ЗОНЫ АВАТАРА (AvatarUploadSelectorModal)
+// 📸 6. МОДАЛКА ВЫБОРА И ДРОП-ЗОНЫ АВАТАРА (AvatarUploadSelectorModal)
 // ========================================================
+export type AvatarUploadTarget = 'users' | 'groups' | 'channels';
+
 interface AvatarUploadSelectorModalProps {
   show: boolean;
   avatarUrl: string | null;
   avatarColor: string;
   isDragOver: boolean;
   uploading: boolean;
-  fileInputRef: React.RefObject<HTMLInputElement>;
+  fileInputRef: React.RefObject<HTMLInputElement | null>;
   setAvatarColor: (color: string) => void;
   onClose: () => void;
   onDragOver: (e: React.DragEvent) => void;
@@ -647,7 +385,11 @@ interface AvatarUploadSelectorModalProps {
   onDrop: (e: React.DragEvent) => void;
   onFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onColorSelect: (color: string) => Promise<void>;
+  targetType?: AvatarUploadTarget;
+  title?: string;
+  showColorPalette?: boolean;
 }
+
 export function AvatarUploadSelectorModal({
   show,
   avatarUrl,
@@ -661,19 +403,21 @@ export function AvatarUploadSelectorModal({
   onDragLeave,
   onDrop,
   onFileSelect,
-  onColorSelect
+  onColorSelect,
+  targetType = 'users',
+  title,
+  showColorPalette = true,
 }: AvatarUploadSelectorModalProps) {
   if (!show) return null;
 
+  const displayTitle = title || (
+    targetType === 'users' ? 'Снимок профиля' :
+    targetType === 'groups' ? 'Аватар беседы' : 'Аватар канала'
+  );
+
   const avatarPalette = [
-    '#ba4c47',
-    '#c36f24',
-    '#8957ca',
-    '#3c9c22',
-    '#37a5b1',
-    '#3380c1',
-    '#b64c82',
-    '#798896'
+    '#ba4c47', '#c36f24', '#8957ca', '#3c9c22',
+    '#37a5b1', '#3380c1', '#b64c82', '#798896'
   ];
 
   return createPortal(
@@ -694,9 +438,32 @@ export function AvatarUploadSelectorModal({
           boxShadow: '0 16px 40px rgba(0,0,0,0.5)', color: '#fff', fontFamily: 'sans-serif'
         }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-          <h3 style={{ fontSize: '18px', margin: 0, fontWeight: '700' }}>Снимок профиля</h3>
-          <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', color: '#8e8e93', cursor: 'pointer', fontSize: '20px' }}>×</button>
+        <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            width: '100%' 
+        }}>
+          <h3 style={{ 
+            fontSize: '18px', 
+            margin: 0, 
+            fontWeight: '700' 
+          }}>
+            {displayTitle}
+          </h3>
+          <button 
+            type="button" 
+            onClick={onClose} 
+            style={{ 
+              background: 'none', 
+              border: 'none', 
+              color: '#8e8e93', 
+              cursor: 'pointer', 
+              fontSize: '20px' 
+            }}
+          >
+            ×
+          </button>
         </div>
 
         {/* Интерактивная область Drag-and-Drop */}
@@ -722,51 +489,79 @@ export function AvatarUploadSelectorModal({
           />
 
           {avatarUrl ? (
-            <img src={avatarUrl} alt="Preview" style={{ width: '70px', height: '70px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #383842' }} />
+            <img 
+              src={avatarUrl} 
+              alt="Preview" 
+              style={{ 
+                width: '70px', 
+                height: '70px', 
+                borderRadius: '50%', 
+                objectFit: 'cover', 
+                border: '2px solid #383842' 
+              }} 
+            />
           ) : (
-            <div style={{ width: '70px', height: '70px', borderRadius: '50%', backgroundColor: avatarColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', fontWeight: 'bold' }}>
+            <div style={{ 
+              width: '70px', 
+              height: '70px', 
+              borderRadius: '50%', 
+              backgroundColor: avatarColor, 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              fontSize: '28px', 
+              fontWeight: 'bold' 
+            }}>
               📸
             </div>
           )}
 
           <div style={{ textAlign: 'center', padding: '0 10px' }}>
-            <span style={{ fontSize: '14px', fontWeight: '600', color: isDragOver ? '#9d7bf6' : '#fff', display: 'block', marginBottom: '4px' }}>
+            <span style={{ 
+              fontSize: '14px', 
+              fontWeight: '600', 
+              color: isDragOver ? '#9d7bf6' : '#fff', 
+              display: 'block', 
+              marginBottom: '4px' 
+            }}>
               {isDragOver ? '💥 Бросайте сюда фото!' : 'Перетащите изображение или кликните'}
             </span>
-            <span style={{ fontSize: '11px', color: '#a2a2b5' }}>PNG, JPG, GIF до 5 МБ</span>
+            <span style={{ fontSize: '11px', color: '#a2a2b5' }}>PNG, JPG до 5 МБ</span>
           </div>
         </div>
 
         {uploading && <span style={{ color: '#9d7bf6', fontSize: '13px' }}>Обработка файла...</span>}
 
-        {/* Выбор базового цвета подложки */}
-        <div style={{ width: '100%', borderTop: '1px solid #383842', paddingTop: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <span style={{ fontSize: '12px', color: '#a2a2b5', fontWeight: '600' }}>Базовый цвет подложки:</span>
-          <div style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '10px', justifyContent: 'center' }}>
-            {avatarPalette.map((color) => {
-              const isSelected = avatarColor.toLowerCase() === color.toLowerCase();
-              return (
-                <div
-                  key={color}
-                  onClick={async () => {
-                    setAvatarColor(color);
-                    await onColorSelect(color);
-                  }}
-                  style={{
-                    width: '28px', height: '36px', borderRadius: '50%',
-                    backgroundColor: color, cursor: 'pointer',
-                    transition: 'all 0.15s ease',
-                    boxShadow: isSelected ? `0 0 10px ${color}` : '0 2px 4px rgba(0,0,0,0.2)',
-                    border: isSelected ? '2px solid #ffffff' : '2px solid transparent',
-                    transform: isSelected ? 'scale(1.1)' : 'scale(1)'
-                  }}
-                  onMouseEnter={e => !isSelected && (e.currentTarget.style.transform = 'scale(1.05)')}
-                  onMouseLeave={e => !isSelected && (e.currentTarget.style.transform = 'scale(1)')}
-                />
-              );
-            })}
+        {/* 🚀 Палитра отображается опционально */}
+        {showColorPalette && (
+          <div style={{ width: '100%', borderTop: '1px solid #383842', paddingTop: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <span style={{ fontSize: '12px', color: '#a2a2b5', fontWeight: '600' }}>Базовый цвет подложки:</span>
+            <div style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '10px', justifyContent: 'center' }}>
+              {avatarPalette.map((color) => {
+                const isSelected = avatarColor.toLowerCase() === color.toLowerCase();
+                return (
+                  <div
+                    key={color}
+                    onClick={async () => {
+                      setAvatarColor(color);
+                      await onColorSelect(color);
+                    }}
+                    style={{
+                      width: '28px', height: '36px', borderRadius: '50%',
+                      backgroundColor: color, cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                      boxShadow: isSelected ? `0 0 10px ${color}` : '0 2px 4px rgba(0,0,0,0.2)',
+                      border: isSelected ? '2px solid #ffffff' : '2px solid transparent',
+                      transform: isSelected ? 'scale(1.1)' : 'scale(1)'
+                    }}
+                    onMouseEnter={e => !isSelected && (e.currentTarget.style.transform = 'scale(1.05)')}
+                    onMouseLeave={e => !isSelected && (e.currentTarget.style.transform = 'scale(1)')}
+                  />
+                );
+              })}
+            </div>
           </div>
-        </div>
+        )}
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%', gap: '14px', borderTop: '1px solid #383842', paddingTop: '14px' }}>
           <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', color: '#b0b0b8', cursor: 'pointer', fontSize: '14px', fontWeight: '600' }}>
@@ -780,7 +575,7 @@ export function AvatarUploadSelectorModal({
 }
 
 // ========================================================
-// ✂️ 9. МОДАЛКА ОБРЕЗКИ И МАСШТАБИРОВАНИЯ АВАТАРА (AvatarCropModal)
+// ✂️ 7. МОДАЛКА ОБРЕЗКИ И МАСШТАБИРОВАНИЯ АВАТАРА (AvatarCropModal)
 // ========================================================
 interface AvatarCropModalProps {
   show: boolean;
@@ -872,8 +667,6 @@ export function AvatarCropModal({ show, imageSrc, onClose, onSave }: AvatarCropM
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!isDragging || !imageObj || !canvasRef.current) return;
-
-    const canvas = canvasRef.current;
     
     // Рассчитываем текущие размеры картинки на экране (один в один как в рендере)
     const baseScale = Math.max(200 / imageObj.width, 200 / imageObj.height);
@@ -1038,12 +831,9 @@ export function AvatarCropModal({ show, imageSrc, onClose, onSave }: AvatarCropM
     document.body
   );
 }
-function handleAvatarUpload(e: React.MouseEvent<HTMLCanvasElement, MouseEvent>): void {
-  throw new Error('Function not implemented.');
-}
 
 // ========================================================
-// 🎨 10. МОДАЛКА ВЫБОРА ЦВЕТА ИМЕНИ (NameColorSelectorModal)
+// 🎨 8. МОДАЛКА ВЫБОРА ЦВЕТА ИМЕНИ (NameColorSelectorModal)
 // ========================================================
 interface NameColorSelectorModalProps {
   show: boolean;
@@ -1054,6 +844,7 @@ interface NameColorSelectorModalProps {
   onClose: () => void;
   onSelect: (color: string) => Promise<void>;
 }
+
 export function NameColorSelectorModal({
   show,
   title,
@@ -1180,11 +971,11 @@ export function NameColorSelectorModal({
 }
 
 // ========================================================
-// 👥 11. МОДАЛКА ДОБАВЛЕНИЯ УЧАСТНИКОВ В БЕСЕДУ (AddParticipantsModal)
+// 👥 9. МОДАЛКА ДОБАВЛЕНИЯ УЧАСТНИКОВ В БЕСЕДУ (AddParticipantsModal)
 // ========================================================
 interface AddParticipantsModalProps {
   show: boolean;
-  existingUserIds: string[]; // Массив ID тех, кто уже состоит в этой беседе
+  existingUserIds: string[];
   onClose: () => void;
   onAdd: (selectedIds: string[]) => Promise<void>;
 }
@@ -1204,9 +995,9 @@ export function AddParticipantsModal({ show, existingUserIds, onClose, onAdd }: 
 
   if (!show) return null;
 
-  const toggleUserSelection = (userId: string) => {
+  const toggleUserSelection = (userUuid: string) => {
     setSelectedUsers(prev =>
-      prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
+      prev.includes(userUuid) ? prev.filter(id => id !== userUuid) : [...prev, userUuid]
     );
   };
 
@@ -1225,12 +1016,13 @@ export function AddParticipantsModal({ show, existingUserIds, onClose, onAdd }: 
   };
 
   // 🚀 УМНЫЙ ФИЛЬТР: Оставляем только реальных пользователей-контактов, которых ЕЩЁ НЕТ в этой группе!
-  const availableContacts = ctx.chats.filter((c: any) => {
-    const isRealUser = c.uniqueId && c.uniqueId.trim() !== '';
-    const isNotGroup = !c.isGroup;
-    const isAlreadyInGroup = existingUserIds.map(String).includes(String(c.id));
+  const availableContacts = (ctx.chats || []).filter((c: any) => {
+    const isNotGroup = !c.isGroup && c.type !== 'group' && c.type !== 'channel';
+    // Настоящий строковый UUID собеседника (а не порядковый ID чата)
+    const userUuid = String(c.partnerId || c.uuid || '');
+    const isAlreadyInGroup = userUuid && existingUserIds.map(String).includes(userUuid);
     
-    return isRealUser && isNotGroup && !isAlreadyInGroup;
+    return isNotGroup && userUuid && !isAlreadyInGroup;
   });
 
   return createPortal(
@@ -1270,11 +1062,13 @@ export function AddParticipantsModal({ show, existingUserIds, onClose, onAdd }: 
                 </div>
               ) : (
                 availableContacts.map((user: any) => {
-                  const isChecked = selectedUsers.includes(user.id);
+                  const userUuid = String(user.partnerId || user.uuid || user.id);
+                  const isChecked = selectedUsers.includes(userUuid);
+
                   return (
                     <div 
-                      key={user.id} 
-                      onClick={() => toggleUserSelection(user.id)}
+                      key={userUuid} 
+                      onClick={() => toggleUserSelection(userUuid)}
                       style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px', borderRadius: '6px', cursor: 'pointer', backgroundColor: isChecked ? 'rgba(157, 123, 246, 0.08)' : 'transparent', transition: 'background-color 0.15s ease' }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>

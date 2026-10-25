@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from "@vercel/speed-insights/react"
 import AuthPage from './features/auth/AuthPage';
@@ -11,9 +11,9 @@ import AdminDashboard from './features/admin/admin-dashboard';
 import LandingPage from './components/LandingPage';
 import useMessengerContext, { MessengerProvider } from './context/messengerContext';
 
-function ProtectedRoute({ element }: { element: React.ReactElement }) {
+function ProtectedRoute() {
   const { currentUser } = useMessengerContext();
-  return currentUser ? element : <Navigate to="/auth" replace />;
+  return currentUser ? <Outlet /> : <Navigate to="/auth" replace />;
 }
 
 function AppContent() {
@@ -21,6 +21,10 @@ function AppContent() {
 
   useEffect(() => {
     document.title = "Blyades Messenger";
+
+    const disableMenu = (e: MouseEvent) => e.preventDefault();
+    window.addEventListener('contextmenu', disableMenu);
+    return () => window.removeEventListener('contextmenu', disableMenu);
   }, []);
 
   if (authLoading) {
@@ -47,11 +51,13 @@ function AppContent() {
         {/* Страница авторизации: если залогинен — редиректим в чат, если нет — показываем форму */}
         <Route path="/auth" element={!currentUser ? <AuthPage /> : <Navigate to="/chat" replace />} />
 
-        <Route path="/chat" element={<ProtectedRoute element={<ChatLayout />} />} />
-        <Route path="/contacts" element={<ProtectedRoute element={<ContactsPage />} />} />
-        <Route path="/calls" element={<ProtectedRoute element={<CallsPage />} />} />
-        <Route path="/settings" element={<ProtectedRoute element={<SettingsPage />} />} />
-        <Route path="/admin" element={<ProtectedRoute element={<AdminDashboard />} />} />
+        <Route element={<ProtectedRoute />}>
+          <Route path="/chat" element={<ChatLayout />} />
+          <Route path="/contacts" element={<ContactsPage />} />
+          <Route path="/calls" element={<CallsPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/admin" element={<AdminDashboard />} />
+        </Route>
 
         <Route path="*" element={<Navigate to={currentUser ? "/chat" : "/auth"} replace />} />
      </Routes>

@@ -209,6 +209,13 @@
 .menu-item-danger {color: #ff453a;}
 .menu-item-danger .menu-item-icon {color: #ff453a;}
 .menu-item-danger:hover {background: rgba(255, 69, 58, 0.1);}
+.menu-item-disabled,
+.menu-item:disabled {
+  opacity: 0.45;
+  cursor: not-allowed !important;}
+.menu-item-disabled:hover,
+.menu-item:disabled:hover {
+  background-color: transparent !important;}
 @keyframes menuAppear {
   from { opacity: 0; transform: scale(0.92); }
   to { opacity: 1; transform: scale(1); }}

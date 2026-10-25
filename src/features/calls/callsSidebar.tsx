@@ -3,7 +3,7 @@ import { Phone, PhoneMissed, PhoneIncoming, PhoneOutgoing, Search } from 'lucide
 import useMessengerContext from '../../context/messengerContext';
 import styles from '../../components/css/sidebar.module.css'; 
 // 🚀 Импортируем наш готовый компонент контекстного меню
-import ContextMenu from '../../components/contextMenu'; 
+import ContextMenu from '../../components/common/contextMenu'; 
 import { supabase } from '../../services/supabaseClient';
 
 export default function CallsSidebar({ callsHistory }: { callsHistory: any[] }) {

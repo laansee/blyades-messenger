@@ -1,12 +1,16 @@
 @media (max-width: 480px) {
-  .chats-sidebar {width:calc(100% - 70px);}
+  /* .chats-sidebar {width:calc(100% - 70px);} */
+  .chats-sidebar {width: 100%;}
 }
 @media (min-width: 481px) and (max-width: 739px) {
-  .chats-sidebar {width:calc(100% - 70px);}
+  /* .chats-sidebar {width:calc(100% - 70px);} */
+  .chats-sidebar {width: 100%;}
 }
 @media (min-width: 740px) {
   .chats-sidebar {width: 320px;}
 }
+
+/* ---- ДОБАВИТЬ RESIZEBLE НА SIDEBAR ---- */ 
 
 .chats-sidebar {
   background-color: var(--bg-main);
@@ -16,15 +20,35 @@
 }
 
 .sidebar-header { 
-  padding: 20px; 
+  padding: 14px 16px; 
   display: flex; 
   flex-direction: column; 
-  gap: 15px; }
-.sidebar-header h2 { 
-  margin: 0; 
-  font-size: 22px; 
-  font-weight: 600;
-  user-select: none;}
+  gap: 12px;}
+.header-search-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;}
+.menu-toggle-btn {
+  background: none;
+  border: none;
+  color: #8e8e93;
+  padding: 8px;
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s, color 0.15s;
+  flex-shrink: 0;}
+.menu-toggle-btn:hover {
+  background-color: #232327;
+  color: #ffffff;}
+.search-input-wrapper {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;}
 .sidebar-header section {
   display: flex;
   justify-content: space-between;
@@ -38,10 +62,10 @@
 }
 .chat-search {
   width: 100%; 
-  padding: 10px 12px 10px 38px; 
+  padding: 9px 12px 9px 36px; 
   background-color: #232327;
   border: none; 
-  border-radius: 12px; 
+  border-radius: 10px; 
   color: var(--text-color); 
   outline: none; 
   box-sizing: border-box; 
@@ -198,3 +222,65 @@
   100% {
     box-shadow: 0 0 0 0 rgba(157, 123, 246, 0);
   }}
+
+
+/* ======================================================== */
+/* 🔍 ДВУХУРОВНЕВЫЙ ПОИСК (TELEGRAM STYLE)                  */
+/* ======================================================== */
+
+.search-section-header {
+  padding: 10px 16px 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #8e8e98;
+  letter-spacing: 0.2px;
+  text-transform: none;}
+.search-item-global {
+  display: flex;
+  align-items: center;
+  padding: 8px 14px;
+  gap: 12px;
+  cursor: pointer;
+  border-radius: 10px;
+  margin: 1px 8px;
+  transition: background 0.15s ease;}
+.search-item-global:hover {
+  background: rgba(255, 255, 255, 0.06);}
+.search-item-info {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex: 1;}
+.search-item-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;}
+.search-item-subtitle {
+  font-size: 12px;
+  color: #8e8e98;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;}
+.search-item-badge {
+  font-size: 11px;
+  padding: 2px 6px;
+  background: rgba(139, 92, 246, 0.18);
+  color: #a78bfa;
+  border-radius: 6px;}
+.search-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  color: #8e8e98;
+  font-size: 13px;
+  text-align: center;}
+

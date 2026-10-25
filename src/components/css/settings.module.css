@@ -1,17 +1,42 @@
-@media (max-width: 480px) {
-  .setSidebar {width:calc(100% - 70px);}
+@media (max-width: 541px) {
+  /* .setSidebar {width:calc(100% - 70px);} */
+  .setSidebar {display: none;}
 }
-@media (min-width: 481px) and (max-width: 739px) {
-  .setSidebar {width:calc(100% - 70px);}
+@media (min-width: 542px) and (max-width: 719px) {
+  .setSidebar {
+    /* width:calc(100% - 70px); */
+    display: flex;
+    flex-direction: column;}
 }
-@media (min-width: 740px) {
-  .setSidebar {width: 320px;}
+@media (min-width: 720px) {
+  .setSidebar {
+    width: 320px;
+    display: flex;
+    flex-direction: column;}
 }
+
+@media (max-width: 1079px) {
+  .settingsPreview {
+    display: none;
+  }
+}
+@media (min-width: 1080px) {
+  .settingsPreview {
+    display: flex; 
+    flex-direction: column;
+    gap: 20px;
+  }
+  .settingsPreviewShow {
+    display: none;
+  }
+}
+
 .setSidebar {
   background-color: var(--bg-main);
   border-right: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;}
+  /* display: flex;
+  flex-direction: column; */
+}
 .setSidebarHeader {
   padding: 20px;
   display: flex;
@@ -92,6 +117,10 @@
   gap: 16px;
   padding: 20px;
   overflow: auto;}
+.settingsHeader {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;}
 .settingsFormTitle {
   color: #ffffff;
   margin: 0 0 4px 0;
@@ -99,6 +128,10 @@
   font-weight: 500;
   display: inline-flex;
   gap: 5px;}
+.settingsPreviewShow {
+
+}
+
 .settingsFormContainer {
   display: flex;
   flex-direction: column;
@@ -178,9 +211,6 @@
   background-color: #14141c;
   border-left: 1px solid #2b2d31;
   padding: 40px 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
   box-sizing: border-box;}
 .settingsPreviewChange span {
   font-size: 14px;

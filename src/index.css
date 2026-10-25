@@ -2,17 +2,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,100..900;1,100..900&display=swap');
 
 :root {
-  /* --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px; */
-
   --bg-main:#17171c;
   --bg-secondary: #111113;
   --bg-nav-sidebar: #131315;
@@ -23,7 +12,6 @@
 
   --text-color: #eeeeee;
   --text-secondary-color: #8f918f;
-  -- : ;
   --text-online-color: #00cc66;
   --text-offline-color: #7a7a85;
 
@@ -33,17 +21,14 @@
   --message-text-secondary-color: #9d9d9e;
 
   --border: #232327;
-  /* --border: #1212ec; */
 
   --apple : system-ui, -apple-system, sans-serif; ;
   --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
   --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
   --mono: ui-monospace, Consolas, monospace;
 
-  /* font: 18px/145% var(--sans); */
   font: 18px var(--sans);
   letter-spacing: 0.18px;
-  /* color: var(--text); */
   background: var(--bg);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -51,9 +36,9 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-*::-webkit-scrollbar {/* Ширина всего элемента навигации */
+*::-webkit-scrollbar {
   width: 5px; }
-*::-webkit-scrollbar-track {/* Цвет дорожки */
+*::-webkit-scrollbar-track {
   background: #00000000;}
 *::-webkit-scrollbar-thumb {
   background: #525252;
@@ -101,37 +86,60 @@ code, .counter {
   font-family: var(--mono);
   display: inline-flex;
   border-radius: 4px;
-  color: var(--text-h);
 }
 
 code {
   font-size: 15px;
   line-height: 135%;
   padding: 4px 8px;
-  background: var(--code-bg);
+  background: rgba(255, 255, 255, 0.06);
 }
 
-/* Фикс для элементов списков внутри сообщений, чтобы они тоже не раздувались */
+.counter {
+  font-size: 16px;
+  padding: 5px 10px;
+  border-radius: 5px;
+  color: #9d7bf6;
+  background: rgba(157, 123, 246, 0.1);
+  border: 2px solid transparent;
+  transition: border-color 0.3s;
+}
+
+.ticks {
+  position: relative;
+  width: 100%;
+}
+
+.ticks::before,
+.ticks::after {
+  content: '';
+  position: absolute;
+  top: -4.5px;
+  border: 5px solid transparent;
+}
+
+.ticks::before {
+  left: 0;
+  border-left-color: var(--border);
+}
+
+.ticks::after {
+  right: 0;
+  border-right-color: var(--border);
+}
+
 .message-text ul, .message-text li {
   line-height: 1.25 !important;}
 
-/* 🚀 УЛЬТИМАТИВНЫЙ НЕОНОВЫЙ ФОН ИЗ СКРИНШОТА */
 body {
   margin: 0;
   padding: 0;
   min-height: 100vh;
-  /* Базовый глубокий тёмно-синий цвет, чтобы при загрузке не было вспышек */
   background-color: #0e1017; 
-  
-  /* 🎨 Сложная многослойная сетка градиентов для воссоздания переливов:
-     1. Синее свечение сверху слева
-     2. Багрово-красный закат в правом нижнем углу
-     3. Тёмная подложка, чтобы текст оставался идеально читаемым */
   background-image: 
     radial-gradient(circle at 10% 20%, rgba(16, 37, 68, 0.85) 0%, transparent 50%),
     radial-gradient(circle at 90% 80%, rgba(61, 14, 30, 0.7) 0%, transparent 60%),
     radial-gradient(circle at 50% 50%, rgba(14, 16, 23, 1) 0%, #090a0f 100%);
-  
   background-attachment: fixed;
   color: #ffffff;
   font-family: sans-serif;
@@ -139,14 +147,18 @@ body {
 
 @keyframes fadeIn {
   from { opacity: 0; transform: scale(0.95); }
-  to { opacity: 1; transform: scale(1); }}
+  to { opacity: 1; transform: scale(1); }
+}
 
 @keyframes fadeInBg {
   from { background-color: rgba(0, 0, 0, 0); backdrop-filter: blur(0px); }
-  to { background-color: rgba(10, 10, 15, 0.6); backdrop-filter: blur(6px); }}
+  to { background-color: rgba(10, 10, 15, 0.6); backdrop-filter: blur(6px); }
+}
+
 @keyframes fadeOutBg {
   from { background-color: rgba(10, 10, 15, 0.6); backdrop-filter: blur(6px); }
-  to { background-color: rgba(0, 0, 0, 0); backdrop-filter: blur(0px); }}
+  to { background-color: rgba(0, 0, 0, 0); backdrop-filter: blur(0px); }
+}
 
 @keyframes scaleInCard {
   from { opacity: 0; transform: scale(0.9); }
@@ -154,3 +166,13 @@ body {
 @keyframes scaleOutCard {
   from { opacity: 1; transform: scale(1); }
   to { opacity: 0; transform: scale(0.9); }}
+
+@keyframes scaleInCard {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes scaleOutCard {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.9); }
+}

@@ -6,10 +6,10 @@ import App from './App.tsx'
   // document.title = "Blyades Messenger"
 
 // 🚀 РЕГИСТРАЦИЯ ПОДСИСТЕМЫ PWA ДЛЯ ОКНА УСТАНОВКИ
-if ('serviceWorker' in navigator) {
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/service-worker.js')
-      .then((registration) => {
+      .then(() => {
         console.log('Blyades PWA ServiceWorker успешно зарегистрирован! 🎉');
       })
       .catch((error) => {

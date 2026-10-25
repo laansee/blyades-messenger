@@ -1,19 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import styles from '../../components/css/settings.module.css';
 import useMessengerContext from '../../context/messengerContext';
-import { supabase } from '../../services/supabaseClient';
-import { PrivacySelectorModal, PrivacyOption } from '../../components/GlobalUI';
-import { Lock } from 'lucide-react';
+import { userService } from '../../services/userService';
+import { PrivacySelectorModal, type PrivacyOption } from '../../components/common/GlobalUI';
 
-export default function PrivacySettings({ onBack, state, setters }: any) {
+export default function PrivacySettings({ state, setters, title, Icon }: any) {
   const ctx = useMessengerContext();
   const currentUser = ctx.currentUser;
-  const [isSaving, setIsSaving] = useState(false);
 
-  const {privacyPhone, privacyEmail, privacyOnline, privacyNameFormat, privacyFullName, privacySearch}  = state;
-  const {setPrivacyPhone, setPrivacyEmail, setPrivacyOnline, setPrivacyNameFormat, setPrivacyFullName, setPrivacySearch}  = setters;
-
-  // Локальный стейт конфигурации модального окна выбора
+  const { privacyPhone, privacyEmail, privacyOnline, privacyNameFormat, privacyFullName, privacySearch } = state;
+  const { setPrivacyPhone, setPrivacyEmail, setPrivacyOnline, setPrivacyNameFormat, setPrivacyFullName, setPrivacySearch } = setters;
+  
   const [modalConfig, setModalConfig] = useState<{
     show: boolean;
     title: string;
@@ -37,14 +34,12 @@ export default function PrivacySettings({ onBack, state, setters }: any) {
     if (keyType === 'search') {
       return value === 'none' ? 'Скрыть из поиска' : 'Глобальный поиск';
     }
-    // Дефолтная троица для телефона, почты и онлайна
     if (value === 'all') return 'Все';
     if (value === 'contacts') return 'Мои контакты';
     if (value === 'none') return 'Никто';
     return value;
   };
 
-  // Базовые опции выбора (Все / Мои контакты / Никто)
   const defaultPrivacyOptions: PrivacyOption[] = [
     { value: 'all', label: 'Все' },
     { value: 'contacts', label: 'Мои контакты' },
@@ -52,209 +47,184 @@ export default function PrivacySettings({ onBack, state, setters }: any) {
   ];
 
   const openPrivacySelector = (type: 'phone' | 'online' | 'email' | 'nameFormat' | 'fullName' | 'search') => {
-    let title = '';
+    let titleModal = '';
     let subtitle = '';
     let options = defaultPrivacyOptions;
     let selectedValue = '';
-    let onSelectAction = async (val: string) => {};
+    let keyToUpdate: any = '';
+    let setterFn: (val: string) => void = () => {};
 
     if (type === 'phone') {
-      title = 'Номер телефона';
-      // subtitle = 'Кто видит мой номер телефона';
+      titleModal = 'Номер телефона';
       subtitle = 'Скрывает ваш номер в профиле.';
       selectedValue = privacyPhone;
-      onSelectAction = async (val) => {
-        const { error } = await supabase.from('users').update({ privacyPhone: val, updatedAt: new Date().toISOString() }).eq('id', currentUser.id);
-        if (!error) {
-          setPrivacyPhone(val);
-          ctx.setCurrentUser({ ...currentUser, privacyPhone: val });
-          ctx.showToast('Настройки видимости телефона обновлены', 'success');
-        }
-      };
+      keyToUpdate = 'privacyPhone';
+      setterFn = setPrivacyPhone;
     } else if (type === 'online') {
-      title = 'Статус «В сети»';
-      // subtitle = 'Кто видит, что я в сети';
+      titleModal = 'Статус «В сети»';
       subtitle = 'Отключает отображение зелёного индикатора онлайна.';
       selectedValue = privacyOnline;
-      onSelectAction = async (val) => {
-        const { error } = await supabase.from('users').update({ privacyOnline: val, updatedAt: new Date().toISOString() }).eq('id', currentUser.id);
-        if (!error) {
-          setPrivacyOnline(val);
-          ctx.setCurrentUser({ ...currentUser, privacyOnline: val });
-          ctx.showToast('Видимость онлайна успешно изменена', 'success');
-        }
-      };
+      keyToUpdate = 'privacyOnline';
+      setterFn = setPrivacyOnline;
     } else if (type === 'email') {
-      title = 'Электронная почта';
-      // subtitle = 'Кто видит мою эл. почту';
+      titleModal = 'Электронная почта';
       subtitle = 'Скрывает email в карточке вашего профиля.';
       selectedValue = privacyEmail;
-      onSelectAction = async (val) => {
-        const { error } = await supabase.from('users').update({ privacyEmail: val, updatedAt: new Date().toISOString() }).eq('id', currentUser.id);
-        if (!error) {
-          setPrivacyEmail(val);
-          ctx.setCurrentUser({ ...currentUser, privacyEmail: val });
-          ctx.showToast('Приватность электронной почты сохранена', 'success');
-        }
-      };
+      keyToUpdate = 'privacyEmail';
+      setterFn = setPrivacyEmail;
     } else if (type === 'nameFormat') {
-      title = 'Отображение имени';
-      // subtitle = 'Как выводить моё имя в чатах и беседах';
-      subtitle = 'Выбор между выводом никнейма или реальный Имя и Фамилии в заголовках.';
+      titleModal = 'Отображение имени';
+      subtitle = 'Выбор между выводом никнейма или реальных Имени и Фамилии в заголовках.';
       options = [
         { value: 'username', label: 'Никнейм' },
         { value: 'full_name', label: 'Имя и Фамилия' }
       ];
       selectedValue = privacyNameFormat;
-      onSelectAction = async (val) => {
-        const { error } = await supabase.from('users').update({ privacyNameFormat: val, updatedAt: new Date().toISOString() }).eq('id', currentUser.id);
-        if (!error) {
-          setPrivacyNameFormat(val);
-          ctx.setCurrentUser({ ...currentUser, privacyNameFormat: val });
-          ctx.showToast('Формат отображения имён обновлен', 'success');
-        }
-      };
+      keyToUpdate = 'privacyNameFormat';
+      setterFn = setPrivacyNameFormat;
     } else if (type === 'fullName') {
-      title = 'Имя и фамилия';
-      // subtitle = 'Кто видит моё имя и фамилию';
+      titleModal = 'Имя и фамилия';
       subtitle = 'Скрывает строку настоящих имён, если выбран вывод псевдонима.';
       selectedValue = privacyFullName;
-      onSelectAction = async (val) => {
-        const { error } = await supabase.from('users').update({ privacyFullName: val, updatedAt: new Date().toISOString() }).eq('id', currentUser.id);
-        if (!error) {
-          setPrivacyFullName(val);
-          ctx.setCurrentUser({ ...currentUser, privacyFullName: val });
-          ctx.showToast('Видимость личных имён изменена', 'success');
-        }
-      };
+      keyToUpdate = 'privacyFullName';
+      setterFn = setPrivacyFullName;
     } else if (type === 'search') {
-      // 🚀 КАСТОМНЫЕ НАСТРОЙКИ ДЛЯ СЕЛЕКТОРА ГЛОБАЛЬНОГО ПОИСКА
-      title = 'Поиск аккаунта';
-      // subtitle = 'Кто может найти меня по поиску';
+      titleModal = 'Поиск аккаунта';
       subtitle = 'Позволяет полностью скрыться из глобального поиска контактов мессенджера.';
       options = [
         { value: 'all', label: 'Глобальный поиск' },
         { value: 'none', label: 'Скрыть из поиска' }
       ];
       selectedValue = privacySearch || 'all';
-      onSelectAction = async (val) => {
-        const { error } = await supabase.from('users').update({ privacySearch: val, updatedAt: new Date().toISOString() }).eq('id', currentUser.id);
-        if (!error) {
-          setPrivacySearch(val);
-          ctx.setCurrentUser({ ...currentUser, privacySearch: val });
-          ctx.showToast('Настройки обнаружения аккаунта изменены', 'success');
-        }
-      };
+      keyToUpdate = 'privacySearch';
+      setterFn = setPrivacySearch;
     }
 
-    setModalConfig({ show: true, title, subtitle, options, selectedValue, onSelect: onSelectAction });
+    const onSelectAction = async (val: string) => {
+      const userUuid = String(currentUser?.uuid || currentUser?.id);
+      const res = await userService.updatePrivacySetting(userUuid, keyToUpdate, val as any);
+
+      if (res.success) {
+        setterFn(val);
+        ctx.setCurrentUser({ ...currentUser, [keyToUpdate]: val });
+        ctx.showToast('Настройки приватности обновлены', 'success');
+      } else {
+        ctx.showToast(`Ошибка сохранения: ${res.error}`, 'error');
+      }
+    };
+
+    setModalConfig({
+      show: true,
+      title: titleModal,
+      subtitle,
+      options,
+      selectedValue,
+      onSelect: onSelectAction
+    });
   };
 
   return (
-    <>
-
-      <form className={styles.settingsFormCard} style={{ gap: '20px', width: 'stretch' }}>
+    <div className={styles.settingsFormCard} style={{ gap: '20px', width: '100%' }}>
+      <div className={styles.settingsHeader}>
         <h3 className={styles.settingsFormTitle}>
-          <Lock />
-          Приватность
-        </h3> 
+          {Icon}
+          <span>{title}</span>
+        </h3>
+      </div>
 
-        <div className={styles.settingsFormContainer}>
+      <div className={styles.settingsFormContainer}>
+        <div style={{ backgroundColor: '#1c1c24', border: '1px solid #2b2d31', borderRadius: '14px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           
-          {/* 🛡️ ГЛАВНЫЙ БЛОК ТАБЛИЦЫ КОНФИДЕНЦИАЛЬНОСТИ */}
-          <div style={{ backgroundColor: '#1c1c24', border: '1px solid #2b2d31', borderRadius: '14px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            
-            {/* Строка 1: Видимость телефона */}
-            <div 
-              onClick={() => openPrivacySelector('phone')} 
-              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid #2b2d31', cursor: 'pointer', transition: 'background 0.2s' }} 
-              onMouseEnter={e => e.currentTarget.style.backgroundColor = '#23232e'} 
-              onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
-            >
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <span style={{ fontSize: '15px', color: '#fff', fontWeight: '600' }}>Кто видит мой номер телефона:</span>
-                {/* <span style={{ fontSize: '13px', color: '#a2a2b5' }}>Скрывает ваш номер в модальном окне профиля.</span> */}
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <span style={{ fontSize: '14px', color: '#9d7bf6', fontWeight: '600' }}>{getLabelByValue('default', privacyPhone)}</span>
-                <span style={{ color: '#636366', fontSize: '14px' }}>▶</span>
-              </div>
+          <div 
+            onClick={() => openPrivacySelector('phone')} 
+            style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid #2b2d31', cursor: 'pointer', transition: 'background 0.2s' }} 
+            onMouseEnter={e => e.currentTarget.style.backgroundColor = '#23232e'} 
+            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+          >
+            <span style={{ fontSize: '15px', color: '#fff', fontWeight: '600' }}>Кто видит мой номер телефона:</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <span style={{ fontSize: '14px', color: '#9d7bf6', fontWeight: '600' }}>{getLabelByValue('default', privacyPhone)}</span>
+              <span style={{ color: '#636366', fontSize: '14px' }}>▶</span>
             </div>
-
-            {/* Строка 2: Видимость онлайна */}
-            <div onClick={() => openPrivacySelector('online')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid #2b2d31', cursor: 'pointer', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = '#23232e'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <span style={{ fontSize: '15px', color: '#fff', fontWeight: '600' }}>Кто видит, что я в сети:</span>
-                {/* <span style={{ fontSize: '13px', color: '#a2a2b5' }}>Отключает отображение зелёного индикатора онлайна.</span> */}
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <span style={{ fontSize: '14px', color: '#9d7bf6', fontWeight: '600' }}>{getLabelByValue('default', privacyOnline)}</span>
-                <span style={{ color: '#636366', fontSize: '14px' }}>▶</span>
-              </div>
-            </div>
-
-            {/* Строка 3: Видимость почты */}
-            <div onClick={() => openPrivacySelector('email')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid #2b2d31', cursor: 'pointer', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = '#23232e'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <span style={{ fontSize: '15px', color: '#fff', fontWeight: '600' }}>Кто видит мою эл. почту:</span>
-                {/* <span style={{ fontSize: '13px', color: '#a2a2b5' }}>Скрывает email в карточке вашего профиля.</span> */}
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <span style={{ fontSize: '14px', color: '#9d7bf6', fontWeight: '600' }}>{getLabelByValue('default', privacyEmail)}</span>
-                <span style={{ color: '#636366', fontSize: '14px' }}>▶</span>
-              </div>
-            </div>
-
-            {/* Строка 4: Формат вывода имён */}
-            <div onClick={() => openPrivacySelector('nameFormat')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid #2b2d31', cursor: 'pointer', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = '#23232e'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <span style={{ fontSize: '15px', color: '#fff', fontWeight: '600' }}>Отображение имени в чатах:</span>
-                {/* <span style={{ fontSize: '13px', color: '#a2a2b5' }}>Выбор между выводом юзернейма или реального ФИО в заголовках.</span> */}
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <span style={{ fontSize: '14px', color: '#9d7bf6', fontWeight: '600' }}>{getLabelByValue('nameFormat', privacyNameFormat)}</span>
-                <span style={{ color: '#636366', fontSize: '14px' }}>▶</span>
-              </div>
-            </div>
-
-            {/* Строка 5: Видимость ФИО */}
-            <div onClick={() => openPrivacySelector('fullName')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid #2b2d31', cursor: 'pointer', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = '#23232e'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <span style={{ fontSize: '15px', color: '#fff', fontWeight: '600' }}>Кто видит моё имя и фамилию:</span>
-                {/* <span style={{ fontSize: '13px', color: '#a2a2b5' }}>Скрывает строку настоящих имён, если выбран вывод псевдонима.</span> */}
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <span style={{ fontSize: '14px', color: '#9d7bf6', fontWeight: '600' }}>{getLabelByValue('default', privacyFullName)}</span>
-                <span style={{ color: '#636366', fontSize: '14px' }}>▶</span>
-              </div>
-            </div>
-
-            {/* Строка 6: Глобальный поиск */}
-            <div onClick={() => openPrivacySelector('search')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', cursor: 'pointer', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = '#23232e'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <span style={{ fontSize: '15px', color: '#fff', fontWeight: '600' }}>Кто может найти меня по поиску:</span>
-                {/* <span style={{ fontSize: '13px', color: '#a2a2b5' }}>Позволяет полностью скрыться из глобального поиска контактов мессенджера.</span> */}
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <span style={{ fontSize: '14px', color: '#9d7bf6', fontWeight: '600' }}>{getLabelByValue('search', privacySearch || 'all')}</span>
-                <span style={{ color: '#636366', fontSize: '14px' }}>▶</span>
-              </div>
-            </div>
-
           </div>
 
-          {/* 🚀 ИНТЕРАКТИВНЫЙ РАДИО-СЕЛЕКТОР В ДЕЙСТВИИ */}
-          <PrivacySelectorModal
-            show={modalConfig.show}
-            title={modalConfig.title}
-            subtitle={modalConfig.subtitle}
-            options={modalConfig.options}
-            selectedValue={modalConfig.selectedValue}
-            onClose={() => setModalConfig(prev => ({ ...prev, show: false }))}
-            onSelect={modalConfig.onSelect}
-          />
+          <div 
+            onClick={() => openPrivacySelector('online')} 
+            style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid #2b2d31', cursor: 'pointer', transition: 'background 0.2s' }} 
+            onMouseEnter={e => e.currentTarget.style.backgroundColor = '#23232e'} 
+            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+          >
+            <span style={{ fontSize: '15px', color: '#fff', fontWeight: '600' }}>Кто видит, что я в сети:</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <span style={{ fontSize: '14px', color: '#9d7bf6', fontWeight: '600' }}>{getLabelByValue('default', privacyOnline)}</span>
+              <span style={{ color: '#636366', fontSize: '14px' }}>▶</span>
+            </div>
+          </div>
+
+          <div 
+            onClick={() => openPrivacySelector('email')} 
+            style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid #2b2d31', cursor: 'pointer', transition: 'background 0.2s' }} 
+            onMouseEnter={e => e.currentTarget.style.backgroundColor = '#23232e'} 
+            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+          >
+            <span style={{ fontSize: '15px', color: '#fff', fontWeight: '600' }}>Кто видит мою эл. почту:</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <span style={{ fontSize: '14px', color: '#9d7bf6', fontWeight: '600' }}>{getLabelByValue('default', privacyEmail)}</span>
+              <span style={{ color: '#636366', fontSize: '14px' }}>▶</span>
+            </div>
+          </div>
+
+          <div 
+            onClick={() => openPrivacySelector('nameFormat')} 
+            style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid #2b2d31', cursor: 'pointer', transition: 'background 0.2s' }} 
+            onMouseEnter={e => e.currentTarget.style.backgroundColor = '#23232e'} 
+            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+          >
+            <span style={{ fontSize: '15px', color: '#fff', fontWeight: '600' }}>Отображение имени в чатах:</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <span style={{ fontSize: '14px', color: '#9d7bf6', fontWeight: '600' }}>{getLabelByValue('nameFormat', privacyNameFormat)}</span>
+              <span style={{ color: '#636366', fontSize: '14px' }}>▶</span>
+            </div>
+          </div>
+
+          <div 
+            onClick={() => openPrivacySelector('fullName')} 
+            style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid #2b2d31', cursor: 'pointer', transition: 'background 0.2s' }} 
+            onMouseEnter={e => e.currentTarget.style.backgroundColor = '#23232e'} 
+            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+          >
+            <span style={{ fontSize: '15px', color: '#fff', fontWeight: '600' }}>Кто видит моё имя и фамилию:</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <span style={{ fontSize: '14px', color: '#9d7bf6', fontWeight: '600' }}>{getLabelByValue('default', privacyFullName)}</span>
+              <span style={{ color: '#636366', fontSize: '14px' }}>▶</span>
+            </div>
+          </div>
+
+          <div 
+            onClick={() => openPrivacySelector('search')} 
+            style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', cursor: 'pointer', transition: 'background 0.2s' }} 
+            onMouseEnter={e => e.currentTarget.style.backgroundColor = '#23232e'} 
+            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+          >
+            <span style={{ fontSize: '15px', color: '#fff', fontWeight: '600' }}>Кто может найти меня по поиску:</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <span style={{ fontSize: '14px', color: '#9d7bf6', fontWeight: '600' }}>{getLabelByValue('search', privacySearch || 'all')}</span>
+              <span style={{ color: '#636366', fontSize: '14px' }}>▶</span>
+            </div>
+          </div>
+
         </div>
-      </form>
-    </>
+
+        <PrivacySelectorModal
+          show={modalConfig.show}
+          title={modalConfig.title}
+          subtitle={modalConfig.subtitle}
+          options={modalConfig.options}
+          selectedValue={modalConfig.selectedValue}
+          onClose={() => setModalConfig(prev => ({ ...prev, show: false }))}
+          onSelect={modalConfig.onSelect}
+        />
+      </div>
+    </div>
   );
 }

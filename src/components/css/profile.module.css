@@ -30,37 +30,60 @@
   animation: fadeIn 0.2s ease-out;}
 
 .close-modal-btn {
-  position: absolute;
-  top: 24px;
-  right: 24px;
-  background: none;
+  background: rgba(255, 255, 255, 0.12);
   border: none;
-  color: #707579;
-  color: #8e8e93;
-  font-size: 20px;
-  line-height: 1;
-  cursor: pointer;
-  padding: 4px;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: color 0.2s, transform 0.2s;
+  color: #ffffff;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  position: static;
+  padding: 0;}
+.close-modal-btn:hover {
+  background-color: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+  transform: none;}
+
+
+.view-mode {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 16px;}
+.profile-header-gradient {
+  background: linear-gradient(180deg, #4d3370 0%, #3a2656 100%);
+  padding: 24px 20px 18px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  user-select: none;}
+.profile-header-actions {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   z-index: 10;}
-.close-modal-btn:hover {color: #ffffff; transform: scale(1.1);}
-
-
-.view-mode {}
 .profile-avatar-wrapper {
+  margin-bottom: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  border-radius: 50%;
   display: flex;
   justify-content: center;
-  margin-bottom: 16px;
   user-select: none;}
-.profile-avatar-wrapper img {
+/* .profile-avatar-wrapper img {
   width: 90px;
   height: 90px;
   border-radius: 50%;
   object-fit: cover;
-  box-shadow: rgba(0, 0, 0, 0.3) 0px 4px 12px;}
+  box-shadow: rgba(0, 0, 0, 0.3) 0px 4px 12px;} */
 .profile-avatar {
   width: 90px;
   height: 90px;
@@ -73,17 +96,25 @@
   color: #ffffff;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);}
 .profile-name {
-  text-align: center;
+  margin: 0;
+  color: #ffffff;
   font-size: 20px;
-  font-weight: 500;
-  margin: 0 0 4px 0;}
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-align: center;}
 
 .profile-status {
-  display: block;
-  text-align: center;
   font-size: 13px;
-  color: #707579;
-  margin-bottom: 24px;}
+  color: #c4b5e8;
+  margin-top: 4px;
+  margin-bottom: 0;
+  font-weight: 500;
+  text-align: center;
+  display: block;}
 .profile-status.online {
   color: #00cc66 !important; 
   font-weight: 600;
@@ -94,7 +125,9 @@
   display: flex;
   justify-content: space-between;
   gap: 8px;
-  user-select: none;}
+  user-select: none;
+  width: 100%;
+  margin-top: 10px;}
 .action-btn {
   flex: 1;
   display: flex;
@@ -117,58 +150,248 @@
 
 /* Секция инфы (Телефон, Юзернейм) */
 .info-section {
-  border-radius: 0 0 16px 16px;
-  background-color: #242430;
-  display: flex;
-  flex-direction: column;}
-.info-item {
+  background-color: #171822;
   display: flex;
   flex-direction: column;
-  padding: 8px 16px;}
+  padding-top: 12px;
+  border-radius: 0;}
+.info-item {
+  padding: 10px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  transition: background-color 0.15s ease;}
+.info-item:hover {background-color: #1f202e;}
+.info-item-content {
+  display: flex;
+  flex-direction: column;}
 .info-value {
-  font-size: 15px;
   color: #ffffff;
-  margin-bottom: 2px;}
+  font-size: 15px;
+  font-weight: 500;
+  margin-bottom: 0;}
+.info-value.accent {color: #8b5cf6;}
+.info-value.mono {
+  color: #8b5cf6;
+  font-size: 14px;
+  font-family: monospace;
+  font-weight: 600;}
+.info-value.multiline {
+  font-size: 14px;
+  line-height: 1.4;
+  white-space: pre-wrap;}
 .info-label {
+  color: #7a7b8e;
   font-size: 12px;
-  color: #707579;
+  margin-top: 2px;
   user-select: none;}
+.info-icon {
+  color: #7a7b8e;
+  flex-shrink: 0;
+}
 
 .info-divider {
   background: #1c1c24;
   padding: 4px 0;}
 
-.info-users {padding: 16px;}
-.info-users-header,
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+.info-users {
+  padding: 12px 18px 20px 18px;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 0px 20px;}
+  
+.info-users-header {
+  display: grid;
+  grid-template-columns: 42px 1fr auto;
+  align-items: center;
+  column-gap: 14px;
+  margin: 0 10px 12px;
+  user-select: none;}
+
+.info-users-header-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #8e8e98;
+}
+
+.info-users-header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  color: #8e8e98;
+}
+
+.info-users-title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #8e8e98;
+}
+
+.info-users-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  color: #8e8e98;
+}
+
+.info-users-action-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #8e8e98;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s ease;
+}
+
+.info-users-action-btn:hover {
+  color: #9d7bf6;
+}
+
+.info-users-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .info-users-item {
   display: grid;
+  grid-template-columns: 42px 1fr auto;
   align-items: center;
-  grid-template-columns: 32px 2fr auto;
-  grid-template-rows: 1fr;
-  grid-column-gap: 12px;
-  grid-row-gap: 0px;}
-.info-users-header {
-  font-size: 12px;
-  color: #9ca3af;
-  font-weight: bold;
-  text-transform: uppercase;
-  margin-bottom: 12px;}
-.info-users-header span:nth-child(1) {
-  grid-area: 1 / 1 / 2 / 2;
-  justify-items: center;}
-.info-users-header span:nth-child(2) {grid-area: 1 / 2 / 2 / 3;}
-.info-users-header span:nth-child(3) {
-  grid-area: 1 / 3 / 2 / 4;
-  display: inline-flex;
-  justify-content: flex-end;
-  gap: 10px;}
+  column-gap: 14px;
+  padding: 7px 10px;
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
 
-.info-users-section {display: flex; flex-direction: column; gap: 12px;}
-.info-users-item {
-  padding: 4px 0px;
-  justify-content: space-between;}
-.info-users-meta {grid-area: 1 / 1 / 2 / 3;}
-.info-users-stat {grid-area: 1 / 3 / 2 / 4;}
+.info-users-item:hover {
+  background-color: #1f202c;
+}
+
+.info-users-avatar-col {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+}
+
+.info-users-text-col {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.info-users-meta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.info-users-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.info-users-name {
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  line-height: 1.25;
+}
+
+.info-users-status {
+  font-size: 13px;
+  color: #7a7b8a;
+  margin-top: 3px;
+  line-height: 1.2;
+}
+
+.info-users-status.online {
+  color: #8374be;
+  font-weight: 500;
+}
+
+.info-users-stat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Колонка бейджа роли */
+.info-users-badge-col {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 68px;
+}
+
+/* Бейджи ролей как в AyuGram / Telegram */
+.role-badge-owner {
+  font-size: 12px;
+  background-color: #272138;
+  color: #a78bfa;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-weight: 500;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.role-badge-admin {
+  font-size: 12px;
+  background-color: #172822;
+  color: #34c759;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-weight: 500;
+  user-select: none;
+  white-space: nowrap;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 .profile-edit-mode {
   display: flex;

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../services/supabaseClient';
-import { ToastNotification, type ToastState } from '../../components/GlobalUI';
-import Image from '../../assets/img/auth-backImg.jpg'; // Картинка из общей папки assets
+import { userService } from '../../services/userService';
+import { ToastNotification, type ToastState } from '../../components/common/GlobalUI';
+import Image from '../../assets/img/auth-backImg.jpg';
 import styles from '../../components/css/auth.module.css';
 import uiStyles from '../../components/css/global-ui.module.css';
 
@@ -9,7 +10,7 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [isRegister, setIsRegister] = useState(false);
 
-  // Стейты для полей авторизации и регистрации
+  const [email, setEmail] = useState(''); 
   const [login, setLogin] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -18,7 +19,9 @@ export default function AuthPage() {
   const [showRegisterPass, setShowRegisterPass] = useState(false);
   const [toast, setToast] = useState<ToastState>({ show: false, message: '', type: 'info' });
 
-  document.title = "Авторизация | Blyades"
+  useEffect(() => {
+    document.title = isRegister ? "Регистрация | Blyades" : "Авторизация | Blyades";
+  }, [isRegister]);
 
   useEffect(() => {
     if (toast.show) {
@@ -32,48 +35,41 @@ export default function AuthPage() {
   const handleSignIn = async (e: React.FormEvent) => {
     if (e) e.preventDefault(); 
     setErrorMsg('');
-    setLoading(true); // Включаем наш красивый лоадер на кнопке!
+    setLoading(true);
 
-    if (!login.trim() || !password.trim()) {
-      setErrorMsg('Пожалуйста, заполните все поля');
+    if (!email.trim() || !password.trim()) {
+      setErrorMsg('Пожалуйста, заполните Email и Пароль');
       setLoading(false);
       return;
     }
 
     try {
-      // Ищем пользователя в твоей оригинальной таблице Users по uniqueId (логину)
-      const { data: user, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('uniqueId', login.trim())
-        .single();
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password: password.trim(),
+      });
 
-      if (error || !user) {
-        setErrorMsg('Неверное имя пользователя или пароль');
+      if (error) {
+        setErrorMsg('Неверный email или пароль: ' + error.message);
         setLoading(false);
         return;
       }
 
-      // Сверяем пароль напрямую из твоего дампа (пока без хэширования, как и было в исходнике)
-      if (user.password !== password.trim()) {
-        setErrorMsg('Неверное имя пользователя или пароль');
-        setLoading(false);
-        return;
+      if (data?.user) {
+        // 🎯 Ищем пользователя по строковому UUID через наш userService
+        const publicUser = await userService.getUserByUuid(data.user.id);
+
+        localStorage.setItem('blyades_user_id', data.user.id);
+        localStorage.setItem('blyades_username', publicUser?.username || 'user');
+        localStorage.setItem('blyades_unique_id', publicUser?.uniqueId || 'user');
+
+        window.location.reload();
       }
-
-      // Если всё верно — сохраняем ID вошедшего юзера в LocalStorage, чтобы сессия не слетала при обновлении F5
-      localStorage.setItem('blyades_user_id', user.id.toString());
-      localStorage.setItem('blyades_username', user.username);
-      localStorage.setItem('blyades_unique_id', user.uniqueId);
-
-      // Принудительно перезагружаем страницу, чтобы App.tsx увидел сессию и пустил нас в /chat
-      window.location.reload();
-
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
       setErrorMsg('Произошла системная ошибка при входе');
     } finally {
-      setLoading(false); // Выключаем лоадер, если произошла ошибка
+      setLoading(false);
     }
   };
 
@@ -81,7 +77,7 @@ export default function AuthPage() {
     if (e) e.preventDefault();
     setErrorMsg('');
 
-    if (!login.trim() || !password.trim()) {
+    if (!email.trim() || !login.trim() || !password.trim()) {
       setErrorMsg('Пожалуйста, заполните все поля');
       return;
     }
@@ -90,32 +86,30 @@ export default function AuthPage() {
       return;
     }
 
-    const cleanLogin = login.trim();
-    setLoading(true); // Включаем красивый лоадер создания
+    setLoading(true);
 
     try {
-      // 🚀 1. ПРЯМОЙ ИНСЕРТ: Создаем пользователя без каких-либо email
-      const { data: newUser, error } = await supabase
-        .from('users')
-        .insert([{ 
-          uniqueId: cleanLogin, 
-          username: cleanLogin, 
-          password: password.trim(),
-          avatarColor: `#${Math.floor(Math.random()*16777215).toString(16)}` // Рандомный цвет аватарки
-        }])
-        .select()
-        .single();
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password: password.trim(),
+        options: {
+          data: {
+            username: login.trim(),
+            firstName: login.trim(),
+          }
+        }
+      });
 
       if (error) {
-        setErrorMsg('Логин уже занят или ошибка базы: ' + error.message);
+        setErrorMsg('Ошибка регистрации: ' + error.message);
+        setLoading(false);
         return;
       }
 
-      if (newUser) {
-        // 🚀 2. АВТО-ВХОД: Мгновенно сохраняем данные созданного аккаунта в LocalStorage!
-        localStorage.setItem('blyades_user_id', newUser.id.toString());
-        localStorage.setItem('blyades_username', newUser.username);
-        localStorage.setItem('blyades_unique_id', newUser.uniqueId);
+      if (data?.user) {
+        localStorage.setItem('blyades_user_id', data.user.id);
+        localStorage.setItem('blyades_username', login.trim());
+        localStorage.setItem('blyades_unique_id', login.trim());
 
         setToast({
           show: true,
@@ -123,15 +117,13 @@ export default function AuthPage() {
           type: 'success',
         });
 
-        // 🚀 3. Принудительно перезагружаем страницу, чтобы App.tsx увидел сессию и сразу пустил в чаты!
         setTimeout(() => {
           window.location.reload();
-        }, 1000); // Даем 1 секунду, чтобы пользователь успел увидеть зеленый тост успеха
+        }, 1200);
       }
-
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setErrorMsg('Произошла ошибка при записи в базу данных');
+      setErrorMsg('Произошла ошибка при регистрации');
     } finally {
       setLoading(false);
     }
@@ -140,10 +132,9 @@ export default function AuthPage() {
   return (
     <div className={styles.authPageContainer}>
       <div className={styles.authMainCard}>
-       
         <div className={`${styles.authTrack} ${isRegister ? styles.showRegister : ''}`}>
           
-          {/* БЛОК 1: Форма Авторизации */}
+          {/* Форма Авторизации */}
           <div className={styles.authFormSide}>
             <div className={styles.authFormWrapper}>
               <div className={styles.authHeaderText}>
@@ -151,23 +142,24 @@ export default function AuthPage() {
                 <p className={styles.authSubtitle}>Добро пожаловать обратно</p>
               </div>
               {errorMsg && !isRegister && <div className={styles.authErrorAlert}>⚠️ {errorMsg}</div>}
+              
               <form onSubmit={handleSignIn} className={styles.authFormFields}>
                 <div className={styles.inputGroup}>
-                  <label htmlFor='auth-login'>Ваш Логин</label>
+                  <label htmlFor='auth-email'>Электронная почта</label>
                   <input 
-                    type="text" 
-                    value={login} 
-                    onChange={e => setLogin(e.target.value)} 
-                    placeholder="ivan" 
+                    type="email" 
+                    value={email} 
+                    onChange={e => setEmail(e.target.value)} 
+                    placeholder="ivan@example.com" 
                     required 
-                    id='auth-login'
+                    id='auth-email'
+                    autoComplete="email"
                   />
                 </div>
                 <div className={styles.inputGroup}>
                   <label htmlFor='auth-pass'>Пароль</label>
                   <div style={{ position: 'relative', width: '100%', maxWidth: '320px', display: 'flex' }}>
                     <input 
-                      // id="password"
                       type={showLoginPass ? "text" : "password"} 
                       value={password} 
                       onChange={e => setPassword(e.target.value)} 
@@ -183,18 +175,15 @@ export default function AuthPage() {
                       onClick={() => setShowLoginPass(!showLoginPass)}
                       style={{ background: 'none', border: 'none', cursor: 'pointer', position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', padding: 0, zIndex: 10 }}
                     >
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                         <path d="M12 5c-6 0-10 7-10 7s4 7 10 7 10-7 10-7-4-7-10-7Zm0 11.5A4.5 4.5 0 1 1 12 7.5a4.5 4.5 0 0 1 0 9Z" fill={showLoginPass ? "#aa3bff" : "#AFA7A8"} />
                         <circle cx="12" cy="12" r="2.2" fill={showLoginPass ? "#aa3bff" : "#AFA7A8"} />
                       </svg>
                     </button>
                   </div>
                 </div>
-                <button 
-                  type="submit" 
-                  disabled={loading} 
-                  className={styles.authSubmitBtn}
-                >
+
+                <button type="submit" disabled={loading} className={styles.authSubmitBtn}>
                   {loading ? (
                     <div className={uiStyles['button-loader-content']}>
                       <div className={uiStyles['button-spinner']}></div>
@@ -204,15 +193,13 @@ export default function AuthPage() {
                     'Авторизоваться'
                   )}
                 </button>
+
                 <p className={styles.authSwitchText}>
                   Еще нет аккаунта?{' '}
                   <span 
                     onClick={() => { 
                       setIsRegister(true); 
                       setErrorMsg(''); 
-                      setShowLoginPass(false);
-                      setShowRegisterPass(false);
-                      document.title = "Регистрация | Blyades"
                     }} 
                     className={styles.authSwitchLink}
                   >
@@ -238,7 +225,20 @@ export default function AuthPage() {
                 <p className={styles.authSubtitle}>Создайте новый профиль в системе</p>
               </div>
               {errorMsg && isRegister && <div className={styles.authErrorAlert}>⚠️ {errorMsg}</div>}
+              
               <form onSubmit={handleSignUp} className={styles.authFormFields}>
+                <div className={styles.inputGroup}>
+                  <label htmlFor='reg-email'>Электронная почта</label>
+                  <input 
+                    type="email" 
+                    value={email} 
+                    onChange={e => setEmail(e.target.value)} 
+                    placeholder="ivan@example.com" 
+                    required
+                    id='reg-email'
+                    autoComplete="email"
+                  />
+                </div>
                 <div className={styles.inputGroup}>
                   <label htmlFor='reg-login'>Придумайте Логин</label>
                   <input 
@@ -248,6 +248,7 @@ export default function AuthPage() {
                     placeholder="ivan" 
                     required
                     id='reg-login'
+                    autoComplete="username"
                   />
                 </div>
                 <div className={styles.inputGroup}>
@@ -260,6 +261,7 @@ export default function AuthPage() {
                       placeholder="••••••••" 
                       required
                       id='reg-pass'
+                      autoComplete="new-password"
                       style={{ width: '100%', boxSizing: 'border-box', paddingRight: '46px' }}
                     />
                     <button
@@ -268,7 +270,7 @@ export default function AuthPage() {
                       onClick={() => setShowRegisterPass(!showRegisterPass)}
                       style={{ background: 'none', border: 'none', cursor: 'pointer', position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', padding: 0, zIndex: 10 }}
                     >
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                         <path d="M12 5c-6 0-10 7-10 7s4 7 10 7 10-7 10-7-4-7-10-7Zm0 11.5A4.5 4.5 0 1 1 12 7.5a4.5 4.5 0 0 1 0 9Z" fill={showRegisterPass ? "#aa3bff" : "#AFA7A8"} />
                         <circle cx="12" cy="12" r="2.2" fill={showRegisterPass ? "#aa3bff" : "#AFA7A8"} />
                       </svg>
@@ -284,8 +286,10 @@ export default function AuthPage() {
                     placeholder="••••••••" 
                     required
                     id='reg-pass-confirm'
+                    autoComplete="new-password"
                   />
                 </div>
+
                 <button 
                   type="submit" 
                   disabled={loading} 
@@ -300,15 +304,13 @@ export default function AuthPage() {
                     'Создать аккаунт'
                   )}
                 </button>
+
                 <p className={styles.authSwitchText}>
                   Уже зарегистрированы?{' '}
                   <span 
                     onClick={() => { 
                       setIsRegister(false); 
                       setErrorMsg(''); 
-                      setShowLoginPass(false);
-                      setShowRegisterPass(false);
-                      document.title = "Авторизация | Blyades"
                     }} 
                     className={styles.authSwitchLink}
                   >
@@ -318,11 +320,11 @@ export default function AuthPage() {
               </form>
             </div>
           </div>
-
         </div>
-
       </div>
-      {/* <ToastNotification toast={toast} /> */}
+      <div style={{ position: 'fixed', top: '24px', right: '24px', zIndex: 999999 }}>
+        <ToastNotification toast={toast} />
+      </div>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { BrowserRouter as Navigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { MessageSquare, ShieldAlert, Zap, Radio, ArrowRight, Activity, Server, RefreshCw } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
 
@@ -17,31 +17,41 @@ export default function LandingPage() {
   const checkSupabaseHealth = async () => {
     setChecking(true);
     const startTime = performance.now();
-    try {
-      // Быстрый замер пинга базы данных
-      await supabase.from('users').select('id').limit(1);
-      const endTime = performance.now();
-      setDbPing(Math.round(endTime - startTime));
-    } catch (err) {
-      console.error('Supabase Ping Error:', err);
-      setDbPing(-1);
-    }
 
-    if (supabase.channel && (supabase as any).realtime) {
-      const isConnected = (supabase as any).realtime.isConnected();
+    try {
+      // 1. Проверяем пинг к PostgreSQL через UUID
+      const { error } = await supabase.from('users').select('uuid').limit(1);
+
+      if (error) {
+        console.warn('⚠️ Ошибка подключения к Supabase:', error.message);
+        setDbPing(-1);
+      } else {
+        const pingMs = Math.round(performance.now() - startTime);
+        setDbPing(pingMs);
+      }
+
+      // 2. Проверяем состояние WebSocket шлюза Realtime
+      const realtimeChannels = supabase.getChannels();
+      const isConnected = realtimeChannels.length > 0
+        ? realtimeChannels.some(ch => ch.state === 'joined')
+        : supabase.realtime.isConnected();
+
       setIsRealtimeConnected(isConnected);
-    } else {
+    } catch (e) {
+      console.error('Ошибка health check:', e);
+      setDbPing(-1);
       setIsRealtimeConnected(false);
+    } finally {
+      setChecking(false);
     }
-    setChecking(false);
   };
 
   useEffect(() => {
-    if (isMonitorOpen) {
-      checkSupabaseHealth();
-      const interval = setInterval(checkSupabaseHealth, 15000);
-      return () => clearInterval(interval);
-    }
+    if (!isMonitorOpen) return;
+
+    checkSupabaseHealth();
+    const interval = setInterval(checkSupabaseHealth, 15000);
+    return () => clearInterval(interval);
   }, [isMonitorOpen]);
 
   return (
@@ -54,16 +64,13 @@ export default function LandingPage() {
       {/* 🔮 Задний неоновый фон (светящиеся сферы) */}
       <div style={{ position: 'absolute', top: '-10%', left: '10%', width: '400px', height: '400px', borderRadius: '50%', background: 'rgba(0, 122, 255, 0.15)', filter: 'blur(100px)', zIndex: 0 }} />
       <div style={{ position: 'absolute', bottom: '15%', right: '5%', width: '500px', height: '500px', borderRadius: '50%', background: 'rgba(46, 199, 97, 0.12)', filter: 'blur(120px)', zIndex: 0 }} />
-
+      
       {/* 🧭 Верхний Хедер */}
       <header style={{ width: '100%', maxWidth: '1200px', padding: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div style={{ width: '40px', height: '40px', borderRadius: '12px', backgroundColor: '#ff453a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', fontWeight: 'bold', boxShadow: '0 4px 14px rgba(255, 69, 58, 0.4)' }}>Б</div>
           <span style={{ fontSize: '22px', fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase', background: 'linear-gradient(90deg, #ff453a, #007aff)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Blyades</span>
         </div>
-        <a href="https://github.com" target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#9ca3af', textDecoration: 'none', fontSize: '14px', transition: 'color 0.2s' }} onMouseEnter={e => e.currentTarget.style.color = '#fff'} onMouseLeave={e => e.currentTarget.style.color = '#9ca3af'}>
-          {/* <Github size={18} /> GitHub */}
-        </a>
       </header>
 
       {/* 🚀 Главный блок (Hero Section) */}
@@ -84,30 +91,27 @@ export default function LandingPage() {
         </p>
 
         <div style={{ marginTop: '16px' }}>
-          <button type="button">
-            <Link 
-              to="/auth" 
-              replace 
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: '12px',
-                transition: 'all 0.15s ease', color: '#fff',
-                cursor: 'pointer', boxShadow: '0 8px 28px rgba(0, 122, 255, 0.4)',
-                padding: '18px 36px', borderRadius: '14px', fontSize: '18px', fontWeight: 'bold',
-                backgroundColor: '#007aff', border: 'none', textDecoration: 'none'
-              }}
-              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.backgroundColor = '#1a85ff'; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.backgroundColor = '#007aff'; }}
-            >
-              Ворваться в чат <ArrowRight size={20} />
-            </Link>
-          </button>
+          <Link 
+            to="/auth" 
+            replace 
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: '12px',
+              transition: 'all 0.15s ease', color: '#fff',
+              cursor: 'pointer', boxShadow: '0 8px 28px rgba(0, 122, 255, 0.4)',
+              padding: '18px 36px', borderRadius: '14px', fontSize: '18px', fontWeight: 'bold',
+              backgroundColor: '#007aff', textDecoration: 'none'
+            }}
+            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.backgroundColor = '#1a85ff'; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.backgroundColor = '#007aff'; }}
+          >
+            Ворваться в чат <ArrowRight size={20} />
+          </Link>
         </div>
       </main>
 
       {/* 🛠️ Сетка преимуществ (Features Grid) */}
       <section style={{ width: '100%', maxWidth: '1100px', padding: '60px 24px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '24px', zIndex: 10 }}>
         
-        {/* Фича 1 */}
         <div style={{ backgroundColor: '#111214', border: '1px solid #1e1f22', borderRadius: '16px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <div style={{ width: '42px', height: '42px', borderRadius: '10px', backgroundColor: 'rgba(0,122,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#007aff' }}>
             <Zap size={22} />
@@ -116,7 +120,6 @@ export default function LandingPage() {
           <p style={{ color: '#9ca3af', fontSize: '14px', margin: 0, lineHeight: 1.4 }}>Если ты нашёл баг, то знай, либо нейронка опять написала хуйню, либо программист еблан.</p>
         </div>
 
-        {/* Фича 2 */}
         <div style={{ backgroundColor: '#111214', border: '1px solid #1e1f22', borderRadius: '16px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <div style={{ width: '42px', height: '42px', borderRadius: '10px', backgroundColor: 'rgba(46,199,97,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2ec761' }}>
             <MessageSquare size={22} />
@@ -127,7 +130,6 @@ export default function LandingPage() {
           </p>
         </div>
 
-        {/* Фича 3 */}
         <div style={{ backgroundColor: '#111214', border: '1px solid #1e1f22', borderRadius: '16px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <div style={{ width: '42px', height: '42px', borderRadius: '10px', backgroundColor: 'rgba(255,69,58,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ff453a' }}>
             <ShieldAlert size={22} />
@@ -140,7 +142,6 @@ export default function LandingPage() {
 
       </section>
 
-      {/* 📝 Подвал сайта */}
       <footer style={{ width: '100%', padding: '32px 24px', textAlign: 'center', color: '#636366', fontSize: '13px', borderTop: '1px solid #1c1d21', zIndex: 10, marginTop: 'auto' }}>
         &copy; {new Date().getFullYear()} Blyades Corporation. Сделано на коленке с болью и психическими травмами. Все права не защищены, ибо нахуй нехуй.
       </footer>
@@ -175,15 +176,17 @@ export default function LandingPage() {
           style={{
             position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
             backgroundColor: 'rgba(0, 0, 0, 0.75)', backdropFilter: 'blur(5px)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100000
+            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100000,
+            padding: '20px', boxSizing: 'border-box'
           }}
         >
           <div
             onClick={e => e.stopPropagation()}
             style={{
-              backgroundColor: '#111214', width: '100%', height: '100%', 
-              border: '1px solid #2b2d31', padding: '24px',
-              color: '#dbdee1', boxShadow: '0 10px 40px rgba(0,0,0,0.6)'
+              backgroundColor: '#111214', width: '100%', maxWidth: '600px', maxHeight: '90vh',
+              border: '1px solid #2b2d31', padding: '24px', borderRadius: '16px',
+              color: '#dbdee1', boxShadow: '0 10px 40px rgba(0,0,0,0.6)',
+              display: 'flex', flexDirection: 'column', boxSizing: 'border-box'
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', borderBottom: '1px solid #2b2d31', paddingBottom: '12px' }}>
@@ -192,6 +195,7 @@ export default function LandingPage() {
                 <span>Supabase Live Telemetry</span>
               </div>
               <button
+                type="button"
                 onClick={checkSupabaseHealth}
                 disabled={checking}
                 style={{ background: 'none', border: 'none', color: '#8e8e93', cursor: 'pointer' }}
@@ -200,7 +204,6 @@ export default function LandingPage() {
               </button>
             </div>
 
-            {/* МЕТРИКА ПИНГА БАЗЫ ДАННЫХ */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#18191c', padding: '12px', borderRadius: '8px', marginBottom: '12px', border: '1px solid #232428' }}>
               <div>
                 <span style={{ display: 'block', fontSize: '13px', color: '#fff', fontWeight: '500' }}>Database Latency</span>
@@ -211,7 +214,6 @@ export default function LandingPage() {
               </span>
             </div>
 
-            {/* МЕТРИКА СТАТУСА ВЕБ-СОКЕТА В РЕАЛТАЙМЕ */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#18191c', padding: '12px', borderRadius: '8px', marginBottom: '16px', border: '1px solid #232428' }}>
               <div>
                 <span style={{ display: 'block', fontSize: '13px', color: '#fff', fontWeight: '500' }}>Realtime Gateway</span>
@@ -222,17 +224,17 @@ export default function LandingPage() {
               </span>
             </div>
 
-            {/* ОФИЦИАЛЬНЫЙ СТАТУС АПТАЙМА КЛAСТЕРОВ SUPABASE */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', height: '63%' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1, minHeight: '250px' }}>
               <span style={{ fontSize: '11px', color: '#9ca3af', fontWeight: 'bold', textTransform: 'uppercase' }}>Global Outage Status:</span>
               <iframe 
-                src="https://supabase.com" 
+                src="https://status.supabase.com" 
                 title="Supabase Uptime"
-                style={{ width: '100%', height: 'stretch', border: '1px solid #2b2d31', borderRadius: '8px', backgroundColor: '#fff' }} 
+                style={{ width: '100%', flex: 1, border: '1px solid #2b2d31', borderRadius: '8px', backgroundColor: '#fff' }} 
               />
             </div>
 
             <button
+              type="button"
               onClick={() => setIsMonitorOpen(false)}
               style={{ width: '100%', backgroundColor: '#1e1f22', border: '1px solid #2b2d31', color: '#fff', borderRadius: '8px', padding: '10px', marginTop: '16px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px' }}
             >
@@ -242,7 +244,6 @@ export default function LandingPage() {
         </div>
       )}
 
-      {/* Локальные css-анимации */}
       <style>{`
         .blink-anim { animation: blinker 1.5s linear infinite; }
         @keyframes blinker { 50% { opacity: 0; } }
