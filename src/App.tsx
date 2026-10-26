@@ -4,8 +4,8 @@ import { Analytics }      from '@vercel/analytics/react';
 import { SpeedInsights }  from "@vercel/speed-insights/react"
 
 import AuthPage       from './features/auth/AuthPage';
-import ChatLayout     from './features/chat/ChatLayout';
-import SettingsPage   from './features/settings/SettingsPage';
+import ChatLayout     from './features/chat/_ChatLayout';
+import SettingsPage   from './features/settings/_SettingsPage';
 import AdminDashboard from './features/admin/AdminDashboard';
 import LandingPage    from './components/LandingPage';
 
@@ -13,7 +13,7 @@ import useMessengerContext, { MessengerProvider } from './context/messengerConte
 import InputContextMenu   from './components/common/InputContextMenu';
 import ProfileModal       from './components/profile/profileModal';
 import GlobalContextMenu  from './components/common/GlobalContextMenu';
-import CallOverlay        from './features/calls/CallOverlay';
+import CallOverlay        from './features/calls/_CallOverlay';
 import CallsHistoryModal  from './features/calls/CallsHistoryModal';
 
 function RouteChangeWatcher() {

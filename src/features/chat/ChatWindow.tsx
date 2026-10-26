@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import styles from '../../components/css/chat-window.module.css';
-import { type ContextMenuItem } from '../../components/common/ContextMenu';
+import { type ContextMenuItem } from '../../components/common/_ContextMenu';
 import useMessengerContext, { formatUserOnlineStatus } from '../../context/messengerContext';
 import { DropdownMenu, AddParticipantsModal } from '../../components/common/GlobalUI'; 
 import { supabase } from '../../services/supabaseClient';

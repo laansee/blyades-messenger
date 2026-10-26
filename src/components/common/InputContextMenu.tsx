@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import ContextMenu, { type ContextMenuItem } from './ContextMenu';
+import ContextMenu, { type ContextMenuItem } from './_ContextMenu';
 import { 
   Undo2, 
   // Redo2, 

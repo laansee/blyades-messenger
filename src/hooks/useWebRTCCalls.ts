@@ -80,27 +80,6 @@ export function useWebRTCCalls(ctx: any) {
       }
     };
 
-    // 🟢 1. Подписываемся на входящие аудиодорожки
-    room.on(RoomEvent.TrackSubscribed, (track: any, publication: any, participant: any) => {
-      console.log('[LiveKit] TrackSubscribed от участника:', participant.identity);
-      if (track.kind === Track.Kind.Audio || track.kind === 'audio') {
-        // LiveKit сам создает и настраивает правильный HTMLAudioElement
-        const el = track.attach();
-        attachedElements.push(el);
-        document.body.appendChild(el);
-      }
-    });
-
-    // 🟢 2. Подцепляем треки тех, кто УЖЕ в комнате
-    room.remoteParticipants.forEach((participant) => {
-      participant.trackPublications.forEach((pub: any) => {
-        if (pub.track && (pub.track.kind === Track.Kind.Audio || pub.track.kind === 'audio')) {
-          console.log('[LiveKit] Найден существующий трек участника:', participant.identity);
-          attachAudioTrack(pub.track);
-        }
-      });
-    });
-
     const connectLiveKit = async () => {
       setLoadingMembers(true);
       try {

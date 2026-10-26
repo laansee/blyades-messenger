@@ -1,5 +1,5 @@
 import useMessengerContext from '../../context/messengerContext';
-import ContextMenu from './ContextMenu';
+import ContextMenu from './_ContextMenu';
 
 export default function GlobalContextMenu() {
   const ctx = useMessengerContext();
