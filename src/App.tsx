@@ -1,20 +1,20 @@
 import { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, useLocation } from 'react-router';
-import { Analytics } from '@vercel/analytics/react';
-import { SpeedInsights } from "@vercel/speed-insights/react"
-import AuthPage from './features/auth/AuthPage';
-import ChatLayout from './features/chat/ChatLayout';
-import SettingsPage from './features/settings/SettingsPage';
-// import ContactsPage from './features/contacts/ContactsPage';
-// import CallsPage from './features/calls/CallsPage';
+import { Analytics }      from '@vercel/analytics/react';
+import { SpeedInsights }  from "@vercel/speed-insights/react"
+
+import AuthPage       from './features/auth/AuthPage';
+import ChatLayout     from './features/chat/ChatLayout';
+import SettingsPage   from './features/settings/SettingsPage';
 import AdminDashboard from './features/admin/AdminDashboard';
-import LandingPage from './components/LandingPage';
+import LandingPage    from './components/LandingPage';
+
 import useMessengerContext, { MessengerProvider } from './context/messengerContext';
-import InputContextMenu from './components/common/InputContextMenu';
-import ProfileModal from './components/profile/profileModal';
-import GlobalContextMenu from './components/common/GlobalContextMenu';
-import CallOverlay from './features/calls/CallOverlay';
-import CallsHistoryModal from './features/calls/CallsHistoryModal';
+import InputContextMenu   from './components/common/InputContextMenu';
+import ProfileModal       from './components/profile/profileModal';
+import GlobalContextMenu  from './components/common/GlobalContextMenu';
+import CallOverlay        from './features/calls/CallOverlay';
+import CallsHistoryModal  from './features/calls/CallsHistoryModal';
 
 function RouteChangeWatcher() {
   const location = useLocation();
