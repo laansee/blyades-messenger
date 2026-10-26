@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import styles from '../css/profile.module.css';
 import { supabase } from '../../services/supabaseClient';
 import { userService, type AppUser } from '../../services/userService';
-import { Search, UserPlus, Users, X, Pencil, Copy, Hash } from 'lucide-react';
+import { Search, UserPlus, Users, X, Copy, Hash } from 'lucide-react';
 import { renderUserStatusBadge } from '../../utils/statusBadge';
 import { formatUserOnlineStatus } from '../../context/messengerContext';
 import { AddParticipantsModal } from '../common/GlobalUI';
@@ -34,7 +34,6 @@ export default function GroupProfileView({
   const [existingUsers, setExistingUsers] = useState<string[]>([]);
 
   const chatIdNumeric = Number(currentChatUser.internalChatId || currentChatUser.id);
-  const myUuid = String(ctx.currentUser?.uuid || ctx.currentUser?.id || '');
 
   const handleCopy = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -295,8 +294,6 @@ export default function GroupProfileView({
               ) : (
                 filteredMembers.map((member) => {
                   const isOwner = member.uuid === String(currentChatUser.ownerId);
-                  const isMe = member.uuid === myUuid;
-                  const amIOwner = String(currentChatUser.ownerId) === myUuid;
                   const displayName = userService.resolveDisplayName(member);
 
                   const isOnline = ctx.isUserOnline ? ctx.isUserOnline(member) : false;

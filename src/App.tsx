@@ -1,15 +1,38 @@
 import { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, useLocation } from 'react-router';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from "@vercel/speed-insights/react"
 import AuthPage from './features/auth/AuthPage';
-import ChatLayout from './features/chat/chatLayout';
-import SettingsPage from './features/settings/settingsPage';
-import ContactsPage from './features/contacts/contactsPage';
-import CallsPage from './features/calls/callsPage';
-import AdminDashboard from './features/admin/admin-dashboard';
+import ChatLayout from './features/chat/ChatLayout';
+import SettingsPage from './features/settings/SettingsPage';
+// import ContactsPage from './features/contacts/ContactsPage';
+// import CallsPage from './features/calls/CallsPage';
+import AdminDashboard from './features/admin/AdminDashboard';
 import LandingPage from './components/LandingPage';
 import useMessengerContext, { MessengerProvider } from './context/messengerContext';
+import InputContextMenu from './components/common/InputContextMenu';
+import ProfileModal from './components/profile/profileModal';
+import GlobalContextMenu from './components/common/GlobalContextMenu';
+import CallOverlay from './features/calls/CallOverlay';
+import CallsHistoryModal from './features/calls/CallsHistoryModal';
+
+function RouteChangeWatcher() {
+  const location = useLocation();
+  const ctx = useMessengerContext();
+
+  useEffect(() => {
+    // 🎯 Если ушли со страницы /chat (например, на /admin или /settings)
+    if (!location.pathname.startsWith('/chat')) {
+      if (ctx.setActiveChatId) ctx.setActiveChatId(null);
+      if (ctx.setEditingMessage) ctx.setEditingMessage(null);
+      if (ctx.setMessageText) ctx.setMessageText('');
+      if (ctx.setShowMsgSearch) ctx.setShowMsgSearch(false);
+      if (ctx.setSearchQuery) ctx.setSearchQuery('');
+    }
+  }, [location.pathname]);
+
+  return null;
+}
 
 function ProtectedRoute() {
   const { currentUser } = useMessengerContext();
@@ -44,6 +67,7 @@ function AppContent() {
 
   return (
     <Router>
+      <RouteChangeWatcher />
       <Routes>
         {/* Публичные страницы */}
         <Route path="/" element={<LandingPage />} />
@@ -53,8 +77,7 @@ function AppContent() {
 
         <Route element={<ProtectedRoute />}>
           <Route path="/chat" element={<ChatLayout />} />
-          <Route path="/contacts" element={<ContactsPage />} />
-          <Route path="/calls" element={<CallsPage />} />
+          {/* <Route path="/archive" element={<ChatLayout />} /> */}
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/admin" element={<AdminDashboard />} />
         </Route>
@@ -71,6 +94,21 @@ export default function App() {
       <AppContent />
       <Analytics />
       <SpeedInsights/>
+      <InputContextMenu />
+      <ProfileModal />
+      <GlobalContextMenu />
+      <CallOverlay />
+      <GlobalCallsHistoryModal />
     </MessengerProvider>
+  );
+}
+
+function GlobalCallsHistoryModal() {
+  const ctx = useMessengerContext();
+  return (
+    <CallsHistoryModal 
+      show={Boolean(ctx.showCallsHistoryModal)} 
+      onClose={() => ctx.setShowCallsHistoryModal(false)} 
+    />
   );
 }

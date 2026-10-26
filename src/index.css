@@ -16,7 +16,8 @@
   --text-offline-color: #7a7a85;
 
   --message-incoming-bg-color : #232327;
-  --message-outgoing-bg-color : linear-gradient(135deg, #75031b 0%, #550214 100%);
+  /* --message-outgoing-bg-color : linear-gradient(135deg, #75031b 0%, #550214 100%); */
+  --message-outgoing-bg-color : #3c2743;
   --message-text-color: #dfdfde;
   --message-text-secondary-color: #9d9d9e;
 
@@ -44,6 +45,35 @@
   background: #525252;
   border-radius: 20px;
   border: none;}
+
+html, body {
+  /* Запрещает жест масштабирования браузером, разрешая только обычный скролл */
+  touch-action: pan-x pan-y;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Главные контейнеры приложения */
+html, body, #root {
+  height: 100%;
+  height: 100dvh; /* Динамическая высота вьюпорта с учётом скрывающихся панелей */
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  overscroll-behavior: none; /* Запрещает резиновую оттяжку всей страницы на iOS */
+}
+
+/* Навсайдбар и левый сайдбар */
+.nav-sidebar, 
+aside {
+  height: 100%;
+  height: 100dvh;
+  /* Учитываем системную плашку айфона внизу и чёлку/остров сверху */
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 16px);
+  box-sizing: border-box;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch; /* Плавный нативный инерционный скролл */
+}
 
 h1, h2, h3 {
   font-family: var(--heading);
@@ -175,4 +205,49 @@ body {
 @keyframes scaleOutCard {
   from { opacity: 1; transform: scale(1); }
   to { opacity: 0; transform: scale(0.9); }
+}
+
+@keyframes scaleOutCard {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.9); }
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modalFadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes modalScaleIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.9) translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes modalScaleOut {
+  0% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.9) translateY(8px);
+  }
 }

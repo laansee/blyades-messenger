@@ -4,20 +4,24 @@ import style from '../../components/css/settings.module.css';
 import chatStyles from '../../components/css/chat-window.module.css';
 import profileStyles from '../../components/css/profile.module.css';
 import useMessengerContext from '../../context/messengerContext';
-import NavSidebar from '../navigation/nav-sidebar';
+import NavSidebar from '../navigation/NavSidebar';
 import { renderUserStatusBadge } from '../../utils/statusBadge';
 import SmartAvatar from '../../components/common/SmartAvatar';
 
-import EditProfile from './edit-profile';
-import PrivacySettings from './privacy-settings';
-import { Lock, User, Menu, Copy, QrCode, Hash } from 'lucide-react';
+import EditProfile from './EditProfile';
+import PrivacySettings from './PrivacySettings';
+import { Lock, User, Menu, Copy, Hash, ArrowLeft, Eye, X, QrCode } from 'lucide-react';
 
 export default function SettingsPage() {
   const ctx = useMessengerContext();
   const currentUser = ctx.currentUser;
 
-  const [activeSettingsTab, setActiveSettingsTab] = useState<'profile' | 'privacy' | 'chats'>('profile');
+  const [activeSettingsTab, setActiveSettingsTab] = useState<'profile' | 'privacy' | 'chats' | null>(null);
   const [previewRole, setPreviewRole] = useState<'contact' | 'stranger'>('contact');
+
+  // 📱 Адаптивные стейты для мобильных устройств
+  const [mobileScreen, setMobileScreen] = useState<'menu' | 'content'>('menu');
+  const [showDrawerPreview, setShowDrawerPreview] = useState(false);
 
   // 🚀 ОБЩИЕ СТЕЙТЫ ДАННЫХ ПРОФИЛЯ
   const [uniqueId, setUniqueId] = useState(currentUser?.uniqueId || '');
@@ -39,7 +43,6 @@ export default function SettingsPage() {
   const [privacyFullName, setPrivacyFullName] = useState(currentUser?.privacyFullName || 'all');
   const [privacySearch, setPrivacySearch] = useState(currentUser?.privacySearch || 'all');
 
-  // Синхронизация данных с базой при холодном старте
   useEffect(() => {
     if (currentUser) {
       setUniqueId(currentUser.uniqueId || '');
@@ -65,13 +68,12 @@ export default function SettingsPage() {
     document.title = 'Настройки | Blyades';
   }, []);
 
-  // 🔒 Проверка видимости полей на основе настроек приватности и выбранной роли
   const shouldShowFieldInPreview = (setting: string) => {
     if (setting === 'all') return true;
     if (setting === 'none') return false;
     return setting === 'contacts' ? previewRole === 'contact' : true;
   };
-
+  
   const showFullName = privacyNameFormat === 'full_name';
   const hasNamesFilled = (firstName && firstName.trim() !== '') || (lastName && lastName.trim() !== '');
 
@@ -80,9 +82,14 @@ export default function SettingsPage() {
     : (username.trim() !== '' ? username : `@${uniqueId}`);
 
   const myIdDisplay = currentUser?.id ? `#${currentUser.id}` : currentUser?.uuid?.slice(0, 8);
+  
+  const handleSelectTab = (tab: 'profile' | 'privacy') => {
+    setActiveSettingsTab(tab);
+    setMobileScreen('content'); // На мобилках сразу открываем контент
+  };
 
   return (
-    <div className={mainStyle['messenger-container']}>
+    <div className={`${mainStyle['messenger-container']} ${mobileScreen === 'menu' ? style.viewMenu : style.viewContent}`}>
       <NavSidebar />
 
       <section className={style.setSidebar}>
@@ -91,6 +98,7 @@ export default function SettingsPage() {
             type="button" 
             onClick={() => ctx.setIsNavOpen?.(true)}
             title="Открыть меню"
+            className={style.headerMenuBtn}
             style={{
               background: 'none',
               border: 'none',
@@ -114,7 +122,7 @@ export default function SettingsPage() {
         <div className={style.setSidebarList}>
           <div 
             className={`${style.setSidebarItem} ${activeSettingsTab === 'profile' ? style.active : ''}`} 
-            onClick={() => setActiveSettingsTab('profile')} 
+            onClick={() => handleSelectTab('profile')} 
             style={{ cursor: 'pointer' }}
           >
             <User/>
@@ -122,28 +130,20 @@ export default function SettingsPage() {
           </div>
           <div 
             className={`${style.setSidebarItem} ${activeSettingsTab === 'privacy' ? style.active : ''}`} 
-            onClick={() => setActiveSettingsTab('privacy')} 
+            onClick={() => handleSelectTab('privacy')} 
             style={{ cursor: 'pointer' }}
           >
             <Lock/>
             Приватность
           </div>
-          <div 
-            className={style.setSidebarItem} 
-            title="В разработке"
-            aria-disabled
-          >
+          <div className={style.setSidebarItem} title="В разработке" aria-disabled>
             💬 Чаты
           </div>
-          <div 
-            className={style.setSidebarItem} 
-            data-title="В разработке"
-            aria-disabled
-          >
+          <div className={style.setSidebarItem} data-title="В разработке" aria-disabled>
             🔔 Уведомления
           </div>
 
-          <div className={style.settingsLineDivider}></div>
+          <div className={style.settingsLineDivider}/>
           
           <div 
             className={style.setSidebarItem} 
@@ -156,49 +156,148 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      <div className={style.settingsContainer} style={{ backgroundColor: '#13131a', overflowY: 'auto' }}>
-        {activeSettingsTab === 'profile' && (
-          <EditProfile 
-            onBack={() => setActiveSettingsTab('profile')}
-            state={{ uniqueId, username, firstName, lastName, email, phone, aboutMe, avatarColor, avatarUrl, nameColor }}
-            setters={{ setUniqueId, setUsername, setFirstName, setLastName, setEmail, setPhone, setAboutMe, setAvatarColor, setAvatarUrl, setNameColor }}
-            title="Личные данные аккаунта"
-            Icon={<User />}
-          />
-        )}
+      <div 
+        className={style.settingsContainer} 
+        style={{ 
+          backgroundColor: '#13131a', 
+          overflowY: 'auto', 
+          display: 'flex', 
+          flexDirection: 'column', 
+          justifyContent: activeSettingsTab ? 'flex-start' : 'center',
+          alignItems: activeSettingsTab ? 'stretch' : 'center'
+        }}
+      >
+        {!activeSettingsTab ? (
+          /* 🎯 Заглушка по центру (как на втором скриншоте) */
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '16px',
+            color: '#6e6f7a',
+            userSelect: 'none'
+          }}>
+            <div style={{
+              width: '80px',
+              height: '80px',
+              borderRadius: '20px',
+              backgroundColor: '#1b1b22',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: '1px solid #282832'
+            }}>
+              <Menu size={38} color="#585966" />
+            </div>
+            <span style={{ fontSize: '16px', fontWeight: 500, color: '#ededed' }}>
+              Выберите раздел настроек
+            </span>
+          </div>
+        ) : (
+          <>
+            {/* Мобильная верхняя панель (Назад + Предпросмотр) */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '12px 16px',
+              borderBottom: '1px solid #232428',
+              backgroundColor: '#16171b'
+            }}>
+              <button 
+                type="button"
+                className={style.mobileBackBtn}
+                onClick={() => {
+                  setMobileScreen('menu');
+                  setActiveSettingsTab(null);
+                }}
+                title="Назад к разделам"
+              >
+                <ArrowLeft size={20} />
+                <span style={{ fontSize: '14px', fontWeight: 600, marginLeft: '6px' }}>Назад</span>
+              </button>
 
-        {activeSettingsTab === 'privacy' && (
-          <PrivacySettings 
-            onBack={() => setActiveSettingsTab('privacy')}
-            state={{ privacyPhone, privacyEmail, privacyOnline, privacyNameFormat, privacyFullName, privacySearch }}
-            setters={{ setPrivacyPhone, setPrivacyEmail, setPrivacyOnline, setPrivacyNameFormat, setPrivacyFullName, setPrivacySearch }}
-            title="Приватность"
-            Icon={<Lock />}
-          />
+              <span style={{ color: '#fff', fontWeight: 700, fontSize: '16px' }}>
+                {activeSettingsTab === 'profile' ? 'Аккаунт' : 'Приватность'}
+              </span>
+
+              <button 
+                type="button"
+                className={style.togglePreviewBtn}
+                onClick={() => setShowDrawerPreview(true)}
+                title="Открыть предпросмотр"
+              >
+                <Eye size={16} color="#9d7bf6" />
+                <span>Предпросмотр</span>
+              </button>
+            </div>
+            
+            {activeSettingsTab === 'profile' && (
+              <EditProfile 
+                onBack={() => setMobileScreen('menu')}
+                state={{ uniqueId, username, firstName, lastName, email, phone, aboutMe, avatarColor, avatarUrl, nameColor }}
+                setters={{ setUniqueId, setUsername, setFirstName, setLastName, setEmail, setPhone, setAboutMe, setAvatarColor, setAvatarUrl, setNameColor }}
+              />
+            )}
+
+            {activeSettingsTab === 'privacy' && (
+              <PrivacySettings 
+                onBack={() => setMobileScreen('menu')}
+                state={{ privacyPhone, privacyEmail, privacyOnline, privacyNameFormat, privacyFullName, privacySearch }}
+                setters={{ setPrivacyPhone, setPrivacyEmail, setPrivacyOnline, setPrivacyNameFormat, setPrivacyFullName, setPrivacySearch }}
+              />
+            )}
+          </>
         )}
       </div>
 
-      <div className={style.settingsPreview}>
-        <div className={style.settingsPreviewChange}>
-          <span>👁️ Предпросмотр профиля:</span>
-          <div>
+      {/* 🌑 Бэкдроп при открытии предпросмотра на смартфонах/планшетах */}
+      {showDrawerPreview && (
+        <div 
+          className={style.previewBackdrop} 
+          onClick={() => setShowDrawerPreview(false)} 
+        />
+      )}
+
+      {/* 🔮 ВЫДВИЖНАЯ ШТОРКА / КОЛОНКА ПРЕДПРОСМОТРА */}
+      <div className={`${style.settingsPreview} ${showDrawerPreview ? style.open : ''}`}>
+        <div className={style.settingsPreviewChange} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span>👁️ Предпросмотр профиля:</span>
             <button 
-              type="button" 
-              onClick={() => setPreviewRole('contact')} 
-              style={{ backgroundColor: previewRole === 'contact' ? '#007aff' : 'transparent' }}
-            >
-              Как контакт
-            </button>
-            <button 
-              type="button" 
-              onClick={() => setPreviewRole('stranger')} 
-              style={{ backgroundColor: previewRole === 'stranger' ? '#da373c' : 'transparent' }}
-            >
-              Незнакомец
-            </button>
-          </div>
+            type="button"
+            className={style.previewCloseBtn}
+            onClick={() => setShowDrawerPreview(false)}
+            title="Закрыть"
+          >
+            <X size={20} />
+          </button>
         </div>
 
+        <div style={{ display: 'flex', gap: '8px', margin: '8px 0 16px' }}>
+          <button 
+            type="button" 
+            onClick={() => setPreviewRole('contact')} 
+            style={{ 
+              flex: 1, padding: '8px', borderRadius: '8px', border: 'none', cursor: 'pointer', color: '#fff', fontWeight: 600, fontSize: '13px',
+              backgroundColor: previewRole === 'contact' ? '#007aff' : '#23232e' 
+            }}
+          >
+            Как контакт
+          </button>
+          <button 
+            type="button" 
+            onClick={() => setPreviewRole('stranger')} 
+            style={{ 
+              flex: 1, padding: '8px', borderRadius: '8px', border: 'none', cursor: 'pointer', color: '#fff', fontWeight: 600, fontSize: '13px',
+              backgroundColor: previewRole === 'stranger' ? '#da373c' : '#23232e' 
+            }}
+          >
+            Незнакомец
+          </button>
+        </div>
+
+        {/* Карточка профиля */}
         <div 
           className={profileStyles['view-mode']} 
           style={{ 
@@ -235,7 +334,6 @@ export default function SettingsPage() {
           </div>
 
           <div className={profileStyles['info-section']}>
-            {/* Настоящие Имя и Фамилия */}
             {privacyNameFormat === 'username' && shouldShowFieldInPreview(privacyFullName) && hasNamesFilled && (
               <div className={profileStyles['info-item']}>
                 <div className={profileStyles['info-item-content']}>
@@ -248,7 +346,16 @@ export default function SettingsPage() {
               </div>
             )}
 
-            {/* Телефон */}
+            <div className={profileStyles['info-item']}>
+              <div className={profileStyles['info-item-content']}>
+                <span className={`${profileStyles['info-value']} ${profileStyles['accent']}`}>
+                  @{uniqueId || 'не указан'}
+                </span>
+                <span className={profileStyles['info-label']}>Имя пользователя</span>
+              </div>
+              <QrCode size={18} className={profileStyles['info-icon']} />
+            </div>
+
             {shouldShowFieldInPreview(privacyPhone) && phone && phone.trim() !== '' && (
               <div className={profileStyles['info-item']}>
                 <div className={profileStyles['info-item-content']}>
@@ -295,40 +402,44 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        <div 
-          className={chatStyles['message-with-avatar']} 
+        <div
+          className={`${chatStyles['sender-group-container']} ${chatStyles['incoming']}`} 
           style={{ 
             background: '#616161', 
             padding: '12px 14px', 
-            borderRadius: '12px',
-            border: '1px solid #2b2d31',
-            width: '100%',
-            boxSizing: 'border-box'
+            borderRadius: '14px',
+            marginTop: '14px'
           }}
         >
-          <SmartAvatar
-            size={36}
-            avatarUrl={avatarUrl}
-            avatarColor={avatarColor}
-            name={previewDisplayName}
-            isChannel={false}
-          />
-          <div 
-            className={chatStyles['message-bubble']}
-            style={{ background: '#22232b', border: '1px solid #2b2d31', marginLeft: '6px' }}
-          >
-            <div className={chatStyles['message-text']}>
-              <span 
-                className={chatStyles['group-msg-sender-name']} 
-                style={{ color: nameColor, fontWeight: '600' }}
-              >
-                {renderUserStatusBadge(currentUser)}
-                {previewDisplayName}
-              </span>
-              Привет, теперь моё сообщение будет выглядеть так!
-              <span className={chatStyles['message-meta']}>
-                <span className={chatStyles['message-time']}>13:37</span>
-              </span>
+          <div className={chatStyles['sender-avatar-col']}>
+            <SmartAvatar
+              size={36}
+              avatarUrl={avatarUrl}
+              avatarColor={avatarColor}
+              name={previewDisplayName}
+              isChannel={false}
+            />
+          </div>
+
+          <div className={chatStyles['sender-messages-col']}>
+            <div className={`${chatStyles['message-list-item']} ${chatStyles['first-in-group']} ${chatStyles['last-in-group']}`}>
+              <div className={chatStyles['message']}>
+                <div className={chatStyles['message-bubble']}>
+                  <div className={chatStyles['message-text']}>
+                    <span 
+                      className={chatStyles['group-msg-sender-name']} 
+                      style={{ color: nameColor, fontWeight: '600' }}
+                    >
+                      {renderUserStatusBadge(currentUser)}
+                      {previewDisplayName}
+                    </span>
+                    Привет, теперь моё сообщение будет выглядеть так!
+                    <span className={chatStyles['message-meta']}>
+                      <span className={chatStyles['message-time']}>13:37</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

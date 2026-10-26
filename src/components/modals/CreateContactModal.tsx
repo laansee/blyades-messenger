@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, Search, UserCheck } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Search } from 'lucide-react';
 import styles from '../css/profile.module.css';
 import useMessengerContext from '../../context/messengerContext';
 import { supabase } from '../../services/supabaseClient';
@@ -23,6 +23,21 @@ export default function CreateContactModal({ show, onClose }: CreateContactModal
   const [saving, setSaving] = useState(false);
 
   if (!show) return null;
+
+  useEffect(() => {
+    if (!show) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [show, onClose]);
 
   const handleSearchUser = async (e: React.FormEvent) => {
     e.preventDefault();

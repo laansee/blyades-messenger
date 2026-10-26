@@ -1,9 +1,4 @@
-@media (max-width: 480px) {
-  /* .chats-sidebar {width:calc(100% - 70px);} */
-  .chats-sidebar {width: 100%;}
-}
-@media (min-width: 481px) and (max-width: 739px) {
-  /* .chats-sidebar {width:calc(100% - 70px);} */
+@media (max-width: 739px) {
   .chats-sidebar {width: 100%;}
 }
 @media (min-width: 740px) {

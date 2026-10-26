@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import mainStyle from '../../components/css/main.module.css';
 import useMessengerContext from '../../context/messengerContext';
-import NavSidebar from '../navigation/nav-sidebar';
-import ChatsSidebar from './chats-sidebar'; 
-import ChatWindow from './chat-window';
+import NavSidebar from '../navigation/NavSidebar';
+import ChatsSidebar from './ChatsSidebar'; 
+import ChatWindow from './ChatWindow';
 import CreateGroupModal from '../../components/modals/CreateGroupModal';
 import CreateChannelModal from '../../components/modals/CreateChannelModal';
 

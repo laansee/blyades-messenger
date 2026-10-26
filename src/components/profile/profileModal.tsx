@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import styles from '../css/profile.module.css';
 import useMessengerContext from '../../context/messengerContext';
 import { supabase } from '../../services/supabaseClient';
 import { userService } from '../../services/userService';
-import { X } from 'lucide-react';
 
 import UserProfileView from './UserProfileView';
 import GroupProfileView from './GroupProfileView';
@@ -24,23 +24,50 @@ export default function ProfileModal() {
   const [editAvatarColor, setEditAvatarColor] = useState('#5865F2');
   const [editAvatarUrl, setEditAvatarUrl] = useState('');
 
-  const targetIdentifier = ctx?.showUserModal === true 
-    ? String(ctx?.activeChatId || '').trim() 
-    : String(ctx?.showUserModal || '').trim();
+  useEffect(() => {
+    if (!ctx.showUserModal) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        ctx.setShowUserModal(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [ctx.showUserModal]);
+
+  const myUuid = String(ctx?.currentUser?.uuid || ctx?.currentUser?.id || '').trim();
+  const targetIdentifier = useMemo(() => {
+    if (ctx?.showUserModal === true) {
+      return ctx?.activeChatId ? String(ctx.activeChatId).trim() : myUuid;
+    }
+    return String(ctx?.showUserModal || '').trim();
+  }, [ctx?.showUserModal, ctx?.activeChatId, myUuid]);
+
+  const isMe = Boolean(
+    targetIdentifier && 
+    (targetIdentifier === myUuid || targetIdentifier === 'me' || (!ctx?.activeChatId && ctx?.showUserModal === true))
+  );
 
   // 1. Сначала ищем чат в общем массиве активных диалогов (по id чата или partnerId/uuid)
-  const cachedChatUser = (ctx?.chats || []).find((c: any) => 
-    String(c.id).trim() === targetIdentifier ||
-    String(c.partnerId).trim() === targetIdentifier ||
-    String(c.uuid).trim() === targetIdentifier
-  );
+  const cachedChatUser = useMemo(() => {
+    if (isMe) return ctx.currentUser;
+    return (ctx?.chats || []).find((c: any) => 
+      String(c.id).trim() === targetIdentifier ||
+      String(c.partnerId).trim() === targetIdentifier ||
+      String(c.uuid).trim() === targetIdentifier
+    );
+  }, [ctx?.chats, targetIdentifier, isMe, ctx.currentUser]);
 
   // 2. Если в chats не найдено (пользователь открыт из поиска/беседы), подтягиваем через userService
   useEffect(() => {
     let isMounted = true;
 
     const loadMissingUser = async () => {
-      if (!ctx.showUserModal || cachedChatUser || !targetIdentifier) {
+      if (!ctx.showUserModal || cachedChatUser || !targetIdentifier || isMe) {
         setFetchedExternalUser(null);
         return;
       }
@@ -66,9 +93,9 @@ export default function ProfileModal() {
     return () => {
       isMounted = false;
     };
-  }, [ctx.showUserModal, targetIdentifier, cachedChatUser]);
+  }, [ctx.showUserModal, targetIdentifier, cachedChatUser, isMe]);
 
-  const currentChatUser = cachedChatUser || fetchedExternalUser;
+  const currentChatUser = isMe ? ctx.currentUser : (cachedChatUser || fetchedExternalUser);
 
   useEffect(() => {
     if (isEditing && currentChatUser) {
@@ -105,6 +132,7 @@ export default function ProfileModal() {
     : currentChatUser.name || currentChatUser.username || 'Пользователь';
 
   const handleCloseModalSmooth = () => {
+    if (isAnimateClose) return;
     setIsAnimateClose(true);
     setTimeout(() => {
       ctx.setShowUserModal(false);
@@ -303,29 +331,36 @@ export default function ProfileModal() {
     );
   };
 
-  return (
+  console.log('PROFILE_MODAL_DEBUG:', {
+    showUserModal: ctx?.showUserModal,
+    currentUser: ctx?.currentUser,
+    targetIdentifier,
+    isMe,
+    currentChatUser
+  });
+
+  return createPortal(
     <div 
       className={`${styles['modal-overlay']} ${isAnimateClose ? styles.closing : ''}`} 
       onClick={handleCloseModalSmooth}
       style={{
-        opacity: ctx.showUserModal && !isAnimateClose ? 1 : 0,
-        pointerEvents: ctx.showUserModal ? 'auto' : 'none',
-        display: 'flex',
-        zIndex: 10000,
-        transition: 'opacity 0.25s ease'
+        animation: `${isAnimateClose ? 'modalFadeOut' : 'modalFadeIn'} 0.2s ease forwards`
       }}
     >
       <div 
         className={styles['profile-modal-card']} 
         onClick={(e) => e.stopPropagation()}
         style={{
-          transform: ctx.showUserModal && !isAnimateClose ? 'scale(1)' : 'scale(0.85)',
-          transition: 'transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)',
+          zIndex: 1000000,
           maxHeight: '85vh',
-          overflowY: 'auto'
+          width: '100%',
+          maxWidth: '420px',
+          overflowY: 'auto',
+          transform: isAnimateClose ? 'scale(0.95)' : 'scale(1)',
+          transition: 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+          animation: `${isAnimateClose ? 'modalScaleOut' : 'modalScaleIn'} 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards`
         }}
       >
-
         {isEditing ? (
           <EditMode 
             currentChatUser={currentChatUser} 
@@ -340,7 +375,6 @@ export default function ProfileModal() {
             onDeleteContact={handleDeleteContact}
           />
         ) : (String(currentChatUser?.uuid) === String(ctx.currentUser?.uuid) || String(currentChatUser?.id) === String(ctx.currentUser?.uuid)) ? (
-          /* 🎯 ОТРИСОВКА НАШЕГО СОБСТВЕННОГО ПРОФИЛЯ */
           <MyProfileView
             currentUser={ctx.currentUser}
             onEditToggle={() => setIsEditing(true)}
@@ -375,6 +409,7 @@ export default function ProfileModal() {
           />
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

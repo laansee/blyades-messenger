@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import styles from '../../components/css/chat-window.module.css';
-import ContextMenu, { type ContextMenuItem } from '../../components/common/contextMenu';
+import { type ContextMenuItem } from '../../components/common/ContextMenu';
 import useMessengerContext, { formatUserOnlineStatus } from '../../context/messengerContext';
 import { DropdownMenu, AddParticipantsModal } from '../../components/common/GlobalUI'; 
 import { supabase } from '../../services/supabaseClient';
 import { renderUserStatusBadge } from '../../utils/statusBadge';
-import { userService } from '../../services/userService';
 import SmartAvatar from '../../components/common/SmartAvatar';
+import StartGroupCallModal from '../calls/StartGroupCallModal';
 import { 
   Search, EllipsisVertical, X, Check, CheckCheck, Pencil, Paperclip, 
   Send, ArrowUp, ArrowDown, User, 
@@ -32,8 +32,10 @@ export default function ChatWindow() {
   const messageInputRef = useRef<HTMLTextAreaElement>(null);
   
   const previousChatIdRef = useRef<string | null>(null);
+  const prevMessagesLengthRef = useRef<number>(0);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [showStartGroupCallModal, setShowStartGroupCallModal] = useState(false);
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [existingUsers, setExistingUsers] = useState<string[]>([]);
@@ -115,31 +117,241 @@ export default function ChatWindow() {
       });
   }, [ctx.allMessages, activeChatIdStr, ctx.showMsgSearch, ctx.messageSearchQuery, myId]);
 
-  // 🚀 Единый скролл и отметка о прочтении
+  // 🧠 Группировка сообщений по дням и пачкам авторов
+  const groupedDays = useMemo(() => {
+    if (!displayedMessages || displayedMessages.length === 0) return [];
+
+    const days: Array<{
+      dateKey: string;
+      dateTitle: string;
+      clusters: Array<{
+        clusterId: string;
+        senderId: string;
+        isOutgoing: boolean;
+        isSystem: boolean;
+        senderUserObj: any;
+        senderDisplayName: string;
+        senderAvatarColor: string;
+        senderNameColor: string;
+        messages: Array<{
+          msg: any;
+          isFirstInGroup: boolean;
+          isLastInGroup: boolean;
+        }>;
+      }>;
+    }> = [];
+
+    let currentDayObj: (typeof days)[0] | null = null;
+    let currentCluster: (typeof days)[0]['clusters'][0] | null = null;
+
+    displayedMessages.forEach((msg: any) => {
+      const msgDate = new Date(msg.createdAt);
+      const dayKey = msgDate.toDateString();
+      const currentDayStr = msgDate.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+
+      // 1. Проверяем смену дня
+      if (!currentDayObj || currentDayObj.dateKey !== dayKey) {
+        currentDayObj = {
+          dateKey: dayKey,
+          dateTitle: currentDayStr,
+          clusters: []
+        };
+        days.push(currentDayObj);
+        currentCluster = null; // При смене дня начинаем новую пачку
+      }
+
+      const isSystemMsg = msg.senderId === 'system' || String(msg.senderId) === '00000000-0000-0000-0000-000000000000';
+      const isMyMsg = String(msg.senderId) === myId;
+      const senderIdStr = String(msg.senderId);
+
+      // Ищем автора для корректного отображения
+      const contactEntry = (ctx.contacts || []).find((c: any) => 
+        String(c.contactId || c.partnerId || c.uuid || c.id) === senderIdStr
+      );
+      const baseUserObj = (ctx.users || []).find((u: any) => String(u.uuid) === senderIdStr) || 
+                          (ctx.chats || []).find((c: any) => String(c.uuid) === senderIdStr);
+      const senderUserObj = contactEntry ? { ...baseUserObj, ...contactEntry } : baseUserObj;
+      const senderDisplayName = (() => {
+        // 1. Приоритет №1: Если пользователь у нас в контактах
+        if (contactEntry && (contactEntry.firstName || contactEntry.lastName)) {
+          return `${contactEntry.firstName || ''} ${contactEntry.lastName || ''}`.trim();
+        }
+
+        // 2. Настоящее имя и фамилия из базы
+        const fullName = `${senderUserObj?.firstName || ''} ${senderUserObj?.lastName || ''}`.trim();
+        const privacyFormat = senderUserObj?.privacyNameFormat || 'username';
+
+        // 3. Приоритет №2: Если в профиле пользователя выбрано отображение имени (full_name)
+        if ((privacyFormat === 'full_name' || privacyFormat === 'name') && fullName) {
+          return fullName;
+        }
+
+        // 4. Приоритет №3: Username или фоллбэк на fullName / никнейм
+        return senderUserObj?.username || fullName || senderUserObj?.name || 'Участник';
+      })();
+      const senderAvatarColor = senderUserObj?.avatarColor || '#007aff';
+      const senderNameColor = senderUserObj?.nameColor || '#007aff';
+
+      // 2. Проверяем, можно ли прикрепить сообщение к текущей пачке автора
+      let canAppendToCluster = false;
+      if (currentCluster && !currentCluster.isSystem && !isSystemMsg && currentCluster.senderId === senderIdStr) {
+        const lastMsg = currentCluster.messages[currentCluster.messages.length - 1]?.msg;
+        if (lastMsg) {
+          const diffMs = new Date(msg.createdAt).getTime() - new Date(lastMsg.createdAt).getTime();
+          // Объединяем, если автор тот же и прошло меньше 7 минут
+          if (diffMs < 15 * 60 * 1000) {
+            canAppendToCluster = true;
+          }
+        }
+      }
+
+      if (canAppendToCluster && currentCluster) {
+        currentCluster.messages.push({
+          msg,
+          isFirstInGroup: false,
+          isLastInGroup: true
+        });
+        if (currentCluster.messages.length > 1) {
+          currentCluster.messages[currentCluster.messages.length - 2].isLastInGroup = false;
+        }
+      } else {
+        currentCluster = {
+          clusterId: `cluster-${msg.id}`,
+          senderId: senderIdStr,
+          isOutgoing: isMyMsg,
+          isSystem: isSystemMsg,
+          senderUserObj,
+          senderDisplayName,
+          senderAvatarColor,
+          senderNameColor,
+          messages: [{
+            msg,
+            isFirstInGroup: true,
+            isLastInGroup: true
+          }]
+        };
+        currentDayObj.clusters.push(currentCluster);
+      }
+    });
+
+    return days;
+  }, [displayedMessages, myId, ctx.contacts, ctx.users, ctx.chats]);
+
+  const openMessageContextMenu = (e: React.MouseEvent, msg: any, isMyMsg: boolean) => {
+    e.preventDefault();
+
+    const menuItems: ContextMenuItem[] = [
+      {
+        label: 'Ответить',
+        icon: '↩️',
+        disabled: true,
+        title: 'Ответы на сообщения в разработке',
+        onClick: () => {}
+      },
+      { 
+        label: 'Копировать текст', 
+        icon: '📋', 
+        onClick: () => {
+          if (ctx.handleCopyMessageText) ctx.handleCopyMessageText(msg.text);
+          else navigator.clipboard.writeText(msg.text);
+        } 
+      },
+      {
+        label: 'Закрепить',
+        icon: '📌',
+        disabled: true,
+        title: 'Закрепление сообщений в разработке',
+        onClick: () => {}
+      },
+      {
+        label: 'Переслать',
+        icon: '➡️',
+        disabled: true,
+        title: 'Пересылка сообщений в разработке',
+        onClick: () => {}
+      }
+    ];
+
+    if (isMyMsg) {
+      menuItems.splice(1, 0, {
+        label: 'Редактировать',
+        icon: '✏️',
+        onClick: () => {
+          ctx.setEditingMessage(msg);
+          ctx.setMessageText(msg.text);
+          messageInputRef.current?.focus();
+        }
+      });
+    }
+
+    menuItems.push(
+      { isDivider: true } as any,
+      { 
+        label: 'Удалить', 
+        icon: '🗑️', 
+        isDanger: true, 
+        onClick: () => {
+          if (ctx.closeContextMenu) ctx.closeContextMenu();
+          ctx.showConfirm('Удаление сообщения', 'Удалить это сообщение?', async () => {
+            if (ctx.setAllMessages) {
+              ctx.setAllMessages((prev: any[]) => prev.filter((m: any) => String(m.id) !== String(msg.id)));
+            }
+            await supabase.from('messages').delete().eq('id', msg.id);
+            ctx.showToast('Сообщение удалено', 'success');
+          }, true);
+        }
+      }
+    );
+
+    ctx.setCtxMenu({ show: true, x: e.clientX, y: e.clientY, items: menuItems });
+  };
+
+  const handleCallButton = () => {
+    if (isGroup) {
+      setShowStartGroupCallModal(true);
+    } else {
+      ctx.handleStartAudioCall(currentChatUser.partnerId || currentChatUser.id);
+    }
+  };
+
   useEffect(() => {
     if (!messagesBodyRef.current || !ctx.activeChatId) return;
 
     const isChatChanged = previousChatIdRef.current !== ctx.activeChatId;
     previousChatIdRef.current = ctx.activeChatId;
 
+    // 1. При переключении на другой чат — скроллим в самый низ
     if (isChatChanged) {
       if (ctx.setEditingMessage) ctx.setEditingMessage(null);
       if (ctx.setMessageText) ctx.setMessageText('');
-      
+
+      prevMessagesLengthRef.current = displayedMessages.length;
       messagesBodyRef.current.scrollTop = messagesBodyRef.current.scrollHeight;
       setShowScrollBtn(false);
       messageInputRef.current?.focus();
-    } else {
-      const { scrollTop, scrollHeight, clientHeight } = messagesBodyRef.current;
-      const isUserNearBottom = scrollHeight - scrollTop - clientHeight < 250;
-      if (isUserNearBottom) {
-        messagesBodyRef.current.scrollTo({
-          top: scrollHeight,
-          behavior: 'smooth'
-        });
-      }
+      return;
     }
-  }, [ctx.activeChatId, ctx.allMessages]);
+
+    const isNewMessage = displayedMessages.length > prevMessagesLengthRef.current;
+    prevMessagesLengthRef.current = displayedMessages.length;
+
+    // 🎯 Если длина не выросла (было редактирование или удаление) — НЕ СКРОЛЛИМ!
+    if (!isNewMessage) return;
+
+    const lastMsg = displayedMessages[displayedMessages.length - 1];
+    const isMyLastMsg = String(lastMsg?.senderId) === myId;
+
+    const { scrollTop, scrollHeight, clientHeight } = messagesBodyRef.current;
+    const isUserNearBottom = scrollHeight - scrollTop - clientHeight < 250;
+
+    // Скроллим вниз, только если написал сам юзер или он уже читал внизу
+    if (isMyLastMsg || isUserNearBottom) {
+      messagesBodyRef.current.scrollTo({
+        top: messagesBodyRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
+  }, [ctx.activeChatId, displayedMessages, myId]);
 
   useEffect(() => {
     if (ctx.setEditingMessage) ctx.setEditingMessage(null);
@@ -180,11 +392,6 @@ export default function ChatWindow() {
       messagesBodyRef.current.scrollTo({ top: messagesBodyRef.current.scrollHeight, behavior: 'smooth' });
     }
   };
-
-  // const handleOpenDropdown = (e: React.MouseEvent<HTMLButtonElement>) => {
-  //   e.stopPropagation();
-  //   setShowMenu((prev) => !prev);
-  // };
 
   const isGroup = currentChatUser?.isGroup || String(ctx.activeChatId).startsWith('group_');
   const isChannel = currentChatUser?.isChannel || currentChatUser?.type === 'channel';
@@ -377,19 +584,12 @@ export default function ChatWindow() {
 
   return (
     <main className={styles['chat-window']}>
-      <header className={styles['chat-header']}>
+      <header className={styles['chat-header']} style={{height: '58px', padding: '0 16px'}}>
         <div 
           className={styles['chat-header-user']} 
           onClick={() => ctx.setShowUserModal(true)}
+          style={{flexDirection: 'column', alignItems: 'flex-start', gap: '0'}}
         >
-          <SmartAvatar
-            size={40}
-            avatarUrl={currentChatUser?.avatarUrl}
-            avatarColor={currentChatUser?.avatarColor}
-            name={currentChatUser?.name || currentChatUser?.username}
-            isChannel={currentChatUser?.isChannel}
-          />
-          <div>
             <h3 className={styles['chat-header-user-name']}>
               {renderUserStatusBadge(currentChatUser)} 
               {currentChatUser?.name || currentChatUser?.username || 'Загрузка...'}
@@ -418,31 +618,38 @@ export default function ChatWindow() {
                 : formatUserOnlineStatus(currentChatUser?.updatedAt, currentChatUser?.privacyOnline).text
               }
             </span>
-          </div>
+          {/* </div> */}
         </div>
 
         <div className={styles['chat-header-actions']}>
+          <button 
+            type="button"
+            className={`${styles['header-btn']} ${ctx.showMsgSearch ? styles['active-search'] : ''}`} 
+            style={ctx.showMsgSearch ? { 
+              backgroundColor: 'rgba(255, 255, 255, 0.1)', 
+              borderRadius: '50%',
+              color: '#fff' 
+            } : {}}
+            onClick={() => {
+              if (ctx.setShowMsgSearch) {
+                ctx.setShowMsgSearch(!ctx.showMsgSearch);
+              }
+            }}
+            title="Поиск сообщений"
+          >
+            <Search size={20} />
+          </button>
+
           {currentChatUser && (
             <button 
               type="button" 
-              className={styles['header-action-btn']} 
-              onClick={() => ctx.handleStartAudioCall(currentChatUser.id)} 
-              title={currentChatUser.isGroup ? "Начать групповой созвон" : "Позвонить пользователю"}
+              className={styles['header-btn']} 
+              onClick={handleCallButton} 
+              title={currentChatUser.isGroup ? "Начать голосовой чат" : "Позвонить пользователю"}
             >
               <Phone size={20} color="#aaa8a8" />
             </button>
           )}
-
-          <button 
-            type="button"
-            className={styles['header-btn']} 
-            onClick={() => { 
-              ctx.setShowMsgSearch(!ctx.showMsgSearch); 
-              ctx.setMessageSearchQuery(''); 
-            }}
-          >
-            <Search size={20} />
-          </button>
 
           <div style={{ position: 'relative', display: 'inline-flex' }}>
             <button 
@@ -475,17 +682,28 @@ export default function ChatWindow() {
         </div>
       </header>
 
-      {ctx.showMsgSearch && (
-        <div className={styles['message-search-bar']}>
-          <input  
-            type="text" 
-            placeholder="Поиск по истории сообщений..." 
-            value={ctx.messageSearchQuery}
-            id='messageSearchQuery-input'
-            onChange={e => ctx.setMessageSearchQuery(e.target.value)} 
-            className={styles['message-search-input']}
-            autoComplete="off"
-          />
+      {/* 🟢 БАННЕР АКТИВНОГО ЗВОНКА В БЕСЕДЕ */}
+      {isGroup && ctx.activeGroupCalls?.[`group_${activeChatIdStr}`] && !ctx.currentCall && (
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          backgroundColor: '#1b2b22', borderBottom: '1px solid #234d31',
+          padding: '10px 16px', color: '#2ec761'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600 }}>
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#2ec761', animation: 'pulse 1.2s infinite' }} />
+            В этой беседе прямо сейчас идёт голосовой чат
+          </div>
+          <button
+            type="button"
+            onClick={() => ctx.handleJoinExistingCall(ctx.activeGroupCalls[`group_${activeChatIdStr}`])}
+            style={{
+              backgroundColor: '#2ec761', color: '#000', border: 'none',
+              borderRadius: '8px', padding: '6px 14px', fontWeight: 600,
+              fontSize: '13px', cursor: 'pointer'
+            }}
+          >
+            Войти в созвон
+          </button>
         </div>
       )}
 
@@ -570,263 +788,134 @@ export default function ChatWindow() {
             
           </div>
         ) : (
-          displayedMessages.map((msg: any, index: number) => {
-            const currentMsgDate = new Date(msg.createdAt);
-            const currentDayStr = currentMsgDate.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+          groupedDays.map((dayGroup) => (
+            <div key={dayGroup.dateKey} className={styles['message-date-group']}>
+              
+              {/* 📌 2. ПРИЛИПАЮЩАЯ ДАТА (sticky-date) */}
+              <div className={styles['sticky-date']}>
+                {dayGroup.dateTitle}
+              </div>
 
-            let showDateDivider = false;
-            if (index === 0) showDateDivider = true;
-            else {
-              const prevMsgDate = new Date(displayedMessages[index - 1].createdAt);
-              const prevDayStr = prevMsgDate.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
-              if (currentDayStr !== prevDayStr) showDateDivider = true;
-            }
-
-            const isSystemMsg = msg.senderId === 'system' || String(msg.senderId) === '00000000-0000-0000-0000-000000000000';
-
-            
-
-            return (
-              <React.Fragment key={`msg-group-${msg.id}`}>
-                {showDateDivider && (
-                  <div className={styles['chat-date-divider']}>
-                    <span className={styles['chat-date-text']}>{currentDayStr}</span>
-                  </div>
-                )}
-
-                {/* ======================================================== */}
-                {/* 🎯 ПУНКТ 1: РЕНДЕР СИСТЕМНЫХ СООБЩЕНИЙ ПО ЦЕНТРУ ЭКРАНА */}
-                {/* ======================================================== */}
-                {isSystemMsg ? (
-                  <div className={styles['system-message-container']}>
-                    <div 
-                      className={styles['system-message-bubble']}
-                      onContextMenu={(e) => {
-                        e.preventDefault();
-
-                        // Очищаем системный текст от токенов шаблона и тегов для буфера обмена
-                        const plainSystemText = msg.text
-                          .replace(/\{\{user:[a-zA-Z0-9_-]+\}\}/g, 'пользователь')
-                          .replace(/<\/?[^>]+(>|$)/g, '')
-                          .trim();
-
-                        const menuItems: ContextMenuItem[] = [
-                          { 
-                            label: 'Копировать текст', 
-                            icon: '📋', 
-                            onClick: () => {
-                              if (ctx.handleCopyMessageText) {
-                                ctx.handleCopyMessageText(plainSystemText);
-                              } else {
-                                navigator.clipboard.writeText(plainSystemText);
-                              }
-                            } 
-                          }
-                        ];
-
-                        // Удаление системного сообщения (для администратора или создателя беседы)
-                        const canDeleteSystemMsg = 
-                          ctx.currentUser?.userStatus === 'administrator' || 
-                          String(currentChatUser?.ownerId) === myId;
-
-                        if (canDeleteSystemMsg) {
-                          menuItems.push(
-                            { isDivider: true } as any,
-                            { 
-                              label: 'Удалить уведомление', 
-                              icon: '🗑️', 
-                              isDanger: true, 
-                              onClick: () => {
-                                if (ctx.closeContextMenu) ctx.closeContextMenu();
-                                ctx.showConfirm('Удаление уведомления', 'Удалить системное сообщение?', async () => {
-                                  if (ctx.setAllMessages) {
-                                    ctx.setAllMessages((prev: any[]) => prev.filter((m: any) => String(m.id) !== String(msg.id)));
-                                  }
-                                  await supabase.from('messages').delete().eq('id', msg.id);
-                                  ctx.showToast('Системное сообщение удалено', 'success');
-                                }, true);
-                              }
-                            }
-                          );
-                        }
-
-                        ctx.setCtxMenu({ show: true, x: e.clientX, y: e.clientY, items: menuItems });
-                      }}
-                    >
-                      {/* 🎯 ВОТ ЗДЕСЬ ВЫЗЫВАЕТСЯ ДИНАМИЧЕСКИЙ ПАРСЕР: */}
-                      {renderSystemMessageContent(msg.text)}
-                    </div>
-                  </div>
-                ) : (
-                  /* ======================================================== */
-                  /* 👥 ОБЫЧНЫЕ ТЕКСТОВЫЕ СООБЩЕНИЯ (ЛС ИЛИ БЕСЕДА)          */
-                  /* ======================================================== */
-                  (() => {
-                    const isMyMsg = String(msg.senderId) === myId;
-                    const isGroupChat = currentChatUser?.type === 'group';
-
-                    // 1. Проверяем: сохранён ли автор сообщения у нас в контактах
-                    const contactEntry = (ctx.contacts || []).find((c: any) => 
-                      String(c.contactId || c.partnerId || c.uuid || c.id) === String(msg.senderId)
-                    );
-
-                    // 2. Ищем данные пользователя
-                    const baseUserObj = (ctx.users || []).find((u: any) => String(u.uuid) === String(msg.senderId)) || 
-                                        (ctx.chats || []).find((c: any) => String(c.uuid) === String(msg.senderId));
-
-                    const senderUserObj = contactEntry ? { ...baseUserObj, ...contactEntry } : baseUserObj;
-
-                    // 3. Если есть контакт с именем/фамилией — показываем их, иначе никнейм
-                    const senderDisplayName = contactEntry && (contactEntry.firstName || contactEntry.lastName)
-                      ? `${contactEntry.firstName || ''} ${contactEntry.lastName || ''}`.trim()
-                      : senderUserObj?.name || senderUserObj?.username || `Участник`;
-
-                    const senderAvatarColor = senderUserObj?.avatarColor || '#007aff';
-                    const senderNameColor = senderUserObj?.nameColor || '#007aff';
-
-                    const isFirstInRow = (() => {
-                      if (index === 0) return true;
-                      const prevMsg = displayedMessages[index - 1];
-                      if (prevMsg.senderId !== msg.senderId) return true;
-                      const prevDay = new Date(prevMsg.createdAt).toLocaleDateString('ru-RU');
-                      return currentDayStr !== prevDay;
-                    })();
-
-                    const messageBubbleContent = (
-                      <div 
-                        className={`${styles.message} ${isMyMsg ? styles['message-outgoing'] : styles['message-incoming']}`}
-                        style={{ marginTop: isFirstInRow ? '8px' : '2px' }}
-                        onContextMenu={(e) => {
-                          e.preventDefault();              
-                          
-                          const menuItems: ContextMenuItem[] = [
-                            {
-                              label: 'Ответить',
-                              icon: '↩️',
-                              disabled: true,
-                              title: 'Ответы на сообщения в разработке',
-                              onClick: () => {}
-                            },
-                            { 
-                              label: 'Копировать текст', 
-                              icon: '📋', 
-                              onClick: () => {
-                                if (ctx.handleCopyMessageText) ctx.handleCopyMessageText(msg.text);
-                                else navigator.clipboard.writeText(msg.text);
-                              } 
-                            },
-                            {
-                              label: 'Закрепить',
-                              icon: '📌',
-                              disabled: true,
-                              title: 'Закрепление сообщений в разработке',
-                              onClick: () => {}
-                            },
-                            {
-                              label: 'Переслать',
-                              icon: '➡️',
-                              disabled: true,
-                              title: 'Пересылка сообщений в разработке',
-                              onClick: () => {}
-                            }
-                          ];
-
-                          if (isMyMsg) {
-                            menuItems.splice(1, 0, {
-                              label: 'Редактировать',
-                              icon: '✏️',
-                              onClick: () => {
-                                ctx.setEditingMessage(msg);
-                                ctx.setMessageText(msg.text);
-                                messageInputRef.current?.focus();
-                              }
+              {/* 👥 3. ПАЧКИ СООБЩЕНИЙ ОТ ОДНОГО АВТОРА (message-group) */}
+              {dayGroup.clusters.map((cluster) => {
+                // Системные уведомления рендерим по центру
+                if (cluster.isSystem) {
+                  return (
+                    <div key={cluster.clusterId} className={styles['system-message-container']}>
+                      {cluster.messages.map(({ msg }) => (
+                        <div 
+                          key={msg.id} 
+                          id={`message-${msg.id}`}
+                          className={styles['system-message-bubble']}
+                          onContextMenu={(e) => {
+                            e.preventDefault();
+                            const plainSystemText = msg.text
+                              .replace(/\{\{user:[a-zA-Z0-9_-]+\}\}/g, 'пользователь')
+                              .replace(/<\/?[^>]+(>|$)/g, '')
+                              .trim();
+                            ctx.setCtxMenu({
+                              show: true,
+                              x: e.clientX,
+                              y: e.clientY,
+                              items: [
+                                { 
+                                  label: 'Копировать текст', 
+                                  icon: '📋', 
+                                  onClick: () => navigator.clipboard.writeText(plainSystemText)
+                                }
+                              ]
                             });
-                          }
+                          }}
+                        >
+                          {renderSystemMessageContent(msg.text)}
+                        </div>
+                      ))}
+                    </div>
+                  );
+                }
 
-                          menuItems.push(
-                            { isDivider: true } as any,
-                            { 
-                              label: 'Удалить', 
-                              icon: '🗑️', 
-                              isDanger: true, 
-                              onClick: () => {
-                                if (ctx.closeContextMenu) ctx.closeContextMenu();
-                                ctx.showConfirm('Удаление сообщения', 'Удалить это сообщение?', async () => {
-                                  if (ctx.setAllMessages) {
-                                    ctx.setAllMessages((prev: any[]) => prev.filter((m: any) => String(m.id) !== String(msg.id)));
-                                  }
-                                  await supabase.from('messages').delete().eq('id', msg.id);
-                                  ctx.showToast('Сообщение удалено', 'success');
-                                }, true);
-                              }
-                            }
-                          );
+                const isGroupChat = currentChatUser?.type === 'group';
+                const showAvatar = isGroupChat && !cluster.isOutgoing;
 
-                          ctx.setCtxMenu({ show: true, x: e.clientX, y: e.clientY, items: menuItems });
-                        }}
-                      >
-                        <div className={styles['message-bubble']}>
-                          <div className={styles['message-text']}>
-                            {isGroupChat && !isMyMsg && isFirstInRow && (
-                              <span 
-                                className={styles['group-msg-sender-name']} 
-                                style={{ color: senderNameColor }}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  ctx.setShowUserModal(String(msg.senderId));
-                                }}
-                              >
-                                {renderUserStatusBadge(senderUserObj)}
-                                {senderDisplayName}
-                              </span>
-                            )}
+                return (
+                  <div 
+                    key={cluster.clusterId}
+                    className={`${styles['sender-group-container']} ${
+                      cluster.isOutgoing ? styles.outgoing : styles.incoming
+                    }`}
+                  >
+                    {/* 👤 4. БЛОК С АВАТАРКОЙ (залипает снизу пачки, как на скриншотах 3-4) */}
+                    {showAvatar && (
+                      <div className={styles['sender-avatar-col']}>
+                        <SmartAvatar
+                          size={34}
+                          avatarUrl={cluster.senderUserObj?.avatarUrl}
+                          avatarColor={cluster.senderAvatarColor}
+                          name={cluster.senderDisplayName}
+                          onClick={() => ctx.setShowUserModal(cluster.senderId)}
+                        />
+                      </div>
+                    )}
 
-                            {msg.text}
-                            
-                            <span className={styles['message-meta']}>
-                              <span className={styles['message-time']}>
-                                {msg.isEdited && <i>ред. </i>}
-                                {formatHoursAndMinutes(msg.createdAt)}
-                              </span>
-                              {isMyMsg && (
-                                <span className={styles['message-status']}>
-                                  {msg.status === 'sending' && <Clock size={12} style={{ color: '#9ca3af' }} />}
-                                  {msg.status === 'send' && <Check size={14} style={{ color: '#9ca3af' }} />}
-                                  {msg.status === 'read' && <CheckCheck size={14} style={{ color: '#007aff' }} />}
+                    {/* 💬 5. СТОЛБЕЦ СООБЩЕНИЙ ЭТОГО АВТОРА */}
+                    <div className={styles['sender-messages-col']}>
+                      {cluster.messages.map(({ msg, isFirstInGroup, isLastInGroup }) => (
+                        <div 
+                          key={msg.id}
+                          id={`message-${msg.id}`}
+                          className={`${styles['message-list-item']} ${
+                            isFirstInGroup ? styles['first-in-group'] : ''
+                          } ${isLastInGroup ? styles['last-in-group'] : ''}`}
+                        >
+                          <div 
+                            className={`${styles.message} ${
+                              cluster.isOutgoing ? styles['message-outgoing'] : styles['message-incoming']
+                            }`}
+                            onContextMenu={(e) => openMessageContextMenu(e, msg, cluster.isOutgoing)}
+                          >
+                            <div className={styles['message-bubble']}>
+                              <div className={styles['message-text']}>
+                                {/* Имя автора выводится ТОЛЬКО в первом сообщении кластера в группе */}
+                                {isGroupChat && !cluster.isOutgoing && isFirstInGroup && (
+                                  <span 
+                                    className={styles['group-msg-sender-name']} 
+                                    style={{ color: cluster.senderNameColor, cursor: 'pointer' }}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      ctx.setShowUserModal(cluster.senderId);
+                                    }}
+                                  >
+                                    {renderUserStatusBadge(cluster.senderUserObj)}
+                                    {cluster.senderDisplayName}
+                                  </span>
+                                )}
+
+                                {msg.text}
+                                
+                                <span className={styles['message-meta']}>
+                                  <span className={styles['message-time']}>
+                                    {msg.isEdited && <i>ред. </i>}
+                                    {formatHoursAndMinutes(msg.createdAt)}
+                                  </span>
+                                  {cluster.isOutgoing && (
+                                    <span className={styles['message-status']}>
+                                      {msg.status === 'sending' && <Clock size={12} style={{ color: '#9ca3af' }} />}
+                                      {msg.status === 'send' && <Check size={14} style={{ color: '#9ca3af' }} />}
+                                      {msg.status === 'read' && <CheckCheck size={14} style={{ color: '#9ca3af' }} />}
+                                    </span>
+                                  )}
                                 </span>
-                              )}
-                            </span>
+                              </div>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-
-                    if (isGroupChat && !isMyMsg) {
-                      return (
-                        <div className={styles['message-with-avatar']} key={`msg-avatar-group-${msg.id}`}>
-                          {isFirstInRow ? (
-                            <SmartAvatar
-                              size={32}
-                              avatarUrl={senderUserObj?.avatarUrl}
-                              avatarColor={senderAvatarColor}
-                              name={senderDisplayName}
-                              onClick={() => ctx.setShowUserModal(String(msg.senderId))}
-                              className={styles['group-msg-avatar-smart']}
-                            />
-                          ) : (
-                            <div style={{ width: '32px', flexShrink: 0 }} />
-                          )}
-                          {messageBubbleContent}
-                        </div>
-                      );
-                    }
-
-                    return messageBubbleContent;
-                  })()
-                )}
-              </React.Fragment>
-            );
-          })
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ))
         )}
       </div>
 
@@ -887,14 +976,6 @@ export default function ChatWindow() {
         </form>
       )}
 
-      <ContextMenu 
-        show={ctx.ctxMenu.show} 
-        x={ctx.ctxMenu.x} 
-        y={ctx.ctxMenu.y} 
-        onClose={ctx.closeContextMenu} 
-        items={ctx.ctxMenu.items} 
-      />
-
       <AddParticipantsModal
         show={showAddModal}
         existingUserIds={existingUsers}
@@ -903,6 +984,16 @@ export default function ChatWindow() {
           if (ctx.handleAddUsersToGroup) {
             await ctx.handleAddUsersToGroup(activeChatIdStr, selectedIds);
           }
+        }}
+      />
+
+      <StartGroupCallModal
+        show={showStartGroupCallModal}
+        groupName={currentChatUser?.name || 'Беседа'}
+        onClose={() => setShowStartGroupCallModal(false)}
+        onStart={(isSilent) => {
+          setShowStartGroupCallModal(false);
+          ctx.handleStartAudioCall(activeChatIdStr, { isGroup: true, isSilent });
         }}
       />
     </main>

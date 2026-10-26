@@ -23,53 +23,112 @@ export function useRealtimeSubscription(
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'messages' },
-        (payload) => {
+        async (payload) => {
           const changedMessage: any = payload.eventType === 'DELETE' ? payload.old : payload.new;
           const changedChatId = String(changedMessage?.chatId);
           const currentActiveId = activeChatIdRef.current;
 
-          setChats((prevChats) => {
-            const chatIndex = prevChats.findIndex((c) => String(c.id) === changedChatId);
-            if (chatIndex === -1) return prevChats;
+          // -------------------------------------------------------------
+          // 1. ОБРАБОТКА INSERT (Новое сообщение)
+          // -------------------------------------------------------------
+          if (payload.eventType === 'INSERT') {
+            const newMsg = payload.new;
+            const isFromMe = String(newMsg.senderId) === myId;
 
-            const targetChat = { ...prevChats[chatIndex] };
+            setChats((prevChats) => {
+              const chatIndex = prevChats.findIndex((c) => String(c.id) === changedChatId);
+              if (chatIndex === -1) return prevChats;
 
-            if (payload.eventType === 'INSERT') {
-              targetChat.lastMessageId = payload.new.id;
-              targetChat.lastMessageText = payload.new.text;
-              targetChat.lastMessageAt = payload.new.createdAt;
-              targetChat.lastMessageSenderId = payload.new.senderId;
+              const targetChat = { ...prevChats[chatIndex] };
 
-              if (String(currentActiveId) !== changedChatId && String(payload.new.senderId) !== myId) {
+              targetChat.lastMessageId = newMsg.id;
+              targetChat.lastMessageText = newMsg.text;
+              targetChat.lastMessageAt = newMsg.createdAt;
+              targetChat.lastMessageSenderId = newMsg.senderId;
+              // 🎯 Фикс залипания «Вы: »: синхронно обновляем UUID отправителя!
+              targetChat.lastMessageSenderUUID = newMsg.senderId;
+              targetChat.lastMessageStatus = isFromMe ? (newMsg.status || 'send') : null;
+
+              if (String(currentActiveId) !== changedChatId && !isFromMe) {
                 targetChat.unreadCount = (Number(targetChat.unreadCount) || 0) + 1;
               }
 
               const updatedList = [...prevChats];
               updatedList.splice(chatIndex, 1);
               return [targetChat, ...updatedList];
-            }
+            });
+          }
 
-            if (payload.eventType === 'UPDATE') {
+          // -------------------------------------------------------------
+          // 2. ОБРАБОТКА UPDATE (Редактирование сообщения)
+          // -------------------------------------------------------------
+          if (payload.eventType === 'UPDATE') {
+            setChats((prevChats) => {
+              const chatIndex = prevChats.findIndex((c) => String(c.id) === changedChatId);
+              if (chatIndex === -1) return prevChats;
+
+              const targetChat = { ...prevChats[chatIndex] };
               if (String(targetChat.lastMessageId) === String(payload.new.id)) {
                 targetChat.lastMessageText = payload.new.text;
               }
               const updatedList = [...prevChats];
               updatedList[chatIndex] = targetChat;
               return updatedList;
-            }
+            });
+          }
 
-            if (payload.eventType === 'DELETE') {
-              if (String(targetChat.lastMessageId) === String(payload.old.id)) {
-                targetChat.lastMessageText = 'Сообщение удалено';
+          // -------------------------------------------------------------
+          // 3. ОБРАБОТКА DELETE (Удаление сообщения -> откат на предыдущее)
+          // -------------------------------------------------------------
+          if (payload.eventType === 'DELETE') {
+            const deletedId = String(payload.old.id);
+
+            // Ищем актуальное последнее оставшееся сообщение в базе для этого чата
+            const numChatId = Number(changedChatId);
+            const { data: prevMsgs } = await supabase
+              .from('messages')
+              .select('*')
+              .eq('chatId', !isNaN(numChatId) ? numChatId : changedChatId)
+              .neq('id', deletedId)
+              .order('createdAt', { ascending: false })
+              .limit(1);
+
+            const prevMsg = prevMsgs && prevMsgs.length > 0 ? prevMsgs[0] : null;
+
+            setChats((prevChats) => {
+              const chatIndex = prevChats.findIndex((c) => String(c.id) === changedChatId);
+              if (chatIndex === -1) return prevChats;
+
+              const targetChat = { ...prevChats[chatIndex] };
+
+              // Если удалили именно то сообщение, что висело в превью сайдбара
+              if (String(targetChat.lastMessageId) === deletedId) {
+                if (prevMsg) {
+                  targetChat.lastMessageId = prevMsg.id;
+                  targetChat.lastMessageText = prevMsg.text;
+                  targetChat.lastMessageAt = prevMsg.createdAt;
+                  targetChat.lastMessageSenderId = prevMsg.senderId;
+                  targetChat.lastMessageSenderUUID = prevMsg.senderId;
+                  targetChat.lastMessageStatus = String(prevMsg.senderId) === myId ? prevMsg.status : null;
+                } else {
+                  targetChat.lastMessageId = null;
+                  targetChat.lastMessageText = 'Нет сообщений';
+                  targetChat.lastMessageAt = null;
+                  targetChat.lastMessageSenderId = null;
+                  targetChat.lastMessageSenderUUID = null;
+                  targetChat.lastMessageStatus = null;
+                }
               }
+
               const updatedList = [...prevChats];
               updatedList[chatIndex] = targetChat;
               return updatedList;
-            }
-
-            return prevChats;
-          });
-
+            });
+          }
+          
+          // -------------------------------------------------------------
+          // 4. ОБНОВЛЕНИЕ МАССИВА СООБЩЕНИЙ ВНУТРИ АКТИВНОГО ОКНА ЧАТА
+          // -------------------------------------------------------------
           if (!currentActiveId || String(changedChatId) !== String(currentActiveId)) {
             return;
           }
@@ -115,5 +174,5 @@ export function useRealtimeSubscription(
     return () => {
       supabase.removeChannel(messageChannel);
     };
-  }, [currentUser?.uuid, setMessages, setChats]);
+  }, [currentUser?.uuid, currentUser?.id, setMessages, setChats]);
 }

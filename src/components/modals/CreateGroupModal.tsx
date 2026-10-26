@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Users, Check } from 'lucide-react';
 import useMessengerContext from '../../context/messengerContext';
@@ -23,6 +23,21 @@ export default function CreateGroupModal({ show, onClose }: CreateGroupModalProp
   }, [ctx.chats]);
 
   if (!show) return null;
+
+  useEffect(() => {
+    if (!show) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [show, onClose]);
 
   const toggleUserSelection = (userId: string) => {
     setSelectedUserIds((prev) =>

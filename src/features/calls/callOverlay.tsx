@@ -1,154 +1,203 @@
-import React from 'react';
+import { useState, useEffect } from 'react';
 import useMessengerContext from '../../context/messengerContext';
-import { useWebRTCCalls } from '../../hooks/useWebRTCCalls'; // 🚀 Импортируем наш вынесенный WebRTC-движок
-import { Phone, PhoneOff, Volume2, Mic, MicOff, Users } from 'lucide-react';
+import { useWebRTCCalls } from '../../hooks/useWebRTCCalls';
+import { Phone, PhoneOff, Volume2, Mic, MicOff, Users, Minimize2, Maximize2 } from 'lucide-react';
+import styles from '../../components/css/calls.module.css';
 
 export default function CallOverlay() {
   const ctx = useMessengerContext();
-  
-  // Подключаем наш изолированный хук звонков
   const {
     isMuted,
     setIsMuted,
     myVolume,
     conferenceUsers,
-    loadingMembers,
     activeCall,
-    myIdStr
+    myIdStr,
+    speakingUserIds,
   } = useWebRTCCalls(ctx);
 
+  const [callDuration, setCallDuration] = useState(0);
+
+  useEffect(() => {
+    let timer: any;
+    if (activeCall && activeCall.status === 'accepted') {
+      timer = setInterval(() => setCallDuration((prev) => prev + 1), 1000);
+    } else {
+      setCallDuration(0);
+    }
+    return () => clearInterval(timer);
+  }, [activeCall?.status]);
+
   if (!ctx || !activeCall) return null;
-  
-  const isIncoming = !!ctx.incomingCallData; 
-  const isRinging = activeCall.status === 'ringing'; 
 
-  const myName = ctx.currentUser?.username || 'Вы';
-  const myAvatarColor = ctx.currentUser?.avatarColor || '#007aff';
-  const myAvatarUrl = ctx.currentUser?.avatarUrl || '';
+  const isIncoming = Boolean(ctx.incomingCallData);
+  const isRinging = activeCall.status === 'ringing';
+  const isMinimized = Boolean(ctx.isCallMinimized);
 
-  // Вычисляем динамическую высоту полосок частот на основе живого стейта из хука
-  const liveHeight1 = isMuted ? '3px' : `${Math.max(15, Math.min(100, myVolume * 1.8))}%`;
-  const liveHeight2 = isMuted ? '3px' : `${Math.max(15, Math.min(100, myVolume * 2.4))}%`;
-  const liveHeight3 = isMuted ? '3px' : `${Math.max(15, Math.min(100, myVolume * 1.2))}%`;
+  const isMeSpeaking = !isMuted && (speakingUserIds.includes(myIdStr) || myVolume > 15);
+
+  const formatSecs = (sec: number) => {
+    const m = String(Math.floor(sec / 60)).padStart(2, '0');
+    const s = String(sec % 60).padStart(2, '0');
+    return `${m}:${s}`;
+  };
+
+  if (isMinimized && !isRinging) {
+    return (
+      <div className={styles.pipContainer}>
+        <div className={styles.pipTimer}>
+          <span className={styles.pipDot} />
+          <span className={styles.pipTimeText}>{formatSecs(callDuration)}</span>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setIsMuted(!isMuted)}
+          className={`${styles.pipButton} ${isMuted ? styles.pipButtonMuted : ''}`}
+        >
+          {isMuted ? <MicOff size={16} /> : <Mic size={16} />}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => ctx.setIsCallMinimized(false)}
+          className={styles.pipButton}
+          title="Развернуть"
+        >
+          <Maximize2 size={16} />
+        </button>
+
+        <button
+          type="button"
+          onClick={ctx.handleHangUp}
+          className={`${styles.pipButton} ${styles.pipButtonHangUp}`}
+          title="Завершить"
+        >
+          <PhoneOff size={16} />
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <div style={{
-      position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
-      backgroundColor: '#111214', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-      zIndex: 999999, color: '#fff', fontFamily: 'sans-serif'
-    }}>
-      
-      {/* ======================================================== */}
-      {/* ⏳ ФАЗА 1: ЭКРАН ГУДКОВ И ОЖИДАНИЯ ОТВЕТА                 */}
-      {/* ======================================================== */}
+    <div className={styles.fullOverlay}>
+      {!isRinging && (
+        <button
+          type="button"
+          onClick={() => ctx.setIsCallMinimized(true)}
+          className={styles.minimizeButton}
+        >
+          <Minimize2 size={16} />
+          <span>Свернуть</span>
+        </button>
+      )}
+
       {isRinging ? (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '24px' }}>
-          <div style={{ width: '120px', height: '120px', borderRadius: '50%', backgroundColor: isIncoming ? '#2ec761' : '#007aff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 0 0 rgba(0, 122, 255, 0.4)', animation: 'pulse 1.6s infinite' }}>
+        <div className={styles.ringingContainer}>
+          <div
+            className={`${styles.ringingAvatar} ${
+              isIncoming ? styles.ringingIncoming : styles.ringingOutgoing
+            }`}
+          >
             <Volume2 size={44} color="#fff" />
           </div>
           <div>
-            <h2 style={{ fontSize: '26px', fontWeight: 700, margin: '0 0 8px 0' }}>{isIncoming ? 'Входящий аудиозвонок' : 'Исходящий аудиозвонок'}</h2>
-            <p style={{ color: '#9ca3af', margin: 0, fontSize: '14px' }}>Комната: {activeCall.roomName}</p>
+            <h2 className={styles.ringingTitle}>
+              {isIncoming ? 'Входящий звонок' : 'Исходящий вызов...'}
+            </h2>
+            <p className={styles.ringingRoomName}>Комната: {activeCall.roomName}</p>
           </div>
-          <div style={{ display: 'flex', gap: '20px', marginTop: '20px' }}>
+          <div className={styles.ringingActions}>
             {isIncoming ? (
               <>
-                <button type="button" onClick={ctx.handleHangUp} style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: '#ff453a', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}><PhoneOff size={24} color="#fff" /></button>
-                <button type="button" onClick={ctx.handleAcceptCall} style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: '#2ec761', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}><Phone size={24} color="#fff" /></button>
+                <button
+                  type="button"
+                  onClick={ctx.handleHangUp}
+                  className={`${styles.callActionButton} ${styles.hangUpButton}`}
+                >
+                  <PhoneOff size={24} color="#fff" />
+                </button>
+                <button
+                  type="button"
+                  onClick={ctx.handleAcceptCall}
+                  className={`${styles.callActionButton} ${styles.acceptButton}`}
+                >
+                  <Phone size={24} color="#fff" />
+                </button>
               </>
             ) : (
-              <button type="button" onClick={ctx.handleHangUp} style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: '#ff453a', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}><PhoneOff size={24} color="#fff" /></button>
+              <button
+                type="button"
+                onClick={ctx.handleHangUp}
+                className={`${styles.callActionButton} ${styles.hangUpButton}`}
+              >
+                <PhoneOff size={24} color="#fff" />
+              </button>
             )}
           </div>
         </div>
       ) : (
-        /* ======================================================== */
-        /* 🔊 ФАЗА 2: АКТИВНЫЙ ГРУППОВОЙ СОЗВОН (ДИНАМИЧЕСКАЯ СЕТКА)*/
-        /* ======================================================== */
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', maxWidth: '900px', gap: '40px', padding: '0 20px' }}>
-          <div style={{ textAlign: 'center' }}>
-            <h2 style={{ fontSize: '24px', fontWeight: 600, margin: 0, display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'center' }}><Users size={24} color="#2ec761" /> Аудиоконференция беседы</h2>
-            <p style={{ color: '#9ca3af', margin: '6px 0 0 0', fontSize: '13px' }}>Комната: {activeCall.roomName}</p>
+        <div className={styles.activeCallContainer}>
+          <div className={styles.activeCallHeader}>
+            <h2 className={styles.activeCallTitle}>
+              <Users size={24} color="#2ec761" /> Созвон в сети
+            </h2>
+            <div className={styles.activeCallDuration}>{formatSecs(callDuration)}</div>
           </div>
 
-          <div style={{ display: 'flex', gap: '24px', justifyContent: 'center', width: '100%', flexWrap: 'wrap' }}>
-            {/* КАРТОЧКА 1: ВЫ (Всегда первая) */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px', backgroundColor: '#1e1f22', border: '2px solid #2b2d31', borderRadius: '16px', padding: '28px', minWidth: '160px', boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}>
-              
-              {/* <div style={{ width: '84px', height: '84px', borderRadius: '50%', backgroundColor: myAvatarColor, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '32px', fontWeight: 'bold', boxShadow: isMuted ? 'none' : `0 0 0 ${Math.max(2, myVolume / 6)}px #2ec761`, transition: 'box-shadow 0.05s ease' }}>
-                {myName.substring(0, 1).toUpperCase()}
-              </div> */}
-              {myAvatarUrl ? (
-                <img
-                  src={myAvatarUrl}
-                  alt="Avatar"
-                  style={{ width: '84px', height: '84px', borderRadius: '50%', objectFit: 'cover', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}
-                />
-              ) : (
-                <div style={{ width: '84px', height: '84px', borderRadius: '50%', backgroundColor: myAvatarColor, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '32px', fontWeight: 'bold', boxShadow: isMuted ? 'none' : `0 0 0 ${Math.max(2, myVolume / 6)}px #2ec761`, transition: 'box-shadow 0.05s ease' }}>
-                  {myName.substring(0, 1).toUpperCase()}
-                </div>
-              )}
-
-              <span style={{ fontSize: '15px', fontWeight: '600', color: '#fff' }}>{myName} (Вы)</span>
-              <div style={{ display: 'flex', gap: '3px', height: '16px', alignItems: 'flex-end', marginTop: '2px' }}>
-                <div style={{ width: '3px', height: liveHeight1, backgroundColor: '#2ec761', borderRadius: '2px' }} />
-                <div style={{ width: '3px', height: liveHeight2, backgroundColor: '#2ec761', borderRadius: '2px' }} />
-                <div style={{ width: '3px', height: liveHeight3, backgroundColor: '#2ec761', borderRadius: '2px' }} />
+          <div className={styles.participantsGrid}>
+            {/* Текущий юзер */}
+            <div className={styles.userCard}>
+              <div
+                className={`${styles.userAvatarCircle} ${isMeSpeaking ? styles.avatarSpeaking : ''}`}
+                style={{ backgroundColor: '#007aff' }}
+              >
+                {(ctx.currentUser?.username || 'U')[0].toUpperCase()}
               </div>
+              <span className={styles.userNameText}>
+                {ctx.currentUser?.username || 'Вы'} (Вы)
+              </span>
+              {/* {isMeSpeaking && <div className={styles.speakingBadge}>Говорит...</div>} */}
             </div>
 
-            {/* КАРТОЧКИ ОСТАЛЬНЫХ РЕАЛЬНЫХ УЧАСТНИКОВ */}
-            {loadingMembers ? (
-              <div style={{ color: '#9ca3af', fontSize: '14px', alignSelf: 'center' }}>Синхронизация участников...</div>
-            ) : (
-              conferenceUsers.map((member) => {
-                const memberNameText = `${member.firstName || ''} ${member.lastName || ''}`.trim() || member.username;
-                return (
-                  <div key={member.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px', backgroundColor: '#1e1f22', border: '2px solid #2b2d31', borderRadius: '16px', padding: '28px', minWidth: '160px', boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}>
-                    
-                    {member.avatarUrl ? (
-                      <img
-                        src={member.avatarUrl}
-                        alt="Avatar"
-                        style={{ width: '84px', height: '84px', borderRadius: '50%', objectFit: 'cover', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}
-                      />
-                    ) : (
-                      <div style={{ width: '84px', height: '84px', borderRadius: '50%', backgroundColor: member.avatarColor || '#5865F2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '32px', fontWeight: 'bold', boxShadow: `0 0 0 4px #2ec761`, animation: 'voice-pulse 1.4s infinite alternate' }}>
-                        {memberNameText.substring(0, 1).toUpperCase()}
-                      </div>
-                    )}
-
-                    <span style={{ fontSize: '15px', fontWeight: '600', color: '#fff' }}>{memberNameText}</span>
-                    <div style={{ display: 'flex', gap: '3px', height: '16px', alignItems: 'flex-end', marginTop: '2px' }}>
-                      <div style={{ width: '3px', height: liveHeight3, backgroundColor: '#2ec761', borderRadius: '2px' }} />
-                      <div style={{ width: '3px', height: liveHeight1, backgroundColor: '#2ec761', borderRadius: '2px' }} />
-                      <div style={{ width: '3px', height: liveHeight2, backgroundColor: '#2ec761', borderRadius: '2px' }} />
-                    </div>
+            {/* Собеседники */}
+            {conferenceUsers.map((m: any) => {
+              const isSpeaking = speakingUserIds.includes(String(m.id));
+              return (
+                <div key={m.id} className={styles.userCard}>
+                  <div
+                    className={`${styles.userAvatarCircle} ${isSpeaking ? styles.avatarSpeaking : ''}`}
+                    style={{ backgroundColor: m.avatarColor || '#5865F2' }}
+                  >
+                    {(m.username || 'U')[0].toUpperCase()}
                   </div>
-                );
-              })
-            )}
+                  <span className={styles.userNameText}>{m.username}</span>
+                  {/* {isSpeaking && <div className={styles.speakingBadge}>Говорит...</div>} */}
+                </div>
+              );
+            })}
           </div>
 
-          <div style={{ display: 'flex', gap: '24px', backgroundColor: '#141517', padding: '14px 40px', borderRadius: '28px', border: '1px solid #2b2d31' }}>
-            <button type="button" onClick={() => setIsMuted(!isMuted)} style={{ width: '46px', height: '46px', borderRadius: '50%', backgroundColor: isMuted ? '#ff453a' : '#2b2d31', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>{isMuted ? <MicOff size={22} /> : <Mic size={22} />}</button>
-            <button type="button" onClick={ctx.handleHangUp} style={{ width: '46px', height: '46px', borderRadius: '50%', backgroundColor: '#ff453a', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 4px 14px rgba(255, 69, 58, 0.4)' }}><PhoneOff size={22} /></button>
+          <div className={styles.controlBar}>
+            <button
+              type="button"
+              onClick={() => setIsMuted(!isMuted)}
+              className={`${styles.controlButton} ${
+                isMuted ? styles.micMuted : styles.micActive
+              }`}
+            >
+              {isMuted ? <MicOff size={20} /> : <Mic size={20} />}
+            </button>
+            <button
+              type="button"
+              onClick={ctx.handleHangUp}
+              className={`${styles.controlButton} ${styles.hangUpButton}`}
+            >
+              <PhoneOff size={20} />
+            </button>
           </div>
         </div>
       )}
-
-      <style>{`
-        @keyframes pulse {
-          0% { transform: scale(0.95); boxShadow: 0 0 0 0 rgba(0, 122, 255, 0.4); }
-          70% { transform: scale(1); boxShadow: 0 0 0 20px rgba(0, 122, 255, 0); }
-          100% { transform: scale(0.95); boxShadow: 0 0 0 0 rgba(0, 122, 255, 0); }
-        }
-        @keyframes voice-pulse {
-          0% { boxShadow: 0 0 0 2px #2ec761; }
-          100% { boxShadow: 0 0 0 8px rgba(46, 199, 97, 0.4); }
-        }
-      `}</style>
     </div>
   );
 }

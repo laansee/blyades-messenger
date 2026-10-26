@@ -1,6 +1,5 @@
-import React from 'react';
 import styles from '../css/profile.module.css';
-import { Megaphone, ShieldCheck, X, Pencil, Copy, Hash } from 'lucide-react';
+import { ShieldCheck, X, Copy, Hash } from 'lucide-react';
 import SmartAvatar from '../common/SmartAvatar';
 
 interface ChannelProfileViewProps {

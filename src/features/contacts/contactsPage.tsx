@@ -1,9 +1,9 @@
 import { useEffect } from 'react';
 import mainStyle from '../../components/css/main.module.css';
 import useMessengerContext from '../../context/messengerContext';
-import NavSidebar from '../navigation/nav-sidebar';
-import ContactsSidebar from './contacts-sidebar';
-import ChatWindow from '../chat/chat-window';
+import NavSidebar from '../navigation/NavSidebar';
+import ContactsSidebar from './ContactsSidebar';
+import ChatWindow from '../chat/ChatWindow';
 
 export default function ContactsPage() {
   const ctx = useMessengerContext();

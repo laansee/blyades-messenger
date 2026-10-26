@@ -6,8 +6,8 @@ import {
   type ToastState, 
   type ConfirmState 
 } from '../components/common/GlobalUI';
-import ProfileModal from '../components/profile/profileModal'; 
-import CallModal from '../features/calls/callOverlay'; 
+// import ProfileModal from '../components/profile/profileModal'; 
+// import CallModal from '../features/calls/CallOverlay'; 
 
 // Импортируем наши изолированные хуки логики
 import { useCallsLogic } from './messenger/useCallsLogic';
@@ -55,6 +55,7 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [typingUser, setTypingUser] = useState(false);
   const [ctxMenu, setCtxMenu] = useState({ show: false, x: 0, y: 0, items: [] as any[] });
+  const [showCallsHistoryModal, setShowCallsHistoryModal] = useState(false);
   
   const [toast, setToast] = useState<ToastState>({
     show: false,
@@ -906,11 +907,16 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
         showToast, showConfirm, closeContextMenu,
         handleCopyMessageText, handleSendMessage,
         handleKeyDown, handleLogout,
+        showCallsHistoryModal, setShowCallsHistoryModal,
         currentCall: calls.currentCall,
         setCurrentCall: calls.setCurrentCall,
         incomingCallData: calls.incomingCallData,
         setIncomingCallData: calls.setIncomingCallData,
+        isCallMinimized: calls.isCallMinimized,
+        setIsCallMinimized: calls.setIsCallMinimized,
+        activeGroupCalls: calls.activeGroupCalls,
         handleStartAudioCall: calls.handleStartAudioCall,
+        handleJoinExistingCall: calls.handleJoinExistingCall,
         handleAcceptCall: calls.handleAcceptCall,
         handleHangUp: calls.handleHangUp,
         handleCreateGroupChat: groups.handleCreateGroupChat,
@@ -923,25 +929,27 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
       {/* ==================================================== */}
       {/* 📞 НАТИВНОЕ ОКНО ЗВOНКОВ (ИСХОДЯЩИЕ И ВХОДЯЩИЕ)      */}
       {/* ==================================================== */}
-      {(calls.currentCall || calls.incomingCallData) && (
+      {/* {(calls.currentCall || calls.incomingCallData) && (
         <CallModal 
           currentCall={calls.currentCall} 
           setCurrentCall={calls.setCurrentCall}
           incomingCallData={calls.incomingCallData}
           setIncomingCallData={calls.setIncomingCallData}
         />
-      )}
+      )} */}
 
       {/* ===================================================== */}
       {/* 👤 ГЛАВНАЯ МОДАЛКА ПРОФИЛЕЙ (ЮЗЕРЫ, КОНТАКТЫ, ГРУППЫ) */}
       {/* ===================================================== */}
-      <ProfileModal />
+      {/* <ProfileModal /> */}
+
       {/* ==================================== */}
       {/* 🚀 ВЫЗОВ ТОСТА СЛОЕМ ПОВЕРХ ОКНА    */}
       {/* ==================================== */}
       <div style={{ position: 'fixed', top: '24px', right: '24px', zIndex: 999999 }}>
         <ToastNotification toast={toast} />
       </div>
+
       {/* ==================================== */}
       {/* 🚀 2. ВЫЗОВ  МОДAЛКИ ПОДТВЕРЖДЕНИЯ   */}
       {/* ==================================== */}

@@ -1,8 +1,6 @@
 import { formatUserOnlineStatus } from '../../context/messengerContext';
 import styles from '../css/profile.module.css';
 import { renderUserStatusBadge } from '../../utils/statusBadge';
-import { userService } from '../../services/userService';
-import CreateContactModal from '../modals/CreateContactModal';
 import { X, Copy, Hash, Plus, Settings, MessagesCircle, Bell, BellRing, BellOff, Phone } from 'lucide-react';
 import SmartAvatar from '../common/SmartAvatar';
 
@@ -67,6 +65,15 @@ export default function UserProfileView({
   const statusInfo = formatUserOnlineStatus(currentChatUser?.updatedAt, currentChatUser?.privacyOnline);
 
   const myIdDisplay = currentChatUser.id ? `#${currentChatUser.id}` : currentChatUser.uuid?.slice(0, 8);
+
+  // 1. Ищем НАСТОЯЩИЙ публичный профиль из таблицы users (без локальных имен контакта)
+  const rawUser = (ctx.users || []).find((u: any) => 
+    String(u.uuid || u.id) === partnerIdentifier
+  ) || currentChatUser;
+
+  const publicFirstName = rawUser?.firstName || '';
+  const publicLastName = rawUser?.lastName || '';
+  const publicFullName = `${publicFirstName} ${publicLastName}`.trim();
 
   const handleCopy = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -170,14 +177,13 @@ export default function UserProfileView({
           >
             <div className={styles['info-item-content']}>
               <span className={styles['info-value']}>
-                {`${currentChatUser.firstName || ''} ${currentChatUser.lastName || ''}`.trim()}
+                {publicFullName}
               </span>
               <span className={styles['info-label']}>Настоящие Имя и Фамилия</span>
             </div>
             <Copy size={16} className={styles['info-icon']} />
           </div>
         )}
-        
         
         <div
           onClick={() => handleCopy(`@${currentChatUser.uniqueId || currentChatUser.username}`, 'Тег пользователя')}
@@ -189,7 +195,7 @@ export default function UserProfileView({
             </span>
             <span className={styles['info-label']}>Имя пользователя</span>
           </div>
-            <Copy size={18} className={styles['info-icon']} />
+          <Copy size={18} className={styles['info-icon']} />
         </div>
 
         

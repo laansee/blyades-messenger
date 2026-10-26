@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { NavLink } from 'react-router';
 import styles from '../../components/css/nav-sidebar.module.css';
 import { 
@@ -10,8 +10,6 @@ import {
   Phone,
   Bookmark,
   Settings, 
-  Moon, 
-  Ghost, 
   Plus, 
   ChevronDown, 
   ChevronUp,
@@ -24,9 +22,7 @@ import SmartAvatar from '../../components/common/SmartAvatar';
 
 export default function NavSidebar({
   onOpenCreateGroup,
-  onOpenCreateChannel,
-  onOpenContactsModal,
-  onOpenCallsModal
+  onOpenCreateChannel
 }: {
   onOpenCreateGroup?: () => void;
   onOpenCreateChannel?: () => void;
@@ -132,17 +128,17 @@ export default function NavSidebar({
               </div>
               <span className={styles.accountRowName}>Добавить аккаунт</span>
             </div>
-
-            <div className={styles.menuDivider} />
           </div>
         )}
 
         {/* ======================================================== */}
         {/* 2. ОСНОВНОЙ СПИСОК ПУНКТОВ МЕНЮ                         */}
         {/* ======================================================== */}
+
         <div className={styles.menuList}>
 
-          {/* Настройки */}
+          <div className={styles.menuDivider} />
+
           <NavLink 
             to="/chat" 
             className={({ isActive }) => `${styles.menuItem} ${isActive ? styles.active : ''}`}
@@ -165,78 +161,6 @@ export default function NavSidebar({
             <Archive size={20} className={styles.itemIcon} />
             <span className={styles.itemText}>Архив</span>
             <span className={styles.unreadPill}>0</span>
-          </button>
-
-          {/* Мой профиль */}
-          <button 
-            type="button" 
-            className={styles.menuItem}
-            onClick={() => {
-              closeNav();
-              ctx.setShowUserModal(ctx.currentUser?.uuid || true);
-            }}
-          >
-            <CircleUser size={20} className={styles.itemIcon} />
-            <span className={styles.itemText}>Мой профиль</span>
-          </button>
-
-          {/* Создать группу */}
-          <button 
-            type="button" 
-            className={styles.menuItem}
-            onClick={() => {
-              closeNav();
-              onOpenCreateGroup?.();
-            }}
-          >
-            <Users size={20} className={styles.itemIcon} />
-            <span className={styles.itemText}>Создать группу</span>
-          </button>
-
-          {/* Создать канал */}
-          <button 
-            type="button" 
-            className={styles.menuItem}
-            onClick={() => {
-              closeNav();
-              onOpenCreateChannel?.();
-            }}
-          >
-            <Megaphone size={20} className={styles.itemIcon} />
-            <span className={styles.itemText}>Создать канал</span>
-          </button>
-
-          {/* Контакты (модалка или переход) */}
-          <button 
-            type="button" 
-            className={`${styles.menuItem} ${styles.disabledItem}`}
-            disabled
-            title="Окно контактов в разработке"
-          >
-            <User size={20} className={styles.itemIcon} />
-            <span className={styles.itemText}>Контакты</span>
-          </button>
-
-          {/* Звонки (модалка или переход) */}
-          <button 
-            type="button" 
-            className={`${styles.menuItem} ${styles.disabledItem}`}
-            disabled
-            title="Звонки в разработке"
-          >
-            <Phone size={20} className={styles.itemIcon} />
-            <span className={styles.itemText}>Звонки</span>
-          </button>
-
-          {/* Избранное (не реализовано) */}
-          <button 
-            type="button" 
-            className={`${styles.menuItem} ${styles.disabledItem}`}
-            disabled
-            title="Избранные сообщения в разработке"
-          >
-            <Bookmark size={20} className={styles.itemIcon} />
-            <span className={styles.itemText}>Избранное</span>
           </button>
 
           {/* Настройки */}
@@ -266,6 +190,82 @@ export default function NavSidebar({
               <span className={styles.itemText} style={{ color: '#ffcc00' }}>Админ панель</span>
             </NavLink>
           )}
+
+          <div className={styles.menuDivider} />
+
+          {/* Мой профиль */}
+          <button 
+            type="button" 
+            className={styles.menuItem}
+            onClick={() => {
+              ctx.setShowUserModal(true);
+              ctx.setIsNavOpen?.(false);
+            }}
+          >
+            <CircleUser size={20} className={styles.itemIcon} />
+            <span className={styles.itemText}>Мой профиль</span>
+          </button>
+
+          {/* Избранное (не реализовано) */}
+          <button 
+            type="button" 
+            className={`${styles.menuItem} ${styles.disabledItem}`}
+            disabled
+            title="Избранные сообщения в разработке"
+          >
+            <Bookmark size={20} className={styles.itemIcon} />
+            <span className={styles.itemText}>Избранное</span>
+          </button>
+
+          {/* Контакты (модалка или переход) */}
+          <button 
+            type="button" 
+            className={`${styles.menuItem} ${styles.disabledItem}`}
+            disabled
+            title="Окно контактов в разработке"
+          >
+            <User size={20} className={styles.itemIcon} />
+            <span className={styles.itemText}>Контакты</span>
+          </button>
+
+          {/* Звонки (модалка) */}
+          <button 
+            type="button" 
+            className={styles.menuItem}
+            onClick={() => {
+              closeNav();
+              ctx.setShowCallsHistoryModal?.(true);
+            }}
+          >
+            <Phone size={20} className={styles.itemIcon} />
+            <span className={styles.itemText}>Звонки</span>
+          </button>
+
+          {/* Создать группу */}
+          <button 
+            type="button" 
+            className={styles.menuItem}
+            onClick={() => {
+              closeNav();
+              onOpenCreateGroup?.();
+            }}
+          >
+            <Users size={20} className={styles.itemIcon} />
+            <span className={styles.itemText}>Создать группу</span>
+          </button>
+
+          {/* Создать канал */}
+          <button 
+            type="button" 
+            className={styles.menuItem}
+            onClick={() => {
+              closeNav();
+              onOpenCreateChannel?.();
+            }}
+          >
+            <Megaphone size={20} className={styles.itemIcon} />
+            <span className={styles.itemText}>Создать канал</span>
+          </button>
 
           <div className={styles.menuDivider} />
 

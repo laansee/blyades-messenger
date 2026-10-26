@@ -22,7 +22,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ userStatus, className 
     <span
       className={className}
       title={config.title}
-      style={{ cursor: 'help', userSelect: 'none', marginRight: '4px', display: 'inline-flex', verticalAlign: 'middle' }}
+      style={{ cursor: 'help', userSelect: 'none', display: 'inline-flex', verticalAlign: 'middle' }}
     >
       {config.icon}
     </span>

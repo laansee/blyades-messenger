@@ -1,36 +1,3 @@
-@media (max-width: 541px) {
-  /* .setSidebar {width:calc(100% - 70px);} */
-  .setSidebar {display: none;}
-}
-@media (min-width: 542px) and (max-width: 719px) {
-  .setSidebar {
-    /* width:calc(100% - 70px); */
-    display: flex;
-    flex-direction: column;}
-}
-@media (min-width: 720px) {
-  .setSidebar {
-    width: 320px;
-    display: flex;
-    flex-direction: column;}
-}
-
-@media (max-width: 1079px) {
-  .settingsPreview {
-    display: none;
-  }
-}
-@media (min-width: 1080px) {
-  .settingsPreview {
-    display: flex; 
-    flex-direction: column;
-    gap: 20px;
-  }
-  .settingsPreviewShow {
-    display: none;
-  }
-}
-
 .setSidebar {
   background-color: var(--bg-main);
   border-right: 1px solid var(--border);
@@ -38,7 +5,7 @@
   flex-direction: column; */
 }
 .setSidebarHeader {
-  padding: 20px;
+  padding: 10px;
   display: flex;
   flex-direction: column;
   gap: 15px;}
@@ -106,9 +73,12 @@
 .settingsContainer {
   flex: 1;
   background-color: #121216;
-  overflow-y: auto;
+  overflow: hidden; /* 🚫 Отключаем скролл на самом окне */
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0; /* 🎯 Позволяет дочерним flex-элементам сжиматься и скроллиться */
+  box-sizing: border-box;
   font-family: system-ui, -apple-system, sans-serif;}
 .settingsFormCard {
   display: flex;
@@ -116,7 +86,8 @@
   justify-content: flex-start;
   gap: 16px;
   padding: 20px;
-  overflow: auto;}
+  box-sizing: border-box;
+  width: 100%;}
 .settingsHeader {
   width: 100%;
   display: flex;
@@ -128,9 +99,6 @@
   font-weight: 500;
   display: inline-flex;
   gap: 5px;}
-.settingsPreviewShow {
-
-}
 
 .settingsFormContainer {
   display: flex;
@@ -146,7 +114,13 @@
   border-radius: 14px; 
   display: flex; 
   flex-direction: column; 
-  overflow: hidden;}
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  height: auto;
+  max-height: calc(100vh - 120px);
+  box-sizing: border-box;}
 .settingsFormInput {
   display: flex;
   justify-content: space-between;
@@ -210,15 +184,18 @@
   width: 380px; 
   background-color: #14141c;
   border-left: 1px solid #2b2d31;
-  padding: 40px 24px;
-  box-sizing: border-box;}
+  padding: 16px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  /* gap: 20px; */
+}
 .settingsPreviewChange span {
   font-size: 14px;
   text-transform: uppercase;
   color: #8e8e93;
   font-weight: bold;
-  display: block;
-  margin-bottom: 16px;}
+  display: block;}
 .settingsPreviewChange div {
   display: flex;
   background-color: #1e1f22;
@@ -233,3 +210,164 @@
   cursor: pointer;
   color: #fff}
   
+
+/* Кнопка «Назад» для мобильного режима */
+.mobileBackBtn {
+  display: none;
+  background: none;
+  border: none;
+  color: #9d7bf6;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 8px;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease;
+}.mobileBackBtn:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+/* Кнопка вызова выдвижного предпросмотра */
+.togglePreviewBtn {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  background-color: #23232e;
+  border: 1px solid #383842;
+  color: #fff;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.togglePreviewBtn:hover {
+  background-color: #2b2b38;
+  border-color: #9d7bf6;
+}/* Затемняющий оверлей за шторкой предпросмотра */
+.previewBackdrop {
+  display: none;
+}
+
+/* Кнопка закрытия внутри мобильного предпросмотра */
+.previewCloseBtn {
+  display: none;
+  background: none;
+  border: none;
+  color: #8e8e93;
+  cursor: pointer;
+  padding: 4px;
+}
+
+/* 💻 Планшетный режим (скрываем правую колонку, предпросмотр по кнопке) */
+@media (max-width: 1100px) {
+  .togglePreviewBtn {
+    display: flex !important;
+  }
+
+  /* Панель предпросмотра */
+  .settingsPreview {
+    position: fixed !important;
+    top: 0 !important;
+    right: 0 !important;
+    width: 380px !important;
+    max-width: 90vw !important;
+    height: 100vh !important;
+    background-color: #16171b !important;
+    border-left: 1px solid #2b2d31 !important;
+    z-index: 10000 !important;
+    /* 🎯 Тень активируется ТОЛЬКО в открытом состоянии, чтобы не светить справа в закрытом */
+    box-shadow: none !important;
+    overflow-y: auto !important;
+    padding: 10px 12px 24px !important;
+    box-sizing: border-box !important;
+    transform: translateX(110%) !important;
+    visibility: hidden; /* Полностью скрываем закрытую шторку от рендера */
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.25s ease !important;
+    display: flex !important;
+  }
+
+  .settingsPreview.open {
+    transform: translateX(0) !important;
+    visibility: visible !important;
+    box-shadow: -10px 0 30px rgba(0, 0, 0, 0.7) !important;
+  }
+
+  .previewCloseBtn {
+    display: flex !important;
+    align-items: center;
+    justify-content: flex-end;
+  }
+
+  .previewBackdrop {
+    display: block !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background-color: rgba(0, 0, 0, 0.65) !important;
+    backdrop-filter: blur(4px) !important;
+    z-index: 9999 !important;
+  }
+}
+
+/* 📱 Смартфоны (до 768px): поведение экрана 1-в-1 как в /chat */
+@media (max-width: 768px) {
+  .mobileBackBtn {
+    display: flex !important;
+  }
+
+  .setSidebar {
+    width: 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+    border-right: none !important;
+  }
+
+  .settingsContainer {
+    width: 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Если открыт список разделов — прячем форму */
+  .viewMenu .settingsContainer {
+    display: none !important;
+  }
+  .viewMenu .setSidebar {
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 !important;
+  }
+
+  /* Если открыта форма — прячем список разделов */
+  .viewContent .setSidebar {
+    display: none !important;
+  }
+  .viewContent .settingsContainer {
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 !important;
+  }
+}
+
+/* Кастомизация скроллбара внутри закругленного блока (аккуратный тонкий ползунок) */
+.settingsFormFields::-webkit-scrollbar {
+  width: 6px;
+}
+
+.settingsFormFields::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.settingsFormFields::-webkit-scrollbar-thumb {
+  background-color: #2b2d38;
+  border-radius: 10px;
+}
+
+.settingsFormFields::-webkit-scrollbar-thumb:hover {
+  background-color: #9d7bf6;
+}

@@ -11,7 +11,7 @@ import {
   NameColorSelectorModal
 } from '../../components/common/GlobalUI';
 
-export default function EditProfile({ state, setters, title, Icon }: any) {
+export default function EditProfile({ state, setters }: any) {
   const ctx = useMessengerContext();
   const currentUser = ctx.currentUser;
   const userUuid = String(currentUser?.uuid || currentUser?.id);
@@ -110,7 +110,7 @@ export default function EditProfile({ state, setters, title, Icon }: any) {
     let titleModal = '';
     let fields: EditorInputField[] = [];
     let initialValues: Record<string, string> = {};
-    let onSaveAction = async (values: Record<string, string>) => {};
+    let onSaveAction = async (_values: Record<string, string>) => {};
 
     if (type === 'name') {
       titleModal = 'Редактирование имени';
@@ -273,13 +273,6 @@ export default function EditProfile({ state, setters, title, Icon }: any) {
 
   return (
     <div className={styles.settingsFormCard} style={{ width: '100%' }}>
-      <div className={styles.settingsHeader}>
-        <h3 className={styles.settingsFormTitle}>
-          {Icon}
-          <span>{title}</span>
-        </h3>
-      </div>
-
       <div className={styles.settingsFormFields}>
         <div 
           onClick={() => setShowUploadSelector(true)} 
@@ -361,7 +354,7 @@ export default function EditProfile({ state, setters, title, Icon }: any) {
         <div 
           onClick={() => openEditor('about')} 
           className={styles.settingsFormInput}
-          style={{ cursor: 'pointer' }}
+          style={{ cursor: 'pointer', borderBottom: 'none' }}
         >
           <div className={styles.settingsFormInputText}>
             <span className={styles.settingsFormInputTitle}>О себе</span>
