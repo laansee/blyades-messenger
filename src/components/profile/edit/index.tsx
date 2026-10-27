@@ -1,5 +1,6 @@
 import { ContactEditForm } from './ContactEditForm';
-import { GroupChannelEditForm } from './GroupChannelEditForm';
+import { GroupEditForm } from './GroupEditForm';
+import { ChannelEditForm } from './ChannelEditForm';
 
 export interface EditModeProps {
   currentChatUser: any;
@@ -22,14 +23,15 @@ export interface EditModeProps {
 
 export default function EditMode(props: EditModeProps) {
   const { currentChatUser } = props;
-  const isGroupOrChannel = 
-    currentChatUser?.isGroup || 
-    currentChatUser?.isChannel || 
-    currentChatUser?.type === 'group' || 
-    currentChatUser?.type === 'channel';
+  const isChannel = currentChatUser?.isChannel || currentChatUser?.type === 'channel';
+  const isGroup = currentChatUser?.isGroup || currentChatUser?.type === 'group';
 
-  if (isGroupOrChannel) {
-    return <GroupChannelEditForm {...props} />;
+  if (isChannel) {
+    return <ChannelEditForm {...props} />;
+  }
+
+  if (isGroup) {
+    return <GroupEditForm {...props} />;
   }
 
   return <ContactEditForm {...props} />;

@@ -274,6 +274,22 @@
 .dropdown-item.danger:hover svg {
   stroke: #ff6666 !important;}
 
+/* Бейдж справа от текста («В разработке» и т.п.) */
+.dropdown-item-badge {
+  font-size: 11px;
+  color: #8e8e93;
+  background-color: rgba(255, 255, 255, 0.08);
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-weight: 500;
+  user-select: none;}
+
+/* Отключённый пункт меню */
+.dropdown-item-disabled {
+  opacity: 0.5;
+  cursor: not-allowed !important;}
+.dropdown-item-disabled:hover {background-color: transparent !important;}
+
 /* -------------------------------------- */
 /* ------------- EditorModal ------------ */
 /* -------------------------------------- */

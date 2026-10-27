@@ -12,7 +12,6 @@ export function useGroupChats(
 
     const myUuid = String(currentUser.uuid || currentUser.id);
     const nowIso = new Date().toISOString();
-    const startText = 'Беседа создана';
     
     const avatarColors = ['#5865F2', '#57F287', '#FEE75C', '#EB459E', '#ED4245'];
     const randomAvatarColor = avatarColors[Math.floor(Math.random() * avatarColors.length)];
@@ -20,7 +19,7 @@ export function useGroupChats(
     try {
       showToast('Создание беседы...', 'info');
 
-      // 1. Записываем метаданные о беседе в таблицу group_chats
+      // 1. Создаём запись беседы в таблице chats
       const { data: newChat, error: groupError } = await supabase
         .from('chats')
         .insert([{
@@ -29,8 +28,8 @@ export function useGroupChats(
           avatarColor: randomAvatarColor,
           createdBy: myUuid,
           uniqueId: `group_${Date.now()}`,
-          lastMessageText: startText,
-          lastMessageAt: nowIso,
+          lastMessageType: 'text',
+          lastMessageSenderUUID: '00000000-0000-0000-0000-000000000000',
           createdAt: nowIso,
           updatedAt: nowIso
         }])
@@ -41,6 +40,7 @@ export function useGroupChats(
 
       const newChatNumericId = newChat.id;
 
+      // 2. Добавляем участников в chat_members
       const allMemberUuids = Array.from(new Set([myUuid, ...selectedUserIds.map(String)]));
       const membersToInsert = allMemberUuids.map(uid => ({
         chatId: newChatNumericId,
@@ -55,16 +55,41 @@ export function useGroupChats(
 
       if (membersError) throw membersError;
 
-      // 3. Отправляем стартовое системное сообщение в messages
-      await supabase
-        .from('messages')
-        .insert([{
+      // 3. Формируем шаблонные системные сообщения
+      const creationText = `{{user:${myUuid}}} создал беседу {{chat:${newChatNumericId}}}`;
+      const messagesToInsert: any[] = [
+        {
           chatId: newChatNumericId,
           senderId: '00000000-0000-0000-0000-000000000000',
-          text: `Пользователь <b>${currentUser.username || 'Пользователь'}</b> создал(а) беседу <b>${groupName.trim()}</b>`,
+          text: creationText,
           status: 'send',
           createdAt: nowIso
-        }]);
+        }
+      ];
+
+      // Добавляем сообщения приглашения для каждого выбранного пользователя
+      selectedUserIds.forEach((targetUuid, idx) => {
+        messagesToInsert.push({
+          chatId: newChatNumericId,
+          senderId: '00000000-0000-0000-0000-000000000000',
+          text: `{{user:${myUuid}}} пригласил(а) {{user:${targetUuid}}} в беседу`,
+          status: 'send',
+          // Добавляем небольшое смещение во времени, чтобы сохранить хронологию
+          createdAt: new Date(Date.now() + (idx + 1) * 10).toISOString()
+        });
+      });
+
+      await supabase.from('messages').insert(messagesToInsert);
+
+      // 4. Обновляем lastMessageText в самой беседе для сайдбара
+      const lastMessageText = messagesToInsert[messagesToInsert.length - 1].text;
+      await supabase
+        .from('chats')
+        .update({
+          lastMessageText: lastMessageText,
+          lastMessageAt: new Date().toISOString()
+        })
+        .eq('id', newChatNumericId);
 
       if (fetchAndMatchChats) {
         await fetchAndMatchChats();

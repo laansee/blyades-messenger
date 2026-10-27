@@ -8,46 +8,94 @@ export function useCallsLogic(currentUser: any, showToast: any) {
   const [isCallMinimized, setIsCallMinimized] = useState<boolean>(false);
   const [activeGroupCalls, setActiveGroupCalls] = useState<Record<string, any>>({});
 
-  // ЧИСЛОВОЙ ID пользователя для колонок int8 в Supabase (callerId, userId)
-  const myNumericId = Number(currentUser?.id);
-  const myIdStr = String(currentUser?.id || '');
+  // Вспомогательная функция для надёжного извлечения числового ID пользователя
+  const resolveNumericId = async (userObj: any): Promise<number | null> => {
+    if (!userObj) return null;
+    const directNum = Number(userObj.id);
+    if (!isNaN(directNum) && directNum > 0) return directNum;
+
+    // Если userObj.id это UUID — ищем числовой ID в таблице users
+    const uuidToSearch = userObj.uuid || userObj.id;
+    if (uuidToSearch) {
+      const { data } = await supabase
+        .from('users')
+        .select('id')
+        .or(`uuid.eq.${uuidToSearch},id.eq.${uuidToSearch}`)
+        .maybeSingle();
+
+      if (data && Number(data.id)) {
+        return Number(data.id);
+      }
+    }
+    return null;
+  };
 
   // 📞 Старт звонка
   const handleStartAudioCall = async (targetId: string | number, options?: { isGroup?: boolean; isSilent?: boolean }) => {
-    if (!currentUser || !myNumericId) {
+    let effectiveUser = currentUser;
+    if (!effectiveUser) {
+      const { data: { session } } = await supabase.auth.getSession();
+      effectiveUser = session?.user;
+    }
+
+    if (!effectiveUser) {
       showToast('Ошибка авторизации профиля', 'error');
+      return;
+    }
+
+    // 🎯 Разрешаем числовой ID даже если у пользователя строковый UUID
+    const myNumericId = await resolveNumericId(effectiveUser);
+    const myIdStr = String(myNumericId || effectiveUser.id || '');
+
+    if (!myNumericId) {
+      console.error('[WebRTC] Не удалось определить числовой ID для пользователя:', effectiveUser);
+      showToast('Ошибка: профиль не найден в базе', 'error');
       return;
     }
 
     const isGroup = options?.isGroup || String(targetId).startsWith('group_');
     const isSilent = Boolean(options?.isSilent);
 
-    // Гарантируем, что для групп в receiverId всегда пишется "group_ID"
     const rawTargetId = String(targetId).replace('group_', '');
     const receiverIdStr = isGroup ? `group_${rawTargetId}` : String(targetId);
 
-    // Защита от звонка самому себе в ЛС
-    if (!isGroup && receiverIdStr === myIdStr) {
+    if (!isGroup && (receiverIdStr === myIdStr || receiverIdStr === String(effectiveUser.uuid))) {
       showToast('Вы не можете позвонить самому себе! ❌', 'error');
       return;
     }
 
     try {
-      // Имя комнаты: call_group_123 для групп, call_minId_maxId для direct
+      // Для личного звонка также пытаемся определить числовой ID собеседника
+      let partnerNumericId: number | null = null;
+      if (!isGroup) {
+        partnerNumericId = Number(rawTargetId);
+        if (isNaN(partnerNumericId) || partnerNumericId <= 0) {
+          const { data: pUser } = await supabase
+            .from('users')
+            .select('id')
+            .or(`uuid.eq.${rawTargetId},id.eq.${rawTargetId}`)
+            .maybeSingle();
+          if (pUser) partnerNumericId = Number(pUser.id);
+        }
+      }
+
+      // Генерация имени комнаты: call_min_max для ЛС
       const generatedRoomName = isGroup
         ? `call_group_${receiverIdStr.replace('group_', '')}`
-        : (myNumericId < Number(receiverIdStr)
-            ? `call_${myNumericId}_${receiverIdStr}`
-            : `call_${receiverIdStr}_${myNumericId}`);
+        : (partnerNumericId
+            ? (myNumericId < partnerNumericId
+                ? `call_${myNumericId}_${partnerNumericId}`
+                : `call_${partnerNumericId}_${myNumericId}`)
+            : `call_${myNumericId}_${rawTargetId}`);
 
       // 1. Генерируем токен LiveKit
       const token = await livekitService.generateToken(
         generatedRoomName,
         myIdStr,
-        currentUser.username || `User_${myNumericId}`
+        effectiveUser.username || `User_${myNumericId}`
       );
 
-      // 2. Проверяем, идёт ли уже звонок в этой комнате
+      // 2. Проверяем существующий звонок
       const { data: existingCall } = await supabase
         .from('calls')
         .select('*')
@@ -60,17 +108,17 @@ export function useCallsLogic(currentUser: any, showToast: any) {
         return;
       }
 
-      // Если личный звонок — удаляем зависшие старые вызовы между этими двумя собеседниками
-      if (!isGroup) {
+      // Очистка старых звонков между собеседниками
+      if (!isGroup && partnerNumericId) {
         await supabase
           .from('calls')
           .delete()
-          .or(`and(callerId.eq.${myNumericId},receiverId.eq.${receiverIdStr}),and(callerId.eq.${Number(receiverIdStr)},receiverId.eq.${myIdStr})`);
+          .or(`and(callerId.eq.${myNumericId},receiverId.eq.${receiverIdStr}),and(callerId.eq.${partnerNumericId},receiverId.eq.${myIdStr})`);
       }
 
       const initialStatus = isSilent ? 'accepted' : 'ringing';
 
-      // 3. Создаем запись в calls (callerId = int8, receiverId = text)
+      // 3. Создаем запись в calls
       const { data: newCallRow, error: insertError } = await supabase
         .from('calls')
         .insert([{
@@ -85,7 +133,7 @@ export function useCallsLogic(currentUser: any, showToast: any) {
 
       if (insertError) throw insertError;
 
-      // 4. Добавляем себя в call_participants (callId = int8, userId = int8)
+      // 4. Добавляем себя в call_participants
       await supabase
         .from('call_participants')
         .insert([{
@@ -106,13 +154,16 @@ export function useCallsLogic(currentUser: any, showToast: any) {
   // 🚪 Присоединение к уже существующему звонку
   const handleJoinExistingCall = async (callToJoin: any) => {
     try {
+      const myNumericId = await resolveNumericId(currentUser);
+      if (!myNumericId) throw new Error('Не определен ID пользователя');
+      const myIdStr = String(myNumericId);
+
       const token = await livekitService.generateToken(
         callToJoin.roomName,
         myIdStr,
         currentUser?.username || `User_${myNumericId}`
       );
 
-      // Проверяем, не записаны ли мы уже в участники
       const { data: existingPart } = await supabase
         .from('call_participants')
         .select('id')
@@ -143,6 +194,10 @@ export function useCallsLogic(currentUser: any, showToast: any) {
   const handleAcceptCall = async () => {
     if (!incomingCallData) return;
     try {
+      const myNumericId = await resolveNumericId(currentUser);
+      if (!myNumericId) throw new Error('Не определен ID пользователя');
+      const myIdStr = String(myNumericId);
+
       const { data, error } = await supabase
         .from('calls')
         .update({ status: 'accepted' })
@@ -179,27 +234,28 @@ export function useCallsLogic(currentUser: any, showToast: any) {
     if (!active) return;
 
     try {
+      const myNumericId = await resolveNumericId(currentUser);
+
       setCurrentCall(null);
       setIncomingCallData(null);
       setIsCallMinimized(false);
 
-      // Удаляем себя из списка активных участников
-      await supabase
-        .from('call_participants')
-        .delete()
-        .eq('callId', Number(active.id))
-        .eq('userId', myNumericId);
+      if (myNumericId) {
+        await supabase
+          .from('call_participants')
+          .delete()
+          .eq('callId', Number(active.id))
+          .eq('userId', myNumericId);
+      }
 
       const isGroupCall = String(active.receiverId).startsWith('group_');
 
       if (!isGroupCall && active.status === 'ringing') {
-        // Личный вызов отклонен до поднятия трубки
         await supabase
           .from('calls')
           .update({ status: 'cancelled' })
           .eq('id', Number(active.id));
       } else {
-        // Проверяем, остался ли кто-то ещё в комнате
         const { data: remaining } = await supabase
           .from('call_participants')
           .select('id')
@@ -235,9 +291,6 @@ export function useCallsLogic(currentUser: any, showToast: any) {
           const row = payload.new;
           if (!row) return;
 
-          console.log('[WebRTC_Call_Event]', payload.eventType, row);
-
-          // 🎯 Надёжное определение группы по roomName или receiverId
           const isGroup = String(row.roomName).startsWith('call_group_') || String(row.receiverId).startsWith('group_');
           const isCaller = Number(row.callerId) === myNumericId || String(row.callerId) === myUuidStr;
           const isReceiver = String(row.receiverId) === myIdStr || String(row.receiverId) === myUuidStr;
@@ -249,13 +302,11 @@ export function useCallsLogic(currentUser: any, showToast: any) {
           if (payload.eventType === 'INSERT') {
             if (!isCaller && row.status === 'ringing') {
               if (isGroup) {
-                // Извлекаем числовой ID чата (отрезаем call_group_ или group_)
                 const numericChatId = Number(
                   row.roomName.replace('call_group_', '').replace('group_', '') || 
                   row.receiverId.replace('group_', '')
                 );
 
-                // Проверяем членство пользователя в беседе
                 const { data: membership } = await supabase
                   .from('chat_members')
                   .select('id')
@@ -267,12 +318,10 @@ export function useCallsLogic(currentUser: any, showToast: any) {
                   setIncomingCallData(row);
                 }
               } else if (isReceiver) {
-                // Входящий звонок в ЛС
                 setIncomingCallData(row);
               }
             }
 
-            // Добавляем звонок в активные для зелёного баннера в шапке
             if (isGroup && groupKey && row.status !== 'ended' && row.status !== 'cancelled') {
               setActiveGroupCalls(prev => ({ ...prev, [groupKey]: row }));
             }

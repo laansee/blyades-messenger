@@ -22,10 +22,13 @@ export default function CreateGroupModal({ show, onClose }: CreateGroupModalProp
     });
   }, [ctx.chats]);
 
-  if (!show) return null;
-
+  // 🟢 1. Хук объявлен до любых условных операторов и return
   useEffect(() => {
-    if (!show) return;
+    if (!show) {
+      setGroupName('');
+      setSelectedUserIds([]);
+      return;
+    }
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -56,7 +59,6 @@ export default function CreateGroupModal({ show, onClose }: CreateGroupModalProp
     setLoading(true);
     try {
       if (ctx.handleCreateGroupChat) {
-        // Передаем массив настоящих строковых UUID
         await ctx.handleCreateGroupChat(groupName, selectedUserIds);
         setGroupName('');
         setSelectedUserIds([]);
@@ -66,6 +68,8 @@ export default function CreateGroupModal({ show, onClose }: CreateGroupModalProp
       setLoading(false);
     }
   };
+  
+  if (!show) return null;
 
   return createPortal(
     <div 
@@ -141,7 +145,6 @@ export default function CreateGroupModal({ show, onClose }: CreateGroupModalProp
                 </div>
               ) : (
                 availableUsers.map((chat: any) => {
-                  // 🎯 Берём именно UUID собеседника (partnerId)
                   const targetUserUuid = String(chat.partnerId || chat.uuid);
                   const isChecked = selectedUserIds.includes(targetUserUuid);
 

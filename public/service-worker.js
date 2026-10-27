@@ -1,16 +1,18 @@
-// Минимальный Service Worker для прохождения проверки браузера на PWA
-const CACHE_NAME = 'blyades-cache-v1';
+const CACHE_NAME = 'blyades-cache-v2';
 
 self.addEventListener('install', (event) => {
-  // Активируем скрипт сразу без ожидания
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(
+    caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
+      .then(() => self.clients.claim())
+  );
 });
 
 self.addEventListener('fetch', (event) => {
-  // На этапе разработки просто пропускаем все сетевые запросы насквозь
-  event.respondWith(fetch(event.request));
+  // НЕ вызываем event.respondWith: браузер выполняет все сетевые запросы,
+  // навигацию, куки и WebSocket нативно без реджектов и падений.
+  return;
 });

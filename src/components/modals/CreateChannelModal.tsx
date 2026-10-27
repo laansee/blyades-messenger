@@ -76,16 +76,27 @@ export default function CreateChannelModal({ show, onClose }: CreateChannelModal
 
       if (memberError) throw memberError;
 
-      // 3. Отправляем приветственное системное сообщение
+      // 3. Отправляем шаблонное системное сообщение о создании канала
+      const channelStartText = `Канал {{chat:${newChat.id}}} создан`;
+
       await supabase.from('messages').insert([
         {
           chatId: newChat.id,
           senderId: '00000000-0000-0000-0000-000000000000',
-          text: `Канал <b>${name.trim()}</b> создан`,
+          text: channelStartText,
           status: 'send',
           createdAt: nowIso,
         },
       ]);
+
+      // 4. Актуализируем lastMessageText в chats
+      await supabase
+        .from('chats')
+        .update({
+          lastMessageText: channelStartText,
+          lastMessageAt: nowIso,
+        })
+        .eq('id', newChat.id);
 
       ctx.showToast(`Канал «${name.trim()}» успешно создан! 📢`, 'success');
 

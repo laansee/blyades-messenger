@@ -54,6 +54,7 @@
   flex-direction: column;
   width: 100%;
   max-height: 100%;
+  overflow: visible;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   border-radius: 16px;}
@@ -511,3 +512,404 @@
 }
 
 .profile-line-input:focus ~ .profile-field-label {color: #9d7bf6; }
+
+/* ---------------------------------------------------- */
+/* 🚀 TELEGRAM-STYLE CHANNEL EDIT MODAL                 */
+/* ---------------------------------------------------- */
+.channel-edit-container {
+  display: flex;
+  flex-direction: column;
+  background-color: #171821;
+  border-radius: 16px;
+  color: #fff;
+  font-family: system-ui, -apple-system, sans-serif;
+  height: 80vh;
+  max-height: 700px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* 1. Шапка зафиксирована вверху */
+.channel-edit-header {
+  flex-shrink: 0;
+  padding: 18px 20px 14px 20px;
+  background-color: #171821;
+  z-index: 2;
+}
+
+.channel-edit-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #fff;
+}
+
+/* 2. Тело со скроллом строго между шапкой и футером */
+.channel-edit-body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0 20px 12px 20px;
+  box-sizing: border-box;
+  -webkit-overflow-scrolling: touch;
+}
+
+.channel-edit-body::-webkit-scrollbar {
+  width: 5px;
+}
+
+.channel-edit-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.channel-edit-body::-webkit-scrollbar-thumb {
+  background: #2b2c3a;
+  border-radius: 4px;
+}
+
+.channel-edit-body::-webkit-scrollbar-thumb:hover {
+  background: #3d3e52;
+}
+
+.channel-edit-top {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.channel-edit-avatar-btn {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  overflow: hidden;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.channel-edit-avatar-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #4da3ff;
+}
+
+.channel-edit-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.channel-edit-avatar-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.channel-edit-avatar-btn:hover .channel-edit-avatar-overlay {
+  opacity: 1;
+}
+
+.channel-edit-name-col {
+  flex: 1;
+}
+
+.channel-edit-input-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.channel-edit-label {
+  font-size: 11px;
+  color: #8b8e9b;
+}
+
+.channel-edit-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid #2b2c3a;
+  padding-bottom: 4px;
+}
+
+.channel-clean-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #fff;
+  font-size: 15px;
+  font-family: inherit;
+  padding: 4px 0;
+}
+
+.channel-clean-input::placeholder {
+  color: #636573;
+}
+
+.channel-emoji-btn {
+  background: none;
+  border: none;
+  color: #7a7d8d;
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  transition: color 0.15s ease;
+}
+
+.channel-emoji-btn:hover {
+  color: #9d7bf6;
+}
+
+.channel-desc-block {
+  border-bottom: 1px solid #2b2c3a;
+  padding-bottom: 6px;
+  margin-bottom: 10px;
+}
+
+.channel-edit-divider {
+  height: 1px;
+  background-color: #242533;
+  margin: 10px 0;
+}
+
+.channel-settings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.channel-setting-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+  font-size: 14px;
+  user-select: none;
+}
+
+.channel-setting-item:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.channel-setting-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: #e5e7eb;
+}
+
+.channel-setting-icon {
+  color: #8b8e9b;
+  flex-shrink: 0;
+}
+
+.channel-setting-value {
+  color: #7a7d8d;
+  font-size: 13px;
+}
+
+.channel-setting-link {
+  color: #60a5fa;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.channel-setting-item-col {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 4px;
+  gap: 4px;
+}
+
+.channel-setting-hint {
+  font-size: 12px;
+  color: #7a7d8d;
+  line-height: 1.4;
+  padding-left: 32px;
+}
+
+/* 🎯 Составная карточка (строка + подпись в едином ховере) */
+.channel-setting-card {
+  display: flex;
+  flex-direction: column;
+  padding: 10px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+  gap: 4px;
+  user-select: none;
+  font-size: 14px;
+}
+
+.channel-setting-card:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.channel-setting-item-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+/* Отключённый пункт (в разработке) */
+.channel-setting-disabled {
+  opacity: 0.42;
+  cursor: not-allowed !important;
+  user-select: none;
+}
+
+.channel-setting-disabled:hover {
+  background-color: transparent !important;
+}
+
+.channel-setting-disabled .channel-setting-left span,
+.channel-setting-disabled .channel-setting-icon,
+.channel-setting-disabled .channel-setting-value,
+.channel-setting-disabled .channel-setting-link {
+  color: #7a7d8d !important;
+}
+
+.channel-setting-disabled .tg-badge-new {
+  background-color: #3e4052 !important;
+  color: #8b8e9b !important;
+}
+
+.channel-setting-disabled .tg-pill-badge {
+  background-color: #232530 !important;
+  color: #6b6e7f !important;
+}
+
+.channel-setting-disabled .tg-slider {
+  background-color: #2b2c3a !important;
+  cursor: not-allowed !important;
+}
+
+.channel-setting-disabled .tg-slider:before {
+  background-color: #636573 !important;
+}
+
+.tg-badge-new {
+  font-size: 10px;
+  background-color: #8b5cf6;
+  color: #fff;
+  padding: 1px 5px;
+  border-radius: 6px;
+  font-weight: 700;
+}
+
+.tg-pill-badge {
+  font-size: 12px;
+  background-color: #21323f;
+  color: #38bdf8;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 500;
+}
+
+.tg-switch {
+  position: relative;
+  display: inline-block;
+  width: 38px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+.tg-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.tg-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #3e4052;
+  transition: 0.2s;
+  border-radius: 22px;
+}
+
+.tg-slider:before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.2s;
+  border-radius: 50%;
+}
+
+.tg-switch input:checked + .tg-slider {
+  background-color: #3b82f6;
+}
+
+.tg-switch input:checked + .tg-slider:before {
+  transform: translateX(16px);
+}
+
+.channel-delete-btn {
+  background: none;
+  border: none;
+  color: #ef4444;
+  font-size: 14px;
+  cursor: pointer;
+  text-align: left;
+  padding: 10px 4px;
+  width: 100%;
+  font-weight: 500;
+  transition: opacity 0.15s ease;
+}
+
+.channel-delete-btn:hover {
+  opacity: 0.8;
+}
+
+/* 3. Подвал зафиксирован внизу карточки */
+.channel-edit-footer {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 20px;
+  padding: 14px 20px 16px 20px;
+  border-top: 1px solid #242533;
+  background-color: #171821;
+  z-index: 2;
+}
+
+.channel-footer-btn-cancel {
+  background: none;
+  border: none;
+  color: #8b8e9b;
+  font-size: 14px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.channel-footer-btn-save {
+  background: none;
+  border: none;
+  color: #8b5cf6;
+  font-size: 14px;
+  cursor: pointer;
+  font-weight: 700;
+}

@@ -246,7 +246,11 @@ export interface DropdownItem {
   icon?: React.ComponentType<any>;
   danger?: boolean;
   arrow?: boolean;
-  isSeparatorBefore?: boolean; 
+  isSeparatorBefore?: boolean;
+  badge?: string;
+  disabled?: boolean;
+  style?: React.CSSProperties;
+  className?: string;
   onClick: () => void;
 }
 
@@ -256,9 +260,11 @@ interface DropdownMenuProps {
   x: number;
   y: number;
   items: DropdownItem[];
+  className?: string;
+  style?: React.CSSProperties;
 }
 
-export function DropdownMenu({ show, onClose, x, y, items }: DropdownMenuProps) {
+export function DropdownMenu({ show, onClose, x, y, items, className, style }: DropdownMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const { mounted, isClosing, handleClose } = useModalAnimation(show, onClose, 150);
 
@@ -282,7 +288,7 @@ export function DropdownMenu({ show, onClose, x, y, items }: DropdownMenuProps) 
   return (
     <div 
       ref={menuRef}
-      className={GlobalUIStyles.dropdown}
+      className={`${GlobalUIStyles.dropdown} ${className || ''}`}
       style={{
         position: isAbsoluteMode ? 'absolute' : 'fixed',
         top: isAbsoluteMode ? 'calc(100% + 8px)' : `${y}px`,
@@ -290,7 +296,8 @@ export function DropdownMenu({ show, onClose, x, y, items }: DropdownMenuProps) 
         left: isAbsoluteMode ? undefined : `${x}px`,
         zIndex: 35000,
         display: 'block',
-        animation: `${isClosing ? 'modalScaleOut' : 'modalScaleIn'} 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards`
+        animation: `${isClosing ? 'modalScaleOut' : 'modalScaleIn'} 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards`,
+        ...style // 👈 Пользовательские стили переопределяют дефолтные
       }}
       tabIndex={999999}
     >
@@ -301,16 +308,35 @@ export function DropdownMenu({ show, onClose, x, y, items }: DropdownMenuProps) 
             <button
               key={item.id}
               tabIndex={item.tabIndex ?? 0}
-              onClick={() => { item.onClick(); handleClose(); }}
-              className={`${GlobalUIStyles['dropdown-item']} ${item.danger ? GlobalUIStyles['danger'] : ''} ${item.isSeparatorBefore ? GlobalUIStyles['separator'] : ''}`}
+              disabled={item.disabled}
+              onClick={() => {
+                if (item.disabled) return;
+                item.onClick();
+                handleClose();
+              }}
+              style={item.style}
+              className={`
+                ${GlobalUIStyles['dropdown-item']} 
+                ${item.danger ? GlobalUIStyles['danger'] : ''} 
+                ${item.isSeparatorBefore ? GlobalUIStyles['separator'] : ''} 
+                ${item.disabled ? GlobalUIStyles['dropdown-item-disabled'] : ''}
+                ${item.className || ''}
+              `}
             >
               <div className={GlobalUIStyles['dropdown-item-left-side']}>
                 {Icon && <Icon size={18} className={GlobalUIStyles['item-icon']} />}
                 <span>{item.text}</span>
               </div>
-              {item.arrow && (
-                <span className={GlobalUIStyles['dropdown-item-arrow-indicator']}>▶</span>
-              )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {item.badge && (
+                  <span className={GlobalUIStyles['dropdown-item-badge']}>
+                    {item.badge}
+                  </span>
+                )}
+                {item.arrow && (
+                  <span className={GlobalUIStyles['dropdown-item-arrow-indicator']}>▶</span>
+                )}
+              </div>
             </button>
           );
         })}
