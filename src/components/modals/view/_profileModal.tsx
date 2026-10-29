@@ -1,15 +1,15 @@
 import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import styles from '../css/profile.module.css';
-import useMessengerContext from '../../context/messengerContext';
-import { supabase } from '../../services/supabaseClient';
-import { userService } from '../../services/userService';
+import useMessengerContext from '../../../context/messengerContext';
+import { supabase } from '../../../services/supabaseClient';
+import { userService } from '../../../services/userService';
 
-import UserProfileView from './UserProfileView';
-import GroupProfileView from './GroupProfileView';
-import ChannelProfileView from './ChannelProfileView';
-import MyProfileView from './MyProfileView';
-import EditMode from './edit';
+import UserProfileView from '../../profile/UserProfileView';
+import GroupProfileView from '../../profile/GroupProfileView';
+import ChannelProfileView from '../../profile/ChannelProfileView';
+import MyProfileView from '../../profile/MyProfileView';
+import EditMode from '../../profile/edit';
 
 export default function ProfileModal() {
   const ctx = useMessengerContext();
@@ -377,7 +377,12 @@ export default function ProfileModal() {
         ) : (String(currentChatUser?.uuid) === String(ctx.currentUser?.uuid) || String(currentChatUser?.id) === String(ctx.currentUser?.uuid)) ? (
           <MyProfileView
             currentUser={ctx.currentUser}
-            onEditToggle={() => setIsEditing(true)}
+            onEditToggle={() => {
+              // Закрываем модалку
+              ctx.setShowUserModal(false);
+              // Переходим в настройки на вкладку аккаунта
+              window.location.href = '/settings?tab=account';
+            }}
             onClose={handleCloseModalSmooth}
             ctx={ctx}
           />
