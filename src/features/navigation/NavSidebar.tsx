@@ -73,7 +73,7 @@ export default function NavSidebar({
             className={styles.avatarMain}
             onClick={() => {
               closeNav();
-              ctx.setShowUserModal(true);
+              ctx.setShowUserModal(ctx.currentUser?.uuid || ctx.currentUser?.id || ctx.currentUser);
             }}
           >
             <SmartAvatar
@@ -198,7 +198,7 @@ export default function NavSidebar({
             type="button" 
             className={styles.menuItem}
             onClick={() => {
-              ctx.setShowUserModal(true);
+              ctx.setShowUserModal(ctx.currentUser?.uuid || ctx.currentUser?.id || ctx.currentUser);
               ctx.setIsNavOpen?.(false);
             }}
           >
