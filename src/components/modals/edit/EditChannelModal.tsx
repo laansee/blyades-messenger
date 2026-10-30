@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import styles from '../../css/profile.module.css';
 import { 
   Camera, Smile, KeyRound, MessageSquare, Palette, 
@@ -8,13 +8,13 @@ import {
 import { supabase } from '../../../services/supabaseClient';
 import useMessengerContext from '../../../context/messengerContext';
 import { AvatarCropModal, AvatarUploadSelectorModal } from '../../common/GlobalUI';
-import { SubscribersModal } from '../../profile/SubscribersModal';
-import { AdministratorsModal } from '../AdministratorsModal';
+import { SubscribersModal } from '../view/SubscribersModal';
+import { AdministratorsModal } from '../view/AdministratorsModal';
 
-interface ChannelEditFormProps {
+interface EditChannelModalProps {
   currentChatUser: any;
-  editFirstName: string;
-  setEditFirstName: (v: string) => void;
+  editFirstName?: string;
+  setEditFirstName?: (v: string) => void;
   editDescription?: string;
   setEditDescription?: (v: string) => void;
   editAvatarColor?: string;
@@ -22,24 +22,38 @@ interface ChannelEditFormProps {
   editAvatarUrl?: string;
   setEditAvatarUrl?: (v: string) => void;
   onCancel: () => void;
-  onSave: () => Promise<void>;
+  onSave?: () => Promise<void>;
 }
 
-export const ChannelEditForm: React.FC<ChannelEditFormProps> = ({
+export default function EditChannelModal({
   currentChatUser,
-  editFirstName,
-  setEditFirstName,
-  editDescription = '',
-  setEditDescription,
-  editAvatarColor = '#5865F2',
-  setEditAvatarColor,
-  editAvatarUrl = '',
-  setEditAvatarUrl,
+  editFirstName: propName,
+  setEditFirstName: propSetName,
+  editDescription: propDesc,
+  setEditDescription: propSetDesc,
+  editAvatarColor: propColor,
+  setEditAvatarColor: propSetColor,
+  editAvatarUrl: propUrl,
+  setEditAvatarUrl: propSetUrl,
   onCancel,
   onSave
-}) => {
+}: EditChannelModalProps) {
   const ctx = useMessengerContext();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [localName, setLocalName] = useState(propName ?? currentChatUser?.name ?? '');
+  const [localDesc, setLocalDesc] = useState(propDesc ?? currentChatUser?.aboutMe ?? currentChatUser?.description ?? '');
+  const [localColor, setLocalColor] = useState(propColor ?? currentChatUser?.avatarColor ?? '#5865F2');
+  const [localUrl, setLocalUrl] = useState(propUrl ?? currentChatUser?.avatarUrl ?? '');
+
+  const channelName = propName !== undefined ? propName : localName;
+  const setChannelName = propSetName || setLocalName;
+  const channelDesc = propDesc !== undefined ? propDesc : localDesc;
+  const setChannelDesc = propSetDesc || setLocalDesc;
+  const channelColor = propColor !== undefined ? propColor : localColor;
+  const setChannelColor = propSetColor || setLocalColor;
+  const channelUrl = propUrl !== undefined ? propUrl : localUrl;
+  const setChannelUrl = propSetUrl || setLocalUrl;
 
   const [translateEnabled, setTranslateEnabled] = useState(false);
   const [signMessagesEnabled, setSignMessagesEnabled] = useState(false);
@@ -53,14 +67,13 @@ export const ChannelEditForm: React.FC<ChannelEditFormProps> = ({
   const [showAdminsModal, setShowAdminsModal] = useState(false);
   const [adminsCount, setAdminsCount] = useState<number>(1);
 
-  const channelType = currentChatUser.publicId || currentChatUser.accessType === 'public' ? 'Публичный' : 'Частный';
-  const subscribersCount = currentChatUser.membersCount || currentChatUser.subscribersCount || 1;
+  const channelType = currentChatUser?.publicId || currentChatUser?.accessType === 'public' ? 'Публичный' : 'Частный';
+  const subscribersCount = currentChatUser?.membersCount || currentChatUser?.subscribersCount || 1;
 
   const notifyDev = () => ctx.showToast?.('Раздел находится в разработке', 'info');
 
-  // Функция для подсчёта реального числа админов
   const fetchAdminsCount = async () => {
-    const entityId = currentChatUser.internalChatId || currentChatUser.id;
+    const entityId = currentChatUser?.internalChatId || currentChatUser?.id;
     if (!entityId) return;
     const { data } = await supabase
       .from('chat_members')
@@ -95,7 +108,7 @@ export const ChannelEditForm: React.FC<ChannelEditFormProps> = ({
       setIsUploading(true);
       ctx.showToast?.('Загрузка аватарки в облако...', 'info');
 
-      const entityId = currentChatUser.internalChatId || currentChatUser.id;
+      const entityId = currentChatUser?.internalChatId || currentChatUser?.id;
       const fileName = `channels/${entityId}-${Date.now()}.png`;
 
       const { error: uploadError } = await supabase.storage
@@ -113,7 +126,7 @@ export const ChannelEditForm: React.FC<ChannelEditFormProps> = ({
           .update({ avatarUrl: freshUrl, updatedAt: new Date().toISOString() })
           .eq('id', Number(entityId));
 
-        if (setEditAvatarUrl) setEditAvatarUrl(freshUrl);
+        setChannelUrl(freshUrl);
 
         if (ctx.setChats) {
           ctx.setChats((prev: any[]) =>
@@ -132,13 +145,50 @@ export const ChannelEditForm: React.FC<ChannelEditFormProps> = ({
     }
   };
 
+  const handleInternalSave = async () => {
+    if (onSave) {
+      await onSave();
+      return;
+    }
+
+    const entityId = Number(currentChatUser?.internalChatId || currentChatUser?.id);
+    const updatedFields = {
+      name: channelName.trim(),
+      description: channelDesc.trim() || null,
+      avatarColor: channelColor,
+      avatarUrl: channelUrl.trim() || null,
+      updatedAt: new Date().toISOString()
+    };
+
+    const { error } = await supabase
+      .from('chats')
+      .update(updatedFields)
+      .eq('id', entityId);
+
+    if (error) {
+      ctx.showToast?.('Ошибка сохранения канала', 'error');
+      return;
+    }
+
+    if (ctx.setChats) {
+      ctx.setChats((prev: any[]) =>
+        prev.map((c: any) =>
+          Number(c.id) === entityId ? { ...c, ...updatedFields, aboutMe: updatedFields.description } : c
+        )
+      );
+    }
+
+    ctx.showToast?.('Канал сохранён!', 'success');
+    onCancel();
+  };
+
   const handleDeleteChannel = () => {
     ctx.showConfirm?.(
       'Удалить канал',
-      `Вы действительно хотите безвозвратно удалить канал «${editFirstName}»? Все сообщения и подписчики будут стёрты.`,
+      `Вы действительно хотите безвозвратно удалить канал «${channelName}»? Все сообщения и подписчики будут стёрты.`,
       async () => {
         try {
-          const entityId = currentChatUser.internalChatId || currentChatUser.id;
+          const entityId = Number(currentChatUser?.internalChatId || currentChatUser?.id);
           await supabase.from('messages').delete().eq('chatId', entityId);
           await supabase.from('chat_members').delete().eq('chatId', entityId);
           await supabase.from('chats').delete().eq('id', entityId);
@@ -161,26 +211,23 @@ export const ChannelEditForm: React.FC<ChannelEditFormProps> = ({
 
   return (
     <div className={styles['channel-edit-container']}>
-      {/* 1. ФИКСИРОВАННАЯ ШАПКА */}
       <div className={styles['channel-edit-header']}>
         <h3 className={styles['channel-edit-title']}>Редактировать канал</h3>
       </div>
 
-      {/* 2. СКРОЛЛИРУЕМЫЙ ЦЕНТРАЛЬНЫЙ БЛОК */}
       <div className={styles['channel-edit-body']}>
-        {/* Аватар + Инпут названия */}
         <div className={styles['channel-edit-top']}>
           <div 
             className={styles['channel-edit-avatar-btn']}
             onClick={() => setShowUploadSelector(true)}
             title="Сменить фото канала"
           >
-            {editAvatarUrl ? (
-              <img src={editAvatarUrl} alt="Avatar" className={styles['channel-edit-avatar-img']} />
+            {channelUrl ? (
+              <img src={channelUrl} alt="Avatar" className={styles['channel-edit-avatar-img']} />
             ) : (
               <div 
                 className={styles['channel-edit-avatar-placeholder']}
-                style={{ backgroundColor: editAvatarColor }}
+                style={{ backgroundColor: channelColor }}
               >
                 <Camera size={26} color="#fff" />
               </div>
@@ -196,8 +243,8 @@ export const ChannelEditForm: React.FC<ChannelEditFormProps> = ({
               <div className={styles['channel-edit-input-row']}>
                 <input
                   type="text"
-                  value={editFirstName}
-                  onChange={(e) => setEditFirstName(e.target.value)}
+                  value={channelName}
+                  onChange={(e) => setChannelName(e.target.value)}
                   className={styles['channel-clean-input']}
                   autoComplete="off"
                 />
@@ -213,13 +260,12 @@ export const ChannelEditForm: React.FC<ChannelEditFormProps> = ({
           </div>
         </div>
 
-        {/* Описание */}
         <div className={styles['channel-desc-block']}>
           <input
             type="text"
             placeholder="Описание (необязательно)"
-            value={editDescription}
-            onChange={(e) => setEditDescription && setEditDescription(e.target.value)}
+            value={channelDesc}
+            onChange={(e) => setChannelDesc(e.target.value)}
             className={styles['channel-clean-input']}
             autoComplete="off"
           />
@@ -227,9 +273,7 @@ export const ChannelEditForm: React.FC<ChannelEditFormProps> = ({
 
         <div className={styles['channel-edit-divider']} />
 
-        {/* Параметры канала */}
         <div className={styles['channel-settings-list']}>
-          {/* Тип канала (disabled) */}
           <div 
             className={`${styles['channel-setting-item']} ${styles['channel-setting-disabled']}`} 
             onClick={notifyDev}
@@ -241,7 +285,6 @@ export const ChannelEditForm: React.FC<ChannelEditFormProps> = ({
             <span className={styles['channel-setting-value']}>{channelType}</span>
           </div>
 
-          {/* Обсуждение (disabled) */}
           <div 
             className={`${styles['channel-setting-item']} ${styles['channel-setting-disabled']}`}
             onClick={notifyDev}
@@ -253,7 +296,6 @@ export const ChannelEditForm: React.FC<ChannelEditFormProps> = ({
             <span className={styles['channel-setting-link']}>Добавить группу</span>
           </div>
 
-          {/* Сообщения каналу (disabled) */}
           <div 
             className={`${styles['channel-setting-item']} ${styles['channel-setting-disabled']}`}
             onClick={notifyDev}
@@ -268,7 +310,6 @@ export const ChannelEditForm: React.FC<ChannelEditFormProps> = ({
             <span className={styles['channel-setting-value']}>Выкл.</span>
           </div>
 
-          {/* Оформление (disabled) */}
           <div 
             className={`${styles['channel-setting-item']} ${styles['channel-setting-disabled']}`}
             onClick={notifyDev}
@@ -277,10 +318,9 @@ export const ChannelEditForm: React.FC<ChannelEditFormProps> = ({
               <Palette size={18} className={styles['channel-setting-icon']} />
               <span>Оформление</span>
             </div>
-            <span className={styles['tg-pill-badge']}>{editFirstName.toLowerCase()}</span>
+            <span className={styles['tg-pill-badge']}>{channelName.toLowerCase()}</span>
           </div>
 
-          {/* Переводить сообщения (disabled) */}
           <div 
             className={`${styles['channel-setting-item']} ${styles['channel-setting-disabled']}`}
             onClick={notifyDev}
@@ -300,7 +340,6 @@ export const ChannelEditForm: React.FC<ChannelEditFormProps> = ({
             </label>
           </div>
 
-          {/* Подписывать сообщения (disabled) */}
           <div 
             className={`${styles['channel-setting-card']} ${styles['channel-setting-disabled']}`}
             onClick={notifyDev}
@@ -328,9 +367,7 @@ export const ChannelEditForm: React.FC<ChannelEditFormProps> = ({
 
         <div className={styles['channel-edit-divider']} />
 
-        {/* Статистика и управление */}
         <div className={styles['channel-settings-list']}>
-          {/* Реакции (disabled) */}
           <div 
             className={`${styles['channel-setting-item']} ${styles['channel-setting-disabled']}`} 
             onClick={notifyDev}
@@ -342,7 +379,6 @@ export const ChannelEditForm: React.FC<ChannelEditFormProps> = ({
             <span className={styles['channel-setting-value']}>Все</span>
           </div>
 
-          {/* Приветственное сообщение (disabled) */}
           <div 
             className={`${styles['channel-setting-item']} ${styles['channel-setting-disabled']}`} 
             onClick={notifyDev}
@@ -354,7 +390,6 @@ export const ChannelEditForm: React.FC<ChannelEditFormProps> = ({
             <span className={styles['channel-setting-value']}>Выкл.</span>
           </div>
 
-          {/* Пригласительные ссылки (disabled) */}
           <div 
             className={`${styles['channel-setting-item']} ${styles['channel-setting-disabled']}`} 
             onClick={notifyDev}
@@ -366,7 +401,6 @@ export const ChannelEditForm: React.FC<ChannelEditFormProps> = ({
             <span className={styles['channel-setting-value']}>1</span>
           </div>
 
-          {/* Администраторы (disabled) */}
           <div 
             className={styles['channel-setting-item']} 
             onClick={() => setShowAdminsModal(true)}
@@ -378,7 +412,6 @@ export const ChannelEditForm: React.FC<ChannelEditFormProps> = ({
             <span className={styles['channel-setting-value']}>{adminsCount}</span>
           </div>
 
-          {/* Подписчики (активно / кликабельно для просмотра) */}
           <div 
             className={styles['channel-setting-item']} 
             onClick={() => setShowSubscribersModal(true)}
@@ -390,7 +423,6 @@ export const ChannelEditForm: React.FC<ChannelEditFormProps> = ({
             <span className={styles['channel-setting-value']}>{subscribersCount}</span>
           </div>
 
-          {/* Чёрный список (disabled) */}
           <div 
             className={`${styles['channel-setting-item']} ${styles['channel-setting-disabled']}`} 
             onClick={notifyDev}
@@ -401,7 +433,6 @@ export const ChannelEditForm: React.FC<ChannelEditFormProps> = ({
             </div>
           </div>
 
-          {/* Недавние действия (disabled) */}
           <div 
             className={`${styles['channel-setting-item']} ${styles['channel-setting-disabled']}`} 
             onClick={notifyDev}
@@ -412,7 +443,6 @@ export const ChannelEditForm: React.FC<ChannelEditFormProps> = ({
             </div>
           </div>
 
-          {/* Партнёрские программы (disabled) */}
           <div 
             className={`${styles['channel-setting-item']} ${styles['channel-setting-disabled']}`} 
             onClick={notifyDev}
@@ -426,25 +456,6 @@ export const ChannelEditForm: React.FC<ChannelEditFormProps> = ({
 
         <div className={styles['channel-edit-divider']} />
 
-        {/* Сообщество (disabled) */}
-        <div 
-          className={`${styles['channel-setting-card']} ${styles['channel-setting-disabled']}`}
-          onClick={notifyDev}
-        >
-          <div className={styles['channel-setting-item-inner']}>
-            <div className={styles['channel-setting-left']}>
-              <Users size={18} className={styles['channel-setting-icon']} />
-              <span>Добавить канал в сообщество</span>
-            </div>
-          </div>
-          <span className={styles['channel-setting-hint']}>
-            Вы можете добавить канал в сообщество чатов, связанных между собой.
-          </span>
-        </div>
-
-        <div className={styles['channel-edit-divider']} />
-
-        {/* Удаление канала (активно) */}
         <button 
           type="button" 
           className={styles['channel-delete-btn']}
@@ -454,25 +465,23 @@ export const ChannelEditForm: React.FC<ChannelEditFormProps> = ({
         </button>
       </div>
 
-      {/* 3. ФИКСИРОВАННЫЙ ПОДВАЛ */}
       <div className={styles['channel-edit-footer']}>
         <button type="button" className={styles['channel-footer-btn-cancel']} onClick={onCancel}>
           Отмена
         </button>
-        <button type="button" className={styles['channel-footer-btn-save']} onClick={onSave}>
+        <button type="button" className={styles['channel-footer-btn-save']} onClick={handleInternalSave}>
           Сохранить
         </button>
       </div>
 
-      {/* Модалки аватара */}
       <AvatarUploadSelectorModal
         show={showUploadSelector}
-        avatarUrl={editAvatarUrl}
-        avatarColor={editAvatarColor || '#5865F2'}
+        avatarUrl={channelUrl}
+        avatarColor={channelColor || '#5865F2'}
         isDragOver={isDragOver}
         uploading={isUploading}
         fileInputRef={fileInputRef}
-        setAvatarColor={(c) => setEditAvatarColor && setEditAvatarColor(c)}
+        setAvatarColor={(c) => setChannelColor(c)}
         onClose={() => setShowUploadSelector(false)}
         onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
         onDragLeave={() => setIsDragOver(false)}
@@ -485,7 +494,7 @@ export const ChannelEditForm: React.FC<ChannelEditFormProps> = ({
         }}
         onFileSelect={(e) => e.target.files && e.target.files.length > 0 && processSelectedFile(e.target.files[0])}
         onColorSelect={async (chosenColor: string) => {
-          if (setEditAvatarColor) setEditAvatarColor(chosenColor);
+          setChannelColor(chosenColor);
         }}
         targetType="channels"
         title="Аватар канала"
@@ -497,22 +506,24 @@ export const ChannelEditForm: React.FC<ChannelEditFormProps> = ({
         onClose={() => { setShowCropModal(false); setRawImageSrc(null); }} 
         onSave={handleSaveCroppedAvatar} 
       />
+
       <AdministratorsModal
         show={showAdminsModal}
-        channelId={currentChatUser.internalChatId || currentChatUser.id}
-        channelName={editFirstName}
+        channelId={currentChatUser?.internalChatId || currentChatUser?.id}
+        channelName={channelName}
         currentUserId={String(ctx.currentUser?.uuid || ctx.currentUser?.id)}
         isOwner={Boolean(
-          String(currentChatUser.createdBy) === String(ctx.currentUser?.uuid || ctx.currentUser?.id) ||
-          currentChatUser.role === 'owner'
+          String(currentChatUser?.createdBy) === String(ctx.currentUser?.uuid || ctx.currentUser?.id) ||
+          currentChatUser?.role === 'owner'
         )}
         onClose={() => setShowAdminsModal(false)}
         onAdminsUpdated={fetchAdminsCount}
       />
+
       <SubscribersModal
         show={showSubscribersModal}
-        channelId={currentChatUser.internalChatId || currentChatUser.id}
-        channelName={editFirstName}
+        channelId={currentChatUser?.internalChatId || currentChatUser?.id}
+        channelName={channelName}
         currentUserId={String(ctx.currentUser?.uuid || ctx.currentUser?.id)}
         isOwnerOrAdmin={true}
         onClose={() => setShowSubscribersModal(false)}
@@ -520,4 +531,6 @@ export const ChannelEditForm: React.FC<ChannelEditFormProps> = ({
       />
     </div>
   );
-};
+}
+
+export { EditChannelModal as ChannelEditForm };

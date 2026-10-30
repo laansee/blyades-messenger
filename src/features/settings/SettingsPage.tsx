@@ -12,16 +12,54 @@ import EditProfile from './EditProfile';
 import PrivacySettings from './PrivacySettings';
 import { Lock, User, Menu, Copy, Hash, ArrowLeft, Eye, X, QrCode } from 'lucide-react';
 
+type SettingsTab = 'profile' | 'privacy' | 'chats' | 'notifications' | null;
+
+const TAB_MAP: Record<string, Exclude<SettingsTab, null>> = {
+  account: 'profile',
+  profile: 'profile',
+  privacy: 'privacy',
+  chats: 'chats',
+  notifications: 'notifications',
+};
+
 export default function SettingsPage() {
   const ctx = useMessengerContext();
   const currentUser = ctx.currentUser;
 
-  const [activeSettingsTab, setActiveSettingsTab] = useState<'profile' | 'privacy' | 'chats' | null>(null);
-  const [previewRole, setPreviewRole] = useState<'contact' | 'stranger'>('contact');
+  const getTabFromUrl = (): SettingsTab => {
+    const params = new URLSearchParams(window.location.search);
+    const queryTab = params.get('tab')?.toLowerCase() || '';
+    return TAB_MAP[queryTab] || null;
+  };
 
-  // 📱 Адаптивные стейты для мобильных устройств
-  const [mobileScreen, setMobileScreen] = useState<'menu' | 'content'>('menu');
+  const [activeSettingsTab, setActiveSettingsTab] = useState<SettingsTab>(getTabFromUrl);
+  const [mobileScreen, setMobileScreen] = useState<'menu' | 'content'>(() => (getTabFromUrl() ? 'content' : 'menu'));
+  const [previewRole, setPreviewRole] = useState<'contact' | 'stranger'>('contact');
   const [showDrawerPreview, setShowDrawerPreview] = useState(false);
+
+  // 3. Слушаем внешние переходы (если URL поменялся без перезагрузки страницы)
+  useEffect(() => {
+    const handlePopState = () => {
+      const tab = getTabFromUrl();
+      if (tab) {
+        setActiveSettingsTab(tab);
+        setMobileScreen('content');
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // Универсальный обработчик переключения таба
+  const handleSelectTab = (tab: Exclude<SettingsTab, null>) => {
+    setActiveSettingsTab(tab);
+    setMobileScreen('content');
+
+    // Находим ключ для красивого URL (для profile отдаем account)
+    const urlParamKey = Object.keys(TAB_MAP).find(k => TAB_MAP[k] === tab) || tab;
+    window.history.replaceState(null, '', `/settings?tab=${urlParamKey}`);
+  };
 
   // 🚀 ОБЩИЕ СТЕЙТЫ ДАННЫХ ПРОФИЛЯ
   const [uniqueId, setUniqueId] = useState(currentUser?.uniqueId || '');
@@ -82,11 +120,6 @@ export default function SettingsPage() {
     : (username.trim() !== '' ? username : `@${uniqueId}`);
 
   const myIdDisplay = currentUser?.id ? `#${currentUser.id}` : currentUser?.uuid?.slice(0, 8);
-  
-  const handleSelectTab = (tab: 'profile' | 'privacy') => {
-    setActiveSettingsTab(tab);
-    setMobileScreen('content'); // На мобилках сразу открываем контент
-  };
 
   return (
     <div className={`${mainStyle['messenger-container']} ${mobileScreen === 'menu' ? style.viewMenu : style.viewContent}`}>
@@ -125,20 +158,23 @@ export default function SettingsPage() {
             onClick={() => handleSelectTab('profile')} 
             style={{ cursor: 'pointer' }}
           >
-            <User/>
+            <User />
             Аккаунт
           </div>
+
           <div 
             className={`${style.setSidebarItem} ${activeSettingsTab === 'privacy' ? style.active : ''}`} 
             onClick={() => handleSelectTab('privacy')} 
             style={{ cursor: 'pointer' }}
           >
-            <Lock/>
+            <Lock />
             Приватность
           </div>
+
           <div className={style.setSidebarItem} title="В разработке" aria-disabled>
             💬 Чаты
           </div>
+
           <div className={style.setSidebarItem} data-title="В разработке" aria-disabled>
             🔔 Уведомления
           </div>
@@ -219,7 +255,10 @@ export default function SettingsPage() {
               </button>
 
               <span style={{ color: '#fff', fontWeight: 700, fontSize: '16px' }}>
-                {activeSettingsTab === 'profile' ? 'Аккаунт' : 'Приватность'}
+                {activeSettingsTab === 'profile' && 'Аккаунт'}
+                {activeSettingsTab === 'privacy' && 'Приватность'}
+                {activeSettingsTab === 'chats' && 'Чаты'}
+                {activeSettingsTab === 'notifications' && 'Уведомления'}
               </span>
 
               <button 

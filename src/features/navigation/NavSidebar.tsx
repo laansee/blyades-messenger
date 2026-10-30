@@ -17,6 +17,7 @@ import {
   LogOut,
   MessagesCircle
 } from 'lucide-react';
+import ContactsModal from '../../components/modals/view/ContactsModal';
 import useMessengerContext from '../../context/messengerContext';
 import SmartAvatar from '../../components/common/SmartAvatar';
 
@@ -34,6 +35,7 @@ export default function NavSidebar({
 
   // Стейты меню
   const [showAccountsList, setShowAccountsList] = useState(false);
+  const [showContactsModal, setShowContactsModal] = useState(false);
 
   const closeNav = () => {
     if (ctx.setIsNavOpen) ctx.setIsNavOpen(false);
@@ -217,12 +219,14 @@ export default function NavSidebar({
             <span className={styles.itemText}>Избранное</span>
           </button>
 
-          {/* Контакты (модалка или переход) */}
+          {/* 👥 Контакты */}
           <button 
             type="button" 
-            className={`${styles.menuItem} ${styles.disabledItem}`}
-            disabled
-            title="Окно контактов в разработке"
+            className={styles.menuItem}
+            onClick={() => {
+              closeNav();
+              ctx.setShowContactsModal(true);
+            }}
           >
             <User size={20} className={styles.itemIcon} />
             <span className={styles.itemText}>Контакты</span>
@@ -323,7 +327,6 @@ export default function NavSidebar({
           <p className={styles.footerVersion}>Версия 1.48.8 x64 – О программе</p> */}
           <p className={styles.footerVersion}>Версия 1.48.8</p>
         </div>
-
       </aside>
     </>
   );

@@ -1,17 +1,16 @@
 import { useState, useEffect, useMemo } from 'react';
-import styles from '../css/profile.module.css';
-import { supabase } from '../../services/supabaseClient';
-import { userService, type AppUser } from '../../services/userService';
+import styles from '../../css/profile.module.css';
+import { supabase } from '../../../services/supabaseClient';
+import { userService, type AppUser } from '../../../services/userService';
 import { Search, UserPlus, Users, X, Copy, Hash } from 'lucide-react';
-import { renderUserStatusBadge } from '../../utils/statusBadge';
-import { formatUserOnlineStatus } from '../../context/messengerContext';
-import { AddParticipantsModal } from '../common/GlobalUI';
-import SmartAvatar from '../common/SmartAvatar';
+import { renderUserStatusBadge } from '../../../utils/statusBadge';
+import { formatUserOnlineStatus } from '../../../context/messengerContext';
+import { AddParticipantsModal } from '../../common/GlobalUI';
+import SmartAvatar from '../../common/SmartAvatar';
 
 interface GroupProfileViewProps {
   currentChatUser: any;
   baseName: string;
-  onEditToggle: () => void;
   onClose: () => void;
   ctx: any;
 }
@@ -19,17 +18,14 @@ interface GroupProfileViewProps {
 export default function GroupProfileView({ 
   currentChatUser,
   baseName,
-  onEditToggle,
   onClose,
   ctx
 }: GroupProfileViewProps) {
   const [groupMembers, setGroupMembers] = useState<AppUser[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
   
-  // Стейты поиска участников
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  
   const [showAddModal, setShowAddModal] = useState(false);
   const [existingUsers, setExistingUsers] = useState<string[]>([]);
 
@@ -40,7 +36,6 @@ export default function GroupProfileView({
     ctx.showToast?.(`${label} скопирован в буфер`, 'success');
   };
 
-  // 🚀 Загрузка участников группы через единый userService
   const fetchGroupMembers = async () => {
     if (!chatIdNumeric) return;
     setLoadingMembers(true);
@@ -66,7 +61,6 @@ export default function GroupProfileView({
     fetchGroupMembers();
   }, [chatIdNumeric]);
 
-  // 🎯 Открытие окна добавления участников
   const handleOpenAddModal = async () => {
     try {
       const { data, error } = await supabase
@@ -83,7 +77,6 @@ export default function GroupProfileView({
     }
   };
 
-  // 🔍 Фильтрация участников по запросу
   const filteredMembers = useMemo(() => {
     const query = searchQuery.toLowerCase().trim();
     if (!query) return groupMembers;
@@ -97,7 +90,6 @@ export default function GroupProfileView({
     });
   }, [groupMembers, searchQuery]);
 
-  // 👑 Имя создателя беседы
   const ownerUser = groupMembers.find(m => m.uuid === String(currentChatUser.ownerId));
   const ownerNameText = ownerUser 
     ? userService.resolveDisplayName(ownerUser)
@@ -114,7 +106,6 @@ export default function GroupProfileView({
 
   return (
     <div className={styles['view-mode']}> 
-      {/* 🔮 ВЕРХНЯЯ ШАПКА В ЕДИНОМ СТИЛЕ */}
       <div className={styles['profile-header-gradient']}>
         <div className={styles['profile-header-actions']}>
           <button
@@ -161,16 +152,14 @@ export default function GroupProfileView({
             <span className={styles['btn-text']}>Звук</span>
           </button>
 
-          <button type="button" className={styles['action-btn']} onClick={onEditToggle}>
+          {/* <button type="button" className={styles['action-btn']} onClick={onEditToggle}>
             <span className={styles['btn-icon']}>⚙️</span>
             <span className={styles['btn-text']}>Настройки</span>
-          </button>
+          </button> */}
         </div>
       </div>
 
-      {/* 📋 СЕКЦИЯ ИНФОРМАЦИИ */}
       <div className={styles['info-section']}>
-        {/* Описание группы (если заполнено) */}
         {(currentChatUser.aboutMe || currentChatUser.description) && (
           <div className={styles['info-item']} style={{ cursor: 'default' }}>
             <div className={styles['info-item-content']}>
@@ -189,7 +178,6 @@ export default function GroupProfileView({
           </div>
         </div>
         
-        {/* Создатель беседы */}
         <div 
           onClick={() => handleCopy(ownerNameText, 'Создатель')}
           className={styles['info-item']}
@@ -201,7 +189,6 @@ export default function GroupProfileView({
           <Copy size={16} className={styles['info-icon']} />
         </div>
 
-        {/* Идентификатор комнаты */}
         <div 
           onClick={() => handleCopy(String(chatIdNumeric), 'ID комнаты')}
           className={styles['info-item']}
@@ -215,10 +202,7 @@ export default function GroupProfileView({
 
         <div className={styles['info-divider']} />
 
-        {/* 👥 СПИСОК УЧАСТНИКОВ */}
         <div className={styles['info-users']}>
-          
-          {/* ШАПКА СПИСКА */}
           <div className={styles['info-users-header']}>
             <div className={styles['info-users-header-icon']}>
               <Users size={22} />
@@ -252,7 +236,6 @@ export default function GroupProfileView({
             </div>
           </div>
 
-          {/* Инпут поиска по участникам */}
           {isSearchOpen && (
             <div style={{ width: '100%', marginBottom: '10px', position: 'relative' }}>
               <input
@@ -280,7 +263,6 @@ export default function GroupProfileView({
             </div>
           )}
 
-          {/* Список участников */}
           {loadingMembers ? (
             <span style={{ color: '#636366', fontSize: '13px', padding: '8px 0' }}>
               Синхронизация участников...
@@ -295,7 +277,6 @@ export default function GroupProfileView({
                 filteredMembers.map((member) => {
                   const isOwner = member.uuid === String(currentChatUser.ownerId);
                   const displayName = userService.resolveDisplayName(member);
-
                   const isOnline = ctx.isUserOnline ? ctx.isUserOnline(member) : false;
                   const statusInfo = formatUserOnlineStatus(member.updatedAt, member.privacyOnline);
 
@@ -305,7 +286,6 @@ export default function GroupProfileView({
                       className={styles['info-users-item']}
                       onClick={() => ctx.setShowUserModal(member.uuid)}
                     >
-                      {/* Колонка 1: Аватар (ровно 42px) */}
                       <div className={styles['info-users-avatar-col']}>
                         <SmartAvatar
                           size={42}
@@ -315,7 +295,6 @@ export default function GroupProfileView({
                         />
                       </div>
 
-                      {/* Колонка 2: Имя и статус (на одной линии с 19 УЧАСТНИКОВ) */}
                       <div className={styles['info-users-text-col']}>
                         <span className={styles['info-users-name']}>
                           {renderUserStatusBadge(member)}

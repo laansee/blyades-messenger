@@ -1,7 +1,8 @@
+import { NavLink } from 'react-router';
 import { Pencil, X, Copy, QrCode, Hash } from 'lucide-react';
-import SmartAvatar from '../common/SmartAvatar';
-import { renderUserStatusBadge } from '../../utils/statusBadge';
-import styles from '../css/profile.module.css';
+import SmartAvatar from '../../common/SmartAvatar';
+import { renderUserStatusBadge } from '../../../utils/statusBadge';
+import styles from '../../css/profile.module.css';
 
 interface MyProfileViewProps {
   currentUser: any;
@@ -12,7 +13,6 @@ interface MyProfileViewProps {
 
 export default function MyProfileView({
   currentUser,
-  onEditToggle,
   onClose,
   ctx
 }: MyProfileViewProps) {
@@ -50,14 +50,17 @@ export default function MyProfileView({
       {/* ======================================================== */}
       <div className={styles['profile-header-gradient']}>
         <div className={styles['profile-header-actions']}>
-          <button
-            type="button"
-            onClick={onEditToggle}
-            title="Редактировать профиль"
+          <NavLink
+            to="/settings?tab=account"
             className={styles['close-modal-btn']}
+            title="Редактировать профиль"
+            onClick={() => {
+              if (ctx.setActiveTab) ctx.setActiveTab('settings');
+              onClose();
+            }}
           >
             <Pencil size={16} />
-          </button>
+          </NavLink>
 
           <button
             type="button"

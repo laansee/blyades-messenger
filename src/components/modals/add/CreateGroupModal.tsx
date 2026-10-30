@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Users, Check } from 'lucide-react';
-import useMessengerContext from '../../context/messengerContext';
+import useMessengerContext from '../../../context/messengerContext';
+import SmartAvatar from '../../common/SmartAvatar';
 
 interface CreateGroupModalProps {
   show: boolean;
@@ -22,7 +23,6 @@ export default function CreateGroupModal({ show, onClose }: CreateGroupModalProp
     });
   }, [ctx.chats]);
 
-  // 🟢 1. Хук объявлен до любых условных операторов и return
   useEffect(() => {
     if (!show) {
       setGroupName('');
@@ -101,8 +101,6 @@ export default function CreateGroupModal({ show, onClose }: CreateGroupModalProp
           gap: '16px'
         }}
       >
-        
-        {/* Шапка модалки */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #2b2d31', paddingBottom: '14px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#fff' }}>
             <Users size={20} color="#007aff" />
@@ -118,7 +116,6 @@ export default function CreateGroupModal({ show, onClose }: CreateGroupModalProp
         </div>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          {/* Инпут названия */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <label style={{ fontSize: '12px', color: '#9ca3af', fontWeight: 'bold', textTransform: 'uppercase', fontFamily: 'sans-serif' }}>
               Название беседы
@@ -133,7 +130,6 @@ export default function CreateGroupModal({ show, onClose }: CreateGroupModalProp
             />
           </div>
 
-          {/* Список контактов с чекбоксами */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <label style={{ fontSize: '12px', color: '#9ca3af', fontWeight: 'bold', textTransform: 'uppercase', fontFamily: 'sans-serif' }}>
               Пригласить участников ({selectedUserIds.length})
@@ -160,14 +156,12 @@ export default function CreateGroupModal({ show, onClose }: CreateGroupModalProp
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <div style={{ 
-                          width: '32px', height: '32px', borderRadius: '50%', 
-                          backgroundColor: chat.avatarColor || '#5865F2', 
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', 
-                          color: '#fff', fontWeight: 'bold', fontSize: '12px', fontFamily: 'sans-serif' 
-                        }}>
-                          {(chat.name || chat.username || 'U').substring(0, 1).toUpperCase()}
-                        </div>
+                        <SmartAvatar
+                          size={32}
+                          avatarUrl={chat.avatarUrl}
+                          avatarColor={chat.avatarColor || '#5865F2'}
+                          name={chat.name || chat.username}
+                        />
                         <span style={{ color: isChecked ? '#fff' : '#dbdee1', fontSize: '14px', fontWeight: isChecked ? '600' : '500', fontFamily: 'sans-serif' }}>
                           {chat.name || chat.username}
                         </span>
@@ -189,7 +183,6 @@ export default function CreateGroupModal({ show, onClose }: CreateGroupModalProp
             </div>
           </div>
 
-          {/* Кнопки футера */}
           <div style={{ display: 'flex', gap: '12px', marginTop: '10px', borderTop: '1px solid #2b2d31', paddingTop: '16px' }}>
             <button 
               type="button" 

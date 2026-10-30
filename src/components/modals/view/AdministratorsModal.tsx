@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Search, ArrowLeft, ShieldCheck } from 'lucide-react';
-import styles from '../css/profile.module.css';
-import SmartAvatar from '../common/SmartAvatar';
-import { supabase } from '../../services/supabaseClient';
-import useMessengerContext from '../../context/messengerContext';
+import { Search, ArrowLeft } from 'lucide-react';
+import styles from '../../css/profile.module.css';
+import SmartAvatar from '../../common/SmartAvatar';
+import { supabase } from '../../../services/supabaseClient';
+import useMessengerContext from '../../../context/messengerContext';
 
 interface AdminItem {
   id: string | number;
@@ -21,7 +21,7 @@ interface AdminItem {
 interface AdministratorsModalProps {
   show: boolean;
   channelId: string | number;
-  channelName: string;
+  channelName?: string;
   currentUserId: string;
   isOwner: boolean;
   onClose: () => void;
@@ -31,7 +31,6 @@ interface AdministratorsModalProps {
 export const AdministratorsModal: React.FC<AdministratorsModalProps> = ({
   show,
   channelId,
-  channelName,
   currentUserId,
   isOwner,
   onClose,
@@ -43,7 +42,6 @@ export const AdministratorsModal: React.FC<AdministratorsModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [processingId, setProcessingId] = useState<string | null>(null);
-  const [ownerName, setOwnerName] = useState<string>('');
 
   const [viewMode, setViewMode] = useState<'list' | 'add'>('list');
 
@@ -78,7 +76,6 @@ export const AdministratorsModal: React.FC<AdministratorsModalProps> = ({
       const ownerMember = members.find((m: any) => m.role === 'owner');
       const ownerUser = ownerMember ? usersMap.get(String(ownerMember.userId)) : null;
       const detectedOwnerName = ownerUser?.username || ownerUser?.name || 'владелец';
-      setOwnerName(detectedOwnerName);
 
       const adminList: AdminItem[] = [];
       const candidateList: AdminItem[] = [];
@@ -328,7 +325,6 @@ export const AdministratorsModal: React.FC<AdministratorsModalProps> = ({
                           >
                             {admin.name || admin.username || 'Пользователь'}
                           </span>
-                          {/* 🎯 Текст источника полномочий (как в референсе) */}
                           <span
                             style={{
                               fontSize: '12px',

@@ -4,8 +4,8 @@ import useMessengerContext from '../../context/messengerContext';
 import NavSidebar from '../navigation/NavSidebar';
 import ChatsSidebar from './ChatsSidebar'; 
 import ChatWindow from './ChatWindow';
-import CreateGroupModal from '../../components/modals/CreateGroupModal';
-import CreateChannelModal from '../../components/modals/CreateChannelModal';
+import CreateGroupModal from '../../components/modals/add/CreateGroupModal';
+import CreateChannelModal from '../../components/modals/add/CreateChannelModal';
 
 export default function ChatLayout() {
   const ctx = useMessengerContext();

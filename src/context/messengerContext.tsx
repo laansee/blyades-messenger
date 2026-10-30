@@ -6,8 +6,6 @@ import {
   type ToastState, 
   type ConfirmState 
 } from '../components/common/GlobalUI';
-// import ProfileModal from '../components/profile/profileModal'; 
-// import CallModal from '../features/calls/CallOverlay'; 
 
 // Импортируем наши изолированные хуки логики
 import { useCallsLogic } from './messenger/useCallsLogic';
@@ -56,6 +54,7 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
   const [typingUser, setTypingUser] = useState(false);
   const [ctxMenu, setCtxMenu] = useState({ show: false, x: 0, y: 0, items: [] as any[] });
   const [showCallsHistoryModal, setShowCallsHistoryModal] = useState(false);
+  const [showContactsModal, setShowContactsModal] = useState(false);
   
   const [toast, setToast] = useState<ToastState>({
     show: false,
@@ -157,7 +156,10 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
 
       // 3. Собираем UUID всех участников для отображения никнеймов
       const allNeededUserIds = [
-        ...new Set(members.map((m: any) => String(m.userId)))
+        ...new Set([
+          ...members.map((m: any) => String(m.userId)),
+          ...contacts.map((c: any) => String(c.contactId))
+        ].filter(Boolean))
       ];
 
       const usersList = await userService.getUsersByUuids(allNeededUserIds);
@@ -908,6 +910,7 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
         handleCopyMessageText, handleSendMessage,
         handleKeyDown, handleLogout,
         showCallsHistoryModal, setShowCallsHistoryModal,
+        showContactsModal, setShowContactsModal,
         currentCall: calls.currentCall,
         setCurrentCall: calls.setCurrentCall,
         incomingCallData: calls.incomingCallData,
@@ -925,18 +928,6 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
       }}
     >
       {children}
-
-      {/* ==================================================== */}
-      {/* 📞 НАТИВНОЕ ОКНО ЗВOНКОВ (ИСХОДЯЩИЕ И ВХОДЯЩИЕ)      */}
-      {/* ==================================================== */}
-      {/* {(calls.currentCall || calls.incomingCallData) && (
-        <CallModal 
-          currentCall={calls.currentCall} 
-          setCurrentCall={calls.setCurrentCall}
-          incomingCallData={calls.incomingCallData}
-          setIncomingCallData={calls.setIncomingCallData}
-        />
-      )} */}
 
       {/* ===================================================== */}
       {/* 👤 ГЛАВНАЯ МОДАЛКА ПРОФИЛЕЙ (ЮЗЕРЫ, КОНТАКТЫ, ГРУППЫ) */}

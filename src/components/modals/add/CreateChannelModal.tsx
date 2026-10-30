@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Camera } from 'lucide-react';
-import { supabase } from '../../services/supabaseClient';
-import useMessengerContext from '../../context/messengerContext';
+import { supabase } from '../../../services/supabaseClient';
+import useMessengerContext from '../../../context/messengerContext';
 
 interface CreateChannelModalProps {
   show: boolean;
@@ -76,7 +76,6 @@ export default function CreateChannelModal({ show, onClose }: CreateChannelModal
 
       if (memberError) throw memberError;
 
-      // 3. Отправляем шаблонное системное сообщение о создании канала
       const channelStartText = `Канал {{chat:${newChat.id}}} создан`;
 
       await supabase.from('messages').insert([
@@ -89,7 +88,6 @@ export default function CreateChannelModal({ show, onClose }: CreateChannelModal
         },
       ]);
 
-      // 4. Актуализируем lastMessageText в chats
       await supabase
         .from('chats')
         .update({
@@ -147,7 +145,6 @@ export default function CreateChannelModal({ show, onClose }: CreateChannelModal
         }}
       >
         <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          {/* Верхний блок: иконка камеры и инпут названия */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
             <div
               style={{
@@ -181,7 +178,6 @@ export default function CreateChannelModal({ show, onClose }: CreateChannelModal
             </div>
           </div>
 
-          {/* Поле описания канала */}
           <div className="tg-field-group" style={{ position: 'relative', width: '100%', paddingTop: '18px' }}>
             <input
               id="channel-desc-input"
@@ -198,7 +194,6 @@ export default function CreateChannelModal({ show, onClose }: CreateChannelModal
             <div className="tg-active-border" />
           </div>
 
-          {/* Кнопки управления */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '16px', marginTop: '6px' }}>
             <button
               type="button"

@@ -1,8 +1,8 @@
-import { formatUserOnlineStatus } from '../../context/messengerContext';
-import styles from '../css/profile.module.css';
-import { renderUserStatusBadge } from '../../utils/statusBadge';
-import { X, Copy, Hash, Plus, Settings, MessagesCircle, Bell, BellRing, BellOff, Phone } from 'lucide-react';
-import SmartAvatar from '../common/SmartAvatar';
+import { formatUserOnlineStatus } from '../../../context/messengerContext';
+import styles from '../../css/profile.module.css';
+import { renderUserStatusBadge } from '../../../utils/statusBadge';
+import { X, Copy, Hash, Plus, Settings, MessagesCircle, Bell, Phone } from 'lucide-react';
+import SmartAvatar from '../../common/SmartAvatar';
 
 interface UserProfileViewProps {
   currentChatUser: any;
@@ -46,12 +46,10 @@ export default function UserProfileView({
 }: UserProfileViewProps) {
   if (!currentChatUser) return null;
   
-  // ID собеседника: гарантируем получение валидного UUID
   const partnerIdentifier = String(
     currentChatUser.partnerId || currentChatUser.uuid || currentChatUser.id || ''
   );
 
-  // 🎯 Проверяем: сохранён ли пользователь в контактах на самом деле
   const savedContact = (ctx.contacts || []).find((c: any) => 
     String(c.contactId || c.partnerId || c.uuid || c.id) === partnerIdentifier
   );
@@ -63,10 +61,8 @@ export default function UserProfileView({
 
   const isOnline = ctx.isUserOnline ? ctx.isUserOnline(currentChatUser) : false;
   const statusInfo = formatUserOnlineStatus(currentChatUser?.updatedAt, currentChatUser?.privacyOnline);
-
   const myIdDisplay = currentChatUser.id ? `#${currentChatUser.id}` : currentChatUser.uuid?.slice(0, 8);
 
-  // 1. Ищем НАСТОЯЩИЙ публичный профиль из таблицы users (без локальных имен контакта)
   const rawUser = (ctx.users || []).find((u: any) => 
     String(u.uuid || u.id) === partnerIdentifier
   ) || currentChatUser;
@@ -137,11 +133,7 @@ export default function UserProfileView({
             className={styles['action-btn']}
             onClick={() => ctx.showToast('Настройки уведомлений в разработке', 'info')}
           >
-            <span className={styles['btn-icon']}>
-              <Bell/>
-              {/* <BellRing/> */}
-              {/* <BellOff/> */}
-            </span>
+            <span className={styles['btn-icon']}><Bell/></span>
             <span className={styles['btn-text']}>Звук</span>
           </button>
 
@@ -159,7 +151,7 @@ export default function UserProfileView({
             className={styles['action-btn']} 
             onClick={onEditToggle}
           >
-            <span className={styles['btn-icon']}>{isContact ? <Settings/> : <Plus/>}</span>
+            <span className={styles['btn-icon']}>{isContact ? <Settings size={18}/> : <Plus size={18}/>}</span>
             <span className={styles['btn-text']}>
               {isContact ? 'Изменить' : 'Добавить'}
             </span>
@@ -197,7 +189,6 @@ export default function UserProfileView({
           </div>
           <Copy size={18} className={styles['info-icon']} />
         </div>
-
         
         {shouldShowField(currentChatUser.privacyPhone, currentChatUser.isAmHisContact) && currentChatUser.phone && currentChatUser.phone.trim() !== '' && (
           <div
@@ -235,7 +226,6 @@ export default function UserProfileView({
             </div>
           </div>
         )}
-
 
         {currentChatUser.note && (
           <div className={styles['info-item']} style={{ cursor: 'default' }}>

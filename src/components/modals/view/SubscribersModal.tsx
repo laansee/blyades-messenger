@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Search, ArrowLeft, Check, Users } from 'lucide-react';
-import styles from '../css/profile.module.css';
-import SmartAvatar from '../common/SmartAvatar';
-import { supabase } from '../../services/supabaseClient';
-import useMessengerContext from '../../context/messengerContext';
+import { Search, ArrowLeft, Check } from 'lucide-react';
+import styles from '../../css/profile.module.css';
+import SmartAvatar from '../../common/SmartAvatar';
+import { supabase } from '../../../services/supabaseClient';
+import useMessengerContext from '../../../context/messengerContext';
 
 interface SubscriberItem {
   id: string | number;
@@ -181,7 +181,6 @@ export const SubscribersModal: React.FC<SubscribersModalProps> = ({
     setIsAdding(true);
     try {
       const nowIso = new Date().toISOString();
-      const myUuid = String(ctx.currentUser?.uuid || ctx.currentUser?.id);
 
       const membersToInsert = selectedUserIds.map((uid) => ({
         chatId: Number(channelId),
