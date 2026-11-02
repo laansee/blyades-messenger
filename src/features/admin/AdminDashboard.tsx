@@ -293,7 +293,8 @@ export default function AdminDashboard() {
       ? realFullName
       : (selectedUser?.username || realFullName || 'Пользователь');
     
-    const myIdDisplay = selectedUser.id ? `#${selectedUser.id}` : selectedUser.uuid?.slice(0, 8);
+    // const myIdDisplay = selectedUser.id ? `#${selectedUser.id}` : selectedUser.uuid?.slice(0, 8);
+    const myIdDisplay = selectedUser.uuid;
 
     return (
       <div className={styles['spy-container']}>
@@ -400,7 +401,7 @@ export default function AdminDashboard() {
                 <div className={profileStyles['info-item']}>
                   <div className={profileStyles['info-item-content']}>
                     <span className={profileStyles['info-value']}>
-                    {selectedUser.note}
+                      {selectedUser.aboutMe || 'Био-заметка отсутствует'}
                     </span>
                     <span className={profileStyles['info-label']}>О себе</span>
                   </div>
@@ -410,7 +411,7 @@ export default function AdminDashboard() {
               <div className={profileStyles['info-item']}>
                 <div className={profileStyles['info-item-content']}>
                   <span className={profileStyles['info-value']}>
-                  {selectedUser.aboutMe || 'Био-заметка отсутствует'}
+                    {selectedUser.note}
                   </span>
                   <span className={profileStyles['info-label']}>Ваша заметка</span>
                 </div>

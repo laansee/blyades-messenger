@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import styles from '../../css/profile.module.css';
 import { 
   Camera, Smile, KeyRound, MessageSquare, Palette, 
-  Languages, PenTool, Heart, Hand, Link2, Shield, 
+  PenTool, Heart, Hand, Link2, Shield, 
   Users, UserX, ClipboardList, Sparkles 
 } from 'lucide-react';
 import { supabase } from '../../../services/supabaseClient';
@@ -22,6 +22,7 @@ interface EditChannelModalProps {
   editAvatarUrl?: string;
   setEditAvatarUrl?: (v: string) => void;
   onCancel: () => void;
+  onSuccess?: () => void;
   onSave?: () => Promise<void>;
 }
 
@@ -36,6 +37,7 @@ export default function EditChannelModal({
   editAvatarUrl: propUrl,
   setEditAvatarUrl: propSetUrl,
   onCancel,
+  onSuccess,
   onSave
 }: EditChannelModalProps) {
   const ctx = useMessengerContext();
@@ -55,8 +57,10 @@ export default function EditChannelModal({
   const channelUrl = propUrl !== undefined ? propUrl : localUrl;
   const setChannelUrl = propSetUrl || setLocalUrl;
 
-  const [translateEnabled, setTranslateEnabled] = useState(false);
-  const [signMessagesEnabled, setSignMessagesEnabled] = useState(false);
+  // 🎯 Настройка "Подписывать сообщения"
+  const [signMessagesEnabled, setSignMessagesEnabled] = useState<boolean>(
+    Boolean(currentChatUser?.signMessages)
+  );
 
   const [isDragOver, setIsDragOver] = useState(false);
   const [rawImageSrc, setRawImageSrc] = useState<string | null>(null);
@@ -68,26 +72,50 @@ export default function EditChannelModal({
   const [adminsCount, setAdminsCount] = useState<number>(1);
 
   const channelType = currentChatUser?.publicId || currentChatUser?.accessType === 'public' ? 'Публичный' : 'Частный';
-  const subscribersCount = currentChatUser?.membersCount || currentChatUser?.subscribersCount || 1;
+  const subscribersCount = currentChatUser?.memberCount || currentChatUser?.membersCount || currentChatUser?.subscribersCount || 1;
 
   const notifyDev = () => ctx.showToast?.('Раздел находится в разработке', 'info');
 
-  const fetchAdminsCount = async () => {
-    const entityId = currentChatUser?.internalChatId || currentChatUser?.id;
-    if (!entityId) return;
-    const { data } = await supabase
+  const fetchChannelDetailsAndAdmins = async () => {
+    const rawId = currentChatUser?.internalChatId || currentChatUser?.chatId || currentChatUser?.id;
+    const entityId = Number(rawId);
+    if (!entityId || isNaN(entityId)) return;
+
+    // 1. Всегда проверяем актуальное значение signMessages из БД (чтобы после F5 ничего не сбрасывалось)
+    const { data: chatRow } = await supabase
+      .from('chats')
+      .select('signMessages, postMode')
+      .eq('id', entityId)
+      .single();
+
+    if (chatRow) {
+      const actualSign = Boolean(chatRow.signMessages);
+      setSignMessagesEnabled(actualSign);
+
+      if (ctx.setChats) {
+        ctx.setChats((prev: any[]) =>
+          prev.map((c: any) =>
+            Number(c.id) === entityId ? { ...c, signMessages: actualSign, postMode: chatRow.postMode } : c
+          )
+        );
+      }
+    }
+
+    // 2. Считаем администраторов
+    const { data: adminsData } = await supabase
       .from('chat_members')
       .select('role')
-      .eq('chatId', Number(entityId))
+      .eq('chatId', entityId)
       .in('role', ['owner', 'admin']);
-    if (data) {
-      setAdminsCount(data.length);
+
+    if (adminsData) {
+      setAdminsCount(adminsData.length);
     }
   };
 
   useEffect(() => {
-    fetchAdminsCount();
-  }, [currentChatUser]);
+    fetchChannelDetailsAndAdmins();
+  }, [currentChatUser?.id]);
 
   const processSelectedFile = (file: File) => {
     if (!file.type.startsWith('image/')) {
@@ -151,35 +179,71 @@ export default function EditChannelModal({
       return;
     }
 
-    const entityId = Number(currentChatUser?.internalChatId || currentChatUser?.id);
-    const updatedFields = {
+    const rawId = currentChatUser?.internalChatId || currentChatUser?.chatId || currentChatUser?.id;
+    const numId = Number(rawId);
+    const isNumericId = !isNaN(numId) && numId > 0 && !String(rawId).startsWith('channel_');
+    const uniqueStringId = String(currentChatUser?.uniqueId || currentChatUser?.id || '');
+
+    const updatedFields: Record<string, any> = {
       name: channelName.trim(),
       description: channelDesc.trim() || null,
       avatarColor: channelColor,
       avatarUrl: channelUrl.trim() || null,
+      signMessages: signMessagesEnabled,
+      postMode: signMessagesEnabled ? 'user' : 'channel',
       updatedAt: new Date().toISOString()
     };
 
-    const { error } = await supabase
-      .from('chats')
-      .update(updatedFields)
-      .eq('id', entityId);
+    try {
+      let query = supabase.from('chats').update(updatedFields);
 
-    if (error) {
-      ctx.showToast?.('Ошибка сохранения канала', 'error');
-      return;
+      if (isNumericId) {
+        query = query.eq('id', numId);
+      } else if (uniqueStringId) {
+        query = query.eq('uniqueId', uniqueStringId);
+      } else {
+        throw new Error('Не удалось определить ID канала для обновления');
+      }
+
+      const { data, error } = await query.select();
+
+      if (error) throw error;
+
+      if (!data || data.length === 0) {
+        await supabase
+          .from('chats')
+          .update(updatedFields)
+          .eq('name', currentChatUser?.name);
+      }
+
+      if (ctx.setChats) {
+        ctx.setChats((prev: any[]) =>
+          prev.map((c: any) => {
+            const isMatch = Number(c.id) === numId || String(c.uniqueId) === uniqueStringId || c.name === channelName;
+            return isMatch 
+              ? { 
+                  ...c, 
+                  ...updatedFields, 
+                  aboutMe: updatedFields.description, 
+                  signMessages: signMessagesEnabled,
+                  postMode: updatedFields.postMode 
+                } 
+              : c;
+          })
+        );
+      }
+
+      if (ctx.fetchAndMatchChats) {
+        await ctx.fetchAndMatchChats();
+      }
+
+      ctx.showToast?.('Канал сохранён!', 'success');
+      onSuccess?.();
+      onCancel();
+    } catch (err: any) {
+      console.error('Ошибка сохранения настроек канала:', err);
+      ctx.showToast?.(`Ошибка сохранения: ${err.message}`, 'error');
     }
-
-    if (ctx.setChats) {
-      ctx.setChats((prev: any[]) =>
-        prev.map((c: any) =>
-          Number(c.id) === entityId ? { ...c, ...updatedFields, aboutMe: updatedFields.description } : c
-        )
-      );
-    }
-
-    ctx.showToast?.('Канал сохранён!', 'success');
-    onCancel();
   };
 
   const handleDeleteChannel = () => {
@@ -210,266 +274,258 @@ export default function EditChannelModal({
   };
 
   return (
-    <div className={styles['channel-edit-container']}>
-      <div className={styles['channel-edit-header']}>
-        <h3 className={styles['channel-edit-title']}>Редактировать канал</h3>
+    <div className={styles['modal-edit-container']}>
+      <div className={styles['modal-edit-header']}>
+        <h3 className={styles['modal-edit-title']}>Редактировать канал</h3>
       </div>
 
-      <div className={styles['channel-edit-body']}>
-        <div className={styles['channel-edit-top']}>
+      <div className={styles['modal-edit-body']}>
+        <div className={styles['modal-edit-top']}>
           <div 
-            className={styles['channel-edit-avatar-btn']}
+            className={styles['modal-edit-avatar-btn']}
             onClick={() => setShowUploadSelector(true)}
             title="Сменить фото канала"
           >
             {channelUrl ? (
-              <img src={channelUrl} alt="Avatar" className={styles['channel-edit-avatar-img']} />
+              <img src={channelUrl} alt="Avatar" className={styles['modal-edit-avatar-img']} />
             ) : (
               <div 
-                className={styles['channel-edit-avatar-placeholder']}
+                className={styles['modal-edit-avatar-placeholder']}
                 style={{ backgroundColor: channelColor }}
               >
                 <Camera size={26} color="#fff" />
               </div>
             )}
-            <div className={styles['channel-edit-avatar-overlay']}>
+            <div className={styles['modal-edit-avatar-overlay']}>
               <Camera size={22} color="#fff" />
             </div>
           </div>
 
-          <div className={styles['channel-edit-name-col']}>
-            <div className={styles['channel-edit-input-wrapper']}>
-              <label className={styles['channel-edit-label']}>Название канала</label>
-              <div className={styles['channel-edit-input-row']}>
+          <div className={styles['modal-edit-name-col']}>
+            <div className={styles['modal-edit-input-wrapper']}>
+              <div className={styles['profile-input-field']}>
                 <input
                   type="text"
                   value={channelName}
                   onChange={(e) => setChannelName(e.target.value)}
-                  className={styles['channel-clean-input']}
+                  className={styles['profile-line-input']}
                   autoComplete="off"
+                  placeholder=" "
                 />
-                <button 
-                  type="button" 
-                  className={styles['channel-emoji-btn']}
-                  onClick={notifyDev}
-                >
-                  <Smile size={18} />
-                </button>
+                <label className={styles['profile-field-label']}>Название канала</label>
               </div>
             </div>
           </div>
         </div>
 
-        <div className={styles['channel-desc-block']}>
+        <div className={styles['modal-desc-block']}>
           <input
             type="text"
             placeholder="Описание (необязательно)"
             value={channelDesc}
             onChange={(e) => setChannelDesc(e.target.value)}
-            className={styles['channel-clean-input']}
+            className={styles['modal-clean-input']}
             autoComplete="off"
           />
         </div>
 
-        <div className={styles['channel-edit-divider']} />
+        <div className={styles['info-divider']} />
 
-        <div className={styles['channel-settings-list']}>
+        <div 
+          className={styles['modal-settings-list']}
+          style={{ margin: 0 }}
+        >
           <div 
-            className={`${styles['channel-setting-item']} ${styles['channel-setting-disabled']}`} 
+            className={styles['action-bottom-btn']} 
+            aria-disabled
             onClick={notifyDev}
           >
-            <div className={styles['channel-setting-left']}>
-              <KeyRound size={18} className={styles['channel-setting-icon']} />
+            <div className={styles['modal-setting-left']}>
+              <KeyRound size={18} className={styles['modal-setting-icon']} />
               <span>Тип канала</span>
             </div>
-            <span className={styles['channel-setting-value']}>{channelType}</span>
+            <span className={styles['modal-setting-value']}>{channelType}</span>
           </div>
 
           <div 
-            className={`${styles['channel-setting-item']} ${styles['channel-setting-disabled']}`}
+            className={styles['action-bottom-btn']} 
+            aria-disabled
             onClick={notifyDev}
           >
-            <div className={styles['channel-setting-left']}>
-              <Users size={18} className={styles['channel-setting-icon']} />
+            <div className={styles['modal-setting-left']}>
+              <Users size={18} className={styles['modal-setting-icon']} />
               <span>Обсуждение</span>
             </div>
-            <span className={styles['channel-setting-link']}>Добавить группу</span>
+            <span className={styles['modal-setting-link']}>Добавить группу</span>
           </div>
 
           <div 
-            className={`${styles['channel-setting-item']} ${styles['channel-setting-disabled']}`}
+            className={styles['action-bottom-btn']} 
+            aria-disabled
             onClick={notifyDev}
           >
-            <div className={styles['channel-setting-left']}>
-              <MessageSquare size={18} className={styles['channel-setting-icon']} />
+            <div className={styles['modal-setting-left']}>
+              <MessageSquare size={18} className={styles['modal-setting-icon']} />
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span>Сообщения каналу</span>
-                <span className={styles['tg-badge-new']}>НОВОЕ</span>
+                <span className={styles['badge-accent']}>НОВОЕ</span>
               </div>
             </div>
-            <span className={styles['channel-setting-value']}>Выкл.</span>
+            <span className={styles['modal-setting-value']}>Выкл.</span>
           </div>
 
           <div 
-            className={`${styles['channel-setting-item']} ${styles['channel-setting-disabled']}`}
+            className={styles['action-bottom-btn']} 
+            aria-disabled
             onClick={notifyDev}
           >
-            <div className={styles['channel-setting-left']}>
-              <Palette size={18} className={styles['channel-setting-icon']} />
+            <div className={styles['modal-setting-left']}>
+              <Palette size={18} className={styles['modal-setting-icon']} />
               <span>Оформление</span>
             </div>
-            <span className={styles['tg-pill-badge']}>{channelName.toLowerCase()}</span>
+            <span className={styles['badge-pill']}>{channelName.toLowerCase()}</span>
           </div>
 
+          {/* 🎯 РАБОЧИЙ ПЕРЕКЛЮЧАТЕЛЬ: Подписывать сообщения */}
           <div 
-            className={`${styles['channel-setting-item']} ${styles['channel-setting-disabled']}`}
-            onClick={notifyDev}
+            className={styles['action-bottom-btn']} 
+            onClick={() => setSignMessagesEnabled(prev => !prev)}
+            style={{ cursor: 'pointer' }}
           >
-            <div className={styles['channel-setting-left']}>
-              <Languages size={18} className={styles['channel-setting-icon']} />
-              <span>Переводить сообщения</span>
+            <div className={styles['modal-setting-left']}>
+              <PenTool size={18} className={styles['modal-setting-icon']} />
+              <span>Подписывать сообщения</span>
             </div>
-            <label className={styles['tg-switch']} onClick={(e) => e.stopPropagation()}>
+            <label className={styles['toggle-switch']} onClick={(e) => e.stopPropagation()}>
               <input 
                 type="checkbox" 
-                disabled
-                checked={translateEnabled} 
-                onChange={(e) => setTranslateEnabled(e.target.checked)} 
+                checked={signMessagesEnabled} 
+                onChange={(e) => setSignMessagesEnabled(e.target.checked)} 
               />
-              <span className={styles['tg-slider']} />
+              <span className={styles['toggle-slider']} />
             </label>
-          </div>
-
-          <div 
-            className={`${styles['channel-setting-card']} ${styles['channel-setting-disabled']}`}
-            onClick={notifyDev}
-          >
-            <div className={styles['channel-setting-item-inner']}>
-              <div className={styles['channel-setting-left']}>
-                <PenTool size={18} className={styles['channel-setting-icon']} />
-                <span>Подписывать сообщения</span>
-              </div>
-              <label className={styles['tg-switch']} onClick={(e) => e.stopPropagation()}>
-                <input 
-                  type="checkbox" 
-                  disabled
-                  checked={signMessagesEnabled} 
-                  onChange={(e) => setSignMessagesEnabled(e.target.checked)} 
-                />
-                <span className={styles['tg-slider']} />
-              </label>
-            </div>
-            <span className={styles['channel-setting-hint']}>
-              Добавлять имена администраторов к их сообщениям в канале.
-            </span>
+            {/* <span className={styles['modal-setting-hint']}>
+              {signMessagesEnabled 
+                ? 'Включено: сообщения авторов будут отображаться с их аватарками и именами (как в беседе).'
+                : 'Выключено: все сообщения от имени канала. Доступна текстовая подпись автора внизу.'}
+            </span> */}
           </div>
         </div>
 
-        <div className={styles['channel-edit-divider']} />
+        <div className={styles['info-divider']} />
 
-        <div className={styles['channel-settings-list']}>
+        <div 
+          className={styles['modal-settings-list']}
+          style={{ margin: 0 }}
+        >
           <div 
-            className={`${styles['channel-setting-item']} ${styles['channel-setting-disabled']}`} 
+            className={styles['action-bottom-btn']} 
+            aria-disabled
             onClick={notifyDev}
           >
-            <div className={styles['channel-setting-left']}>
-              <Heart size={18} className={styles['channel-setting-icon']} />
+            <div className={styles['modal-setting-left']}>
+              <Heart size={18} className={styles['modal-setting-icon']} />
               <span>Реакции</span>
             </div>
-            <span className={styles['channel-setting-value']}>Все</span>
+            <span className={styles['modal-setting-value']}>Все</span>
           </div>
 
           <div 
-            className={`${styles['channel-setting-item']} ${styles['channel-setting-disabled']}`} 
+            className={styles['action-bottom-btn']} 
+            aria-disabled
             onClick={notifyDev}
           >
-            <div className={styles['channel-setting-left']}>
-              <Hand size={18} className={styles['channel-setting-icon']} />
+            <div className={styles['modal-setting-left']}>
+              <Hand size={18} className={styles['modal-setting-icon']} />
               <span>Приветственное сообщение</span>
             </div>
-            <span className={styles['channel-setting-value']}>Выкл.</span>
+            <span className={styles['modal-setting-value']}>Выкл.</span>
           </div>
 
           <div 
-            className={`${styles['channel-setting-item']} ${styles['channel-setting-disabled']}`} 
+            className={styles['action-bottom-btn']} 
+            aria-disabled
             onClick={notifyDev}
           >
-            <div className={styles['channel-setting-left']}>
-              <Link2 size={18} className={styles['channel-setting-icon']} />
+            <div className={styles['modal-setting-left']}>
+              <Link2 size={18} className={styles['modal-setting-icon']} />
               <span>Пригласительные ссылки</span>
             </div>
-            <span className={styles['channel-setting-value']}>1</span>
+            <span className={styles['modal-setting-value']}>1</span>
           </div>
 
           <div 
-            className={styles['channel-setting-item']} 
+            className={styles['action-bottom-btn']} 
             onClick={() => setShowAdminsModal(true)}
           >
-            <div className={styles['channel-setting-left']}>
-              <Shield size={18} className={styles['channel-setting-icon']} />
+            <div className={styles['modal-setting-left']}>
+              <Shield size={18} className={styles['modal-setting-icon']} />
               <span>Администраторы</span>
             </div>
-            <span className={styles['channel-setting-value']}>{adminsCount}</span>
+            <span className={styles['modal-setting-value']}>{adminsCount}</span>
           </div>
 
           <div 
-            className={styles['channel-setting-item']} 
+            className={styles['action-bottom-btn']} 
             onClick={() => setShowSubscribersModal(true)}
           >
-            <div className={styles['channel-setting-left']}>
-              <Users size={18} className={styles['channel-setting-icon']} />
+            <div className={styles['modal-setting-left']}>
+              <Users size={18} className={styles['modal-setting-icon']} />
               <span>Подписчики</span>
             </div>
-            <span className={styles['channel-setting-value']}>{subscribersCount}</span>
+            <span className={styles['modal-setting-value']}>{subscribersCount}</span>
           </div>
 
           <div 
-            className={`${styles['channel-setting-item']} ${styles['channel-setting-disabled']}`} 
+            className={styles['action-bottom-btn']} 
+            aria-disabled
             onClick={notifyDev}
           >
-            <div className={styles['channel-setting-left']}>
-              <UserX size={18} className={styles['channel-setting-icon']} />
+            <div className={styles['modal-setting-left']}>
+              <UserX size={18} className={styles['modal-setting-icon']} />
               <span>Чёрный список</span>
             </div>
           </div>
 
           <div 
-            className={`${styles['channel-setting-item']} ${styles['channel-setting-disabled']}`} 
+            className={styles['action-bottom-btn']} 
+            aria-disabled
             onClick={notifyDev}
           >
-            <div className={styles['channel-setting-left']}>
-              <ClipboardList size={18} className={styles['channel-setting-icon']} />
+            <div className={styles['modal-setting-left']}>
+              <ClipboardList size={18} className={styles['modal-setting-icon']} />
               <span>Недавние действия</span>
             </div>
           </div>
 
           <div 
-            className={`${styles['channel-setting-item']} ${styles['channel-setting-disabled']}`} 
+            className={styles['action-bottom-btn']} 
+            aria-disabled
             onClick={notifyDev}
           >
-            <div className={styles['channel-setting-left']}>
-              <Sparkles size={18} className={styles['channel-setting-icon']} />
+            <div className={styles['modal-setting-left']}>
+              <Sparkles size={18} className={styles['modal-setting-icon']} />
               <span>Партнёрские программы</span>
             </div>
           </div>
         </div>
 
-        <div className={styles['channel-edit-divider']} />
+        <div className={styles['info-divider']} />
 
         <button 
           type="button" 
-          className={styles['channel-delete-btn']}
+          className={styles['modal-delete-btn']}
           onClick={handleDeleteChannel}
         >
           Удалить канал
         </button>
       </div>
 
-      <div className={styles['channel-edit-footer']}>
-        <button type="button" className={styles['channel-footer-btn-cancel']} onClick={onCancel}>
+      <div className={styles['modal-edit-footer']}>
+        <button type="button" className={styles['modal-footer-btn-cancel']} onClick={onCancel}>
           Отмена
         </button>
-        <button type="button" className={styles['channel-footer-btn-save']} onClick={handleInternalSave}>
+        <button type="button" className={styles['modal-footer-btn-save']} onClick={handleInternalSave}>
           Сохранить
         </button>
       </div>
@@ -517,7 +573,7 @@ export default function EditChannelModal({
           currentChatUser?.role === 'owner'
         )}
         onClose={() => setShowAdminsModal(false)}
-        onAdminsUpdated={fetchAdminsCount}
+        onAdminsUpdated={fetchChannelDetailsAndAdmins}
       />
 
       <SubscribersModal

@@ -33,27 +33,41 @@ export default function ProfileModal() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [ctx.showUserModal]);
 
-  const myUuid = String(ctx?.currentUser?.uuid || ctx?.currentUser?.id || '').trim();
+  const myUserUuid = String(ctx?.currentUser?.uuid || '').trim();
+  const myNumericId = String(ctx?.currentUser?.id || '').trim();
+
   const targetIdentifier = useMemo(() => {
     if (ctx?.showUserModal === true) {
-      return ctx?.activeChatId ? String(ctx.activeChatId).trim() : myUuid;
+      return ctx?.activeChatId ? String(ctx.activeChatId).trim() : (myUserUuid || myNumericId);
     }
     return String(ctx?.showUserModal || '').trim();
-  }, [ctx?.showUserModal, ctx?.activeChatId, myUuid]);
+  }, [ctx?.showUserModal, ctx?.activeChatId, myUserUuid, myNumericId]);
+
+  const cachedChat = useMemo(() => {
+    if (!targetIdentifier) return null;
+    return (ctx?.chats || []).find((c: any) => 
+      String(c.id).trim() === targetIdentifier ||
+      String(c.internalChatId).trim() === targetIdentifier
+    );
+  }, [ctx?.chats, targetIdentifier]);
 
   const isMe = Boolean(
-    targetIdentifier && 
-    (targetIdentifier === myUuid || targetIdentifier === 'me' || (!ctx?.activeChatId && ctx?.showUserModal === true))
+    !cachedChat && (
+      targetIdentifier === 'me' ||
+      (myUserUuid && targetIdentifier === myUserUuid) ||
+      (!ctx?.activeChatId && ctx?.showUserModal === true)
+    )
   );
 
   const cachedChatUser = useMemo(() => {
     if (isMe) return ctx.currentUser;
+    if (cachedChat) return cachedChat;
+
     return (ctx?.chats || []).find((c: any) => 
-      String(c.id).trim() === targetIdentifier ||
       String(c.partnerId).trim() === targetIdentifier ||
       String(c.uuid).trim() === targetIdentifier
     );
-  }, [ctx?.chats, targetIdentifier, isMe, ctx.currentUser]);
+  }, [ctx?.chats, targetIdentifier, isMe, cachedChat, ctx.currentUser]);
 
   useEffect(() => {
     let isMounted = true;
@@ -125,16 +139,13 @@ export default function ProfileModal() {
           onClick={(e) => e.stopPropagation()}
           style={{
             zIndex: 1000000,
-            maxHeight: '85vh',
-            width: '100%',
-            maxWidth: '420px',
             overflowY: 'auto',
             transform: isAnimateClose ? 'scale(0.95)' : 'scale(1)',
             transition: 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
             animation: `${isAnimateClose ? 'modalScaleOut' : 'modalScaleIn'} 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards`
           }}
         >
-          {(isMe || String(currentChatUser?.uuid) === String(ctx.currentUser?.uuid) || String(currentChatUser?.id) === String(ctx.currentUser?.id)) ? (
+          {isMe ? (
             <MyProfileView
               currentUser={ctx.currentUser}
               onEditToggle={() => {

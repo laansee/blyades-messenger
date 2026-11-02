@@ -1,7 +1,7 @@
 import { formatUserOnlineStatus } from '../../../context/messengerContext';
 import styles from '../../css/profile.module.css';
 import { renderUserStatusBadge } from '../../../utils/statusBadge';
-import { X, Copy, Hash, Plus, Settings, MessagesCircle, Bell, Phone } from 'lucide-react';
+import { X, Copy, Hash, Plus, Settings, MessagesCircle, Bell, Phone, Trash, Pen, Hand, Redo, Ellipsis } from 'lucide-react';
 import SmartAvatar from '../../common/SmartAvatar';
 
 interface UserProfileViewProps {
@@ -55,10 +55,6 @@ export default function UserProfileView({
   );
   const isContact = Boolean(savedContact || currentChatUser.isContact);
 
-  // Идентификатор чата в базе данных (если чата ещё нет — пишем «ещё не создан»)
-  const activeChatNumericId = currentChatUser.chatId || currentChatUser.internalChatId || (currentChatUser.type ? currentChatUser.id : 'ещё не создан');
-  const activeChatUniqueKey = currentChatUser.uniqueId || (activeChatNumericId !== 'ещё не создан' ? `chat_${activeChatNumericId}` : 'none');
-
   const isOnline = ctx.isUserOnline ? ctx.isUserOnline(currentChatUser) : false;
   const statusInfo = formatUserOnlineStatus(currentChatUser?.updatedAt, currentChatUser?.privacyOnline);
   const myIdDisplay = currentChatUser.id ? `#${currentChatUser.id}` : currentChatUser.uuid?.slice(0, 8);
@@ -109,10 +105,10 @@ export default function UserProfileView({
           {isOnline ? 'в сети' : statusInfo.text}
         </span>
 
-        <div className={styles['action-buttons-row']}>
+        <div className={styles['action-top-buttons-row']}>
           <button 
             type="button" 
-            className={styles['action-btn']} 
+            className={styles['action-top-btn']} 
             onClick={async () => { 
               if (ctx.openOrCreateDirectChat) {
                 await ctx.openOrCreateDirectChat({
@@ -124,134 +120,229 @@ export default function UserProfileView({
               onClose(); 
             }}
           >
-            <span className={styles['btn-icon']}><MessagesCircle/></span>
+            <span className={styles['btn-icon']}><MessagesCircle size={20}/></span>
             <span className={styles['btn-text']}>Чат</span>
           </button>
 
           <button 
             type="button" 
-            className={styles['action-btn']}
+            className={styles['action-top-btn']}
+            style={{ opacity: 0.5, cursor: 'not-allowed' }}
             onClick={() => ctx.showToast('Настройки уведомлений в разработке', 'info')}
           >
-            <span className={styles['btn-icon']}><Bell/></span>
+            <span className={styles['btn-icon']}><Bell size={20}/></span>
             <span className={styles['btn-text']}>Звук</span>
           </button>
 
           <button 
             type="button" 
             onClick={onStartCall} 
-            className={styles['action-btn']}
+            className={styles['action-top-btn']}
           >
-            <span className={styles['btn-icon']}><Phone/></span>
+            <span className={styles['btn-icon']}><Phone size={20}/></span>
             <span className={styles['btn-text']}>Звонок</span>
           </button>
-          
+
           <button 
             type="button" 
-            className={styles['action-btn']} 
+            className={styles['action-top-btn']}
+          >
+            <span className={styles['btn-icon']}><Ellipsis size={20}/></span>
+            <span className={styles['btn-text']}>Ещё</span>
+          </button>
+          
+          {/* <button 
+            type="button" 
+            className={styles['action-top-btn']} 
             onClick={onEditToggle}
           >
-            <span className={styles['btn-icon']}>{isContact ? <Settings size={18}/> : <Plus size={18}/>}</span>
+            <span className={styles['btn-icon']}>{isContact ? <Settings size={20}/> : <Plus size={18}/>}</span>
             <span className={styles['btn-text']}>
               {isContact ? 'Изменить' : 'Добавить'}
             </span>
-          </button>
+          </button> */}
         </div>
       </div>
+      
+      <div>
+        <div className={styles['info-section']}>
+          {Boolean(publicFullName) && 
+          publicFullName !== baseName &&
+          shouldShowField(currentChatUser.privacyFullName, currentChatUser.isAmHisContact) && (
+            <div 
+              onClick={() => handleCopy(publicFullName, 'Имя и Фамилия')}
+              className={styles['info-item']}
+            >
+              <div className={styles['info-item-content']}>
+                <span className={styles['info-value']}>
+                  {publicFullName}
+                </span>
+                <span className={styles['info-label']}>Настоящие Имя и Фамилия</span>
+              </div>
+              <Copy size={16} className={styles['info-icon']} />
+            </div>
+          )}
+        
+          <div
+            onClick={() => handleCopy(`@${currentChatUser.uniqueId || currentChatUser.username}`, 'Тег пользователя')}
+            className={styles['info-item']}
+          >
+            <div className={styles['info-item-content']}>
+              <span className={`${styles['info-value']} ${styles['accent']}`}>
+                @{currentChatUser.uniqueId || currentChatUser.username || 'не указан'}
+              </span>
+              <span className={styles['info-label']}>Имя пользователя</span>
+            </div>
+            <Copy size={18} className={styles['info-icon']} />
+          </div>
+        
+          {shouldShowField(currentChatUser.privacyPhone, currentChatUser.isAmHisContact) && currentChatUser.phone && currentChatUser.phone.trim() !== '' && (
+            <div
+              onClick={() => handleCopy(currentChatUser.phone, 'Телефон')}
+              className={styles['info-item']}
+            >
+              <div className={styles['info-item-content']}>
+                <span className={styles['info-value']}>{currentChatUser.phone}</span>
+                <span className={styles['info-label']}>Телефон</span>
+              </div>
+              <Copy size={18} className={styles['info-icon']} />
+            </div>
+          )}
 
-      <div className={styles['info-section']}>
-        {currentChatUser.privacyNameFormat === 'username' && 
-         shouldShowField(currentChatUser.privacyFullName, currentChatUser.isAmHisContact) && 
-         (currentChatUser.firstName || currentChatUser.lastName) && (
+          {shouldShowField(currentChatUser.privacyEmail, currentChatUser.isAmHisContact) && currentChatUser.email && currentChatUser.email.trim() !== '' && (
+            <div
+              onClick={() => handleCopy(currentChatUser.email, 'Электронная почта')}
+              className={styles['info-item']}
+            >
+              <div className={styles['info-item-content']}>
+                <span className={styles['info-value']}>{currentChatUser.email}</span>
+                <span className={styles['info-label']}>Электронная почта</span>
+              </div>
+              <Copy size={18} className={styles['info-icon']} />
+            </div>
+          )}
+
+          {currentChatUser.aboutMe && currentChatUser.aboutMe.trim() !== '' && (
+            <div className={styles['info-item']} style={{ cursor: 'default' }}>
+              <div className={styles['info-item-content']}>
+                <span className={`${styles['info-value']} ${styles['multiline']}`}>
+                  {currentChatUser.aboutMe}
+                </span>
+                <span className={styles['info-label']}>О себе</span>
+              </div>
+            </div>
+          )}
+
+          {currentChatUser.note && (
+            <div className={styles['info-item']} style={{ cursor: 'default' }}>
+              <div className={styles['info-item-content']}>
+                <span className={styles['info-value']}>{currentChatUser.note}</span>
+                <span className={styles['info-label']}>Ваша заметка</span>
+              </div>
+            </div>
+          )}
+
+          {/* Идентификатор профиля */}
           <div 
-            onClick={() => handleCopy(`${currentChatUser.firstName || ''} ${currentChatUser.lastName || ''}`.trim(), 'Имя и Фамилия')}
+            onClick={() => handleCopy(currentChatUser.uuid, 'UUID')}
             className={styles['info-item']}
           >
             <div className={styles['info-item-content']}>
-              <span className={styles['info-value']}>
-                {publicFullName}
+              <span className={`${styles['info-value']} ${styles['mono']}`}>
+                {myIdDisplay}
               </span>
-              <span className={styles['info-label']}>Настоящие Имя и Фамилия</span>
+              <span className={styles['info-label']}>Идентификатор профиля</span>
             </div>
-            <Copy size={16} className={styles['info-icon']} />
+            <Hash size={16} className={styles['info-icon']} />
           </div>
-        )}
-        
-        <div
-          onClick={() => handleCopy(`@${currentChatUser.uniqueId || currentChatUser.username}`, 'Тег пользователя')}
-          className={styles['info-item']}
-        >
-          <div className={styles['info-item-content']}>
-            <span className={`${styles['info-value']} ${styles['accent']}`}>
-              @{currentChatUser.uniqueId || currentChatUser.username || 'не указан'}
-            </span>
-            <span className={styles['info-label']}>Имя пользователя</span>
-          </div>
-          <Copy size={18} className={styles['info-icon']} />
         </div>
-        
-        {shouldShowField(currentChatUser.privacyPhone, currentChatUser.isAmHisContact) && currentChatUser.phone && currentChatUser.phone.trim() !== '' && (
-          <div
-            onClick={() => handleCopy(currentChatUser.phone, 'Телефон')}
-            className={styles['info-item']}
+
+        {/* <div className={styles['info-divider']}/>
+
+        <div className={styles['action-bottom-buttons-row']}>
+          <div className={styles['action-bottom-btn']} aria-disabled>
+            <Copy size={20}/>
+            <span>2 сообщения в Избранном</span>
+          </div>
+          
+          <div className={styles['action-bottom-btn']} aria-disabled>
+            <Copy size={20}/>
+            <span>1943 фотографии</span>
+          </div>
+          
+          <div className={styles['action-bottom-btn']} aria-disabled>
+            <Copy size={20}/>
+            <span>624 видео</span>
+          </div>
+          
+          <div className={styles['action-bottom-btn']} aria-disabled>
+            <Copy size={20}/>
+            <span>37 файлов</span>
+          </div>
+          
+          <div className={styles['action-bottom-btn']} aria-disabled>
+            <Copy size={20}/>
+            <span>4 аудиофайла</span>
+          </div>
+          
+          <div className={styles['action-bottom-btn']} aria-disabled>
+            <Copy size={20}/>
+            <span>421 ссылка</span>
+          </div>
+          
+          <div className={styles['action-bottom-btn']} aria-disabled>
+            <Copy size={20}/>
+            <span>5 опросов</span>
+          </div>
+          
+          <div className={styles['action-bottom-btn']} aria-disabled>
+            <Copy size={20}/>
+            <span>1785 голосовых сообщений</span>
+          </div>
+          
+          <div className={styles['action-bottom-btn']} aria-disabled>
+            <Copy size={20}/>
+            <span>81 GIF</span>
+          </div>
+          
+          <div className={styles['action-bottom-btn']} aria-disabled>
+            <Copy size={20}/>
+            <span>1 общая группа</span>
+          </div>
+        </div> */}
+
+        <div className={styles['info-divider']}/>
+
+        <div className={styles['action-bottom-buttons-row']}>
+          <div className={styles['action-bottom-btn']} aria-disabled>
+            <Redo size={20}/>
+            <span>Поделится контактом</span>
+          </div>
+
+          <div className={styles['action-bottom-btn']} aria-disabled>
+            <Pen size={20}/>
+            <span>Изменить контакт</span>
+          </div>
+
+          <div className={styles['action-bottom-btn']} aria-disabled>
+            <Trash size={20}/>
+            <span>Удалить контакт</span>
+          </div>
+
+          <div 
+            className={styles['action-bottom-btn']} 
+            aria-disabled 
+            data-red
           >
-            <div className={styles['info-item-content']}>
-              <span className={styles['info-value']}>{currentChatUser.phone}</span>
-              <span className={styles['info-label']}>Телефон</span>
-            </div>
-            <Copy size={18} className={styles['info-icon']} />
+            <Hand size={20}/>
+            <span>Заблокировать</span>
           </div>
-        )}
-  
-        {shouldShowField(currentChatUser.privacyEmail, currentChatUser.isAmHisContact) && currentChatUser.email && currentChatUser.email.trim() !== '' && (
-          <div
-            onClick={() => handleCopy(currentChatUser.email, 'Электронная почта')}
-            className={styles['info-item']}
-          >
-            <div className={styles['info-item-content']}>
-              <span className={styles['info-value']}>{currentChatUser.email}</span>
-              <span className={styles['info-label']}>Электронная почта</span>
-            </div>
-            <Copy size={18} className={styles['info-icon']} />
-          </div>
-        )}
-
-        {currentChatUser.aboutMe && currentChatUser.aboutMe.trim() !== '' && (
-          <div className={styles['info-item']} style={{ cursor: 'default' }}>
-            <div className={styles['info-item-content']}>
-              <span className={`${styles['info-value']} ${styles['multiline']}`}>
-                {currentChatUser.aboutMe}
-              </span>
-              <span className={styles['info-label']}>О себе</span>
-            </div>
-          </div>
-        )}
-
-        {currentChatUser.note && (
-          <div className={styles['info-item']} style={{ cursor: 'default' }}>
-            <div className={styles['info-item-content']}>
-              <span className={styles['info-value']}>{currentChatUser.note}</span>
-              <span className={styles['info-label']}>Ваша заметка</span>
-            </div>
-          </div>
-        )}
-
-        {/* Идентификатор профиля */}
-        <div 
-          onClick={() => handleCopy(currentChatUser.uuid, 'UUID')}
-          className={styles['info-item']}
-        >
-          <div className={styles['info-item-content']}>
-            <span className={`${styles['info-value']} ${styles['mono']}`}>
-              {myIdDisplay}
-            </span>
-            <span className={styles['info-label']}>Идентификатор профиля</span>
-          </div>
-          <Hash size={16} className={styles['info-icon']} />
         </div>
+
+        
 
         {/* 🔑 ДЕБАГ: ИДЕНТИФИКАТОРЫ СЕССИИ И МАРШРУТА КОМНАТЫ */}
-        {ctx.currentUser?.userStatus === 'administrator' && (
+        {/* {ctx.currentUser?.userStatus === 'administrator' && (
           <div>
             <div style={{ backgroundColor: '#1a1f2c', border: '1px solid #007aff', padding: '10px', borderRadius: '16px 16px 0 0', display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <span style={{ fontSize: '11px', color: '#007aff', fontWeight: 'bold', textTransform: 'uppercase' }}>Маршрутизация пакетов (Room Router)</span>
@@ -336,8 +427,7 @@ export default function UserProfileView({
               </pre>
             </div>
           </div>
-        )}
-
+        )} */}
       </div>
     </div>
   );

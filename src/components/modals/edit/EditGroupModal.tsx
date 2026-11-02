@@ -206,198 +206,192 @@ export default function EditGroupModal({
   };
 
   return (
-    <div className={styles['channel-edit-container']}>
-      <div className={styles['channel-edit-header']}>
-        <h3 className={styles['channel-edit-title']}>Настройки группы</h3>
+    <div className={styles['modal-edit-container']}>
+      <div className={styles['modal-edit-header']}>
+        <h3 className={styles['modal-edit-title']}>Настройки группы</h3>
       </div>
 
-      <div className={styles['channel-edit-body']}>
-        <div className={styles['channel-edit-top']}>
+      <div className={styles['modal-edit-body']}>
+        <div className={styles['modal-edit-top']}>
           <div 
-            className={styles['channel-edit-avatar-btn']}
+            className={styles['modal-edit-avatar-btn']}
             onClick={() => setShowUploadSelector(true)}
             title="Сменить фото группы"
           >
             {groupUrl ? (
-              <img src={groupUrl} alt="Avatar" className={styles['channel-edit-avatar-img']} />
+              <img src={groupUrl} alt="Avatar" className={styles['modal-edit-avatar-img']} />
             ) : (
               <div 
-                className={styles['channel-edit-avatar-placeholder']}
+                className={styles['modal-edit-avatar-placeholder']}
                 style={{ backgroundColor: groupColor }}
               >
                 <Camera size={26} color="#fff" />
               </div>
             )}
-            <div className={styles['channel-edit-avatar-overlay']}>
+            <div className={styles['modal-edit-avatar-overlay']}>
               <Camera size={22} color="#fff" />
             </div>
           </div>
 
-          <div className={styles['channel-edit-name-col']}>
-            <div className={styles['channel-edit-input-wrapper']}>
-              <label className={styles['channel-edit-label']}>Название группы</label>
-              <div className={styles['channel-edit-input-row']}>
+          <div className={styles['modal-edit-name-col']}>
+            <div className={styles['modal-edit-input-wrapper']}>
+              <div className={styles['profile-input-field']}>
                 <input
                   type="text"
                   value={groupName}
                   onChange={(e) => setGroupName(e.target.value)}
-                  className={styles['channel-clean-input']}
+                  className={styles['profile-line-input']}
                   autoComplete="off"
+                  placeholder=" "
                 />
-                <button 
-                  type="button" 
-                  className={styles['channel-emoji-btn']}
-                  onClick={notifyDev}
-                >
-                  <Smile size={18} />
-                </button>
+                <label className={styles['profile-field-label']}>Название канала</label>
               </div>
             </div>
           </div>
         </div>
 
-        <div className={styles['channel-desc-block']}>
+        <div className={styles['modal-desc-block']}>
           <input
             type="text"
             placeholder="Описание (необязательно)"
             value={groupDesc}
             onChange={(e) => setGroupDesc(e.target.value)}
-            className={styles['channel-clean-input']}
+            className={styles['modal-clean-input']}
             autoComplete="off"
           />
         </div>
 
-        <div className={styles['channel-edit-divider']} />
+        <div className={styles['modal-edit-divider']} />
 
-        <div className={styles['channel-settings-list']}>
+        <div className={styles['modal-settings-list']}>
           <div 
-            className={`${styles['channel-setting-item']} ${styles['channel-setting-disabled']}`} 
+            className={`${styles['modal-setting-item']} ${styles['modal-setting-disabled']}`} 
             onClick={notifyDev}
           >
-            <div className={styles['channel-setting-left']}>
-              <KeyRound size={18} className={styles['channel-setting-icon']} />
+            <div className={styles['modal-setting-left']}>
+              <KeyRound size={18} className={styles['modal-setting-icon']} />
               <span>Тип группы</span>
             </div>
-            <span className={styles['channel-setting-value']}>{groupType}</span>
+            <span className={styles['modal-setting-value']}>{groupType}</span>
           </div>
 
           <div 
-            className={`${styles['channel-setting-item']} ${styles['channel-setting-disabled']}`}
+            className={`${styles['modal-setting-item']} ${styles['modal-setting-disabled']}`}
             onClick={notifyDev}
           >
-            <div className={styles['channel-setting-left']}>
-              <MessageSquare size={18} className={styles['channel-setting-icon']} />
+            <div className={styles['modal-setting-left']}>
+              <MessageSquare size={18} className={styles['modal-setting-icon']} />
               <span>История чата для новых участников</span>
             </div>
-            <span className={styles['channel-setting-value']}>Видно</span>
+            <span className={styles['modal-setting-value']}>Видно</span>
           </div>
 
           <div 
-            className={`${styles['channel-setting-item']} ${styles['channel-setting-disabled']}`}
+            className={`${styles['modal-setting-item']} ${styles['modal-setting-disabled']}`}
             onClick={notifyDev}
           >
-            <div className={styles['channel-setting-left']}>
-              <Palette size={18} className={styles['channel-setting-icon']} />
+            <div className={styles['modal-setting-left']}>
+              <Palette size={18} className={styles['modal-setting-icon']} />
               <span>Оформление</span>
             </div>
           </div>
         </div>
 
-        <div className={styles['channel-edit-divider']} />
+        <div className={styles['modal-edit-divider']} />
 
-        <div className={styles['channel-settings-list']}>
+        <div className={styles['modal-settings-list']}>
           <div 
-            className={`${styles['channel-setting-item']} ${styles['channel-setting-disabled']}`} 
+            className={`${styles['modal-setting-item']} ${styles['modal-setting-disabled']}`} 
             onClick={notifyDev}
           >
-            <div className={styles['channel-setting-left']}>
-              <Heart size={18} className={styles['channel-setting-icon']} />
+            <div className={styles['modal-setting-left']}>
+              <Heart size={18} className={styles['modal-setting-icon']} />
               <span>Реакции</span>
             </div>
-            <span className={styles['channel-setting-value']}>Все</span>
+            <span className={styles['modal-setting-value']}>Все</span>
           </div>
 
           <div 
-            className={`${styles['channel-setting-item']} ${styles['channel-setting-disabled']}`} 
+            className={`${styles['modal-setting-item']} ${styles['modal-setting-disabled']}`} 
             onClick={notifyDev}
           >
-            <div className={styles['channel-setting-left']}>
-              <Link2 size={18} className={styles['channel-setting-icon']} />
+            <div className={styles['modal-setting-left']}>
+              <Link2 size={18} className={styles['modal-setting-icon']} />
               <span>Разрешения</span>
             </div>
-            <span className={styles['channel-setting-value']}>1/15</span>
+            <span className={styles['modal-setting-value']}>1/15</span>
           </div>
 
           <div 
-            className={`${styles['channel-setting-item']} ${styles['channel-setting-disabled']}`} 
+            className={`${styles['modal-setting-item']} ${styles['modal-setting-disabled']}`} 
             onClick={notifyDev}
           >
-            <div className={styles['channel-setting-left']}>
-              <Link2 size={18} className={styles['channel-setting-icon']} />
+            <div className={styles['modal-setting-left']}>
+              <Link2 size={18} className={styles['modal-setting-icon']} />
               <span>Пригласительные ссылки</span>
             </div>
-            <span className={styles['channel-setting-value']}>1</span>
+            <span className={styles['modal-setting-value']}>1</span>
           </div>
 
           <div 
-            className={styles['channel-setting-item']} 
+            className={styles['modal-setting-item']} 
             onClick={() => setShowAdminsModal(true)}
           >
-            <div className={styles['channel-setting-left']}>
-              <Shield size={18} className={styles['channel-setting-icon']} />
+            <div className={styles['modal-setting-left']}>
+              <Shield size={18} className={styles['modal-setting-icon']} />
               <span>Администраторы</span>
             </div>
-            <span className={styles['channel-setting-value']}>{adminsCount}</span>
+            <span className={styles['modal-setting-value']}>{adminsCount}</span>
           </div>
 
           <div 
-            className={styles['channel-setting-item']} 
+            className={styles['modal-setting-item']} 
             onClick={() => setShowMembersModal(true)}
           >
-            <div className={styles['channel-setting-left']}>
-              <Users size={18} className={styles['channel-setting-icon']} />
+            <div className={styles['modal-setting-left']}>
+              <Users size={18} className={styles['modal-setting-icon']} />
               <span>Участники</span>
             </div>
-            <span className={styles['channel-setting-value']}>{membersCount}</span>
+            <span className={styles['modal-setting-value']}>{membersCount}</span>
           </div>
 
           <div 
-            className={`${styles['channel-setting-item']} ${styles['channel-setting-disabled']}`} 
+            className={`${styles['modal-setting-item']} ${styles['modal-setting-disabled']}`} 
             onClick={notifyDev}
           >
-            <div className={styles['channel-setting-left']}>
-              <UserX size={18} className={styles['channel-setting-icon']} />
+            <div className={styles['modal-setting-left']}>
+              <UserX size={18} className={styles['modal-setting-icon']} />
               <span>Чёрный список</span>
             </div>
           </div>
 
           <div 
-            className={`${styles['channel-setting-item']} ${styles['channel-setting-disabled']}`} 
+            className={`${styles['modal-setting-item']} ${styles['modal-setting-disabled']}`} 
             onClick={notifyDev}
           >
-            <div className={styles['channel-setting-left']}>
-              <ClipboardList size={18} className={styles['channel-setting-icon']} />
+            <div className={styles['modal-setting-left']}>
+              <ClipboardList size={18} className={styles['modal-setting-icon']} />
               <span>Недавние действия</span>
             </div>
           </div>
         </div>
 
-        <div className={styles['channel-edit-divider']} />
+        <div className={styles['modal-edit-divider']} />
 
         <button 
           type="button" 
-          className={styles['channel-delete-btn']}
+          className={styles['modal-delete-btn']}
           onClick={handleDeleteGroup}
         >
           Удалить группу
         </button>
       </div>
 
-      <div className={styles['channel-edit-footer']}>
-        <button type="button" className={styles['channel-footer-btn-cancel']} onClick={onCancel}>
+      <div className={styles['modal-edit-footer']}>
+        <button type="button" className={styles['modal-footer-btn-cancel']} onClick={onCancel}>
           Отмена
         </button>
-        <button type="button" className={styles['channel-footer-btn-save']} onClick={handleInternalSave}>
+        <button type="button" className={styles['modal-footer-btn-save']} onClick={handleInternalSave}>
           Сохранить
         </button>
       </div>

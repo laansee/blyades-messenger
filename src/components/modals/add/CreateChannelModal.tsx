@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Camera } from 'lucide-react';
+import styles from '../../css/profile.module.css';
 import { supabase } from '../../../services/supabaseClient';
 import useMessengerContext from '../../../context/messengerContext';
+import { Camera } from 'lucide-react';
+
 
 interface CreateChannelModalProps {
   show: boolean;
@@ -115,174 +117,66 @@ export default function CreateChannelModal({ show, onClose }: CreateChannelModal
   };
 
   return createPortal(
-    <div
-      onClick={onClose}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.65)',
-        backdropFilter: 'blur(3px)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 100000,
-      }}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          backgroundColor: '#201f29',
-          borderRadius: '16px',
-          padding: '24px',
-          width: '100%',
-          maxWidth: '380px',
-          boxShadow: '0 12px 36px rgba(0,0,0,0.5)',
-          color: '#fff',
-          fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '24px',
-        }}
-      >
-        <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-            <div
-              style={{
-                width: '68px',
-                height: '68px',
-                borderRadius: '50%',
-                backgroundColor: '#479bf5',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-              }}
-            >
+    <div className={styles['modal-overlay']} onClick={onClose}>
+      <div className={styles['dialog-card']} onClick={(e) => e.stopPropagation()}>
+        <form onSubmit={handleCreate} className={styles['dialog-form']}>
+          <div className={styles['create-channel-top-row']}>
+            <div className={styles['create-channel-avatar-circle']}>
               <Camera size={30} color="#fff" strokeWidth={2.2} />
             </div>
 
-            <div className="tg-field-group" style={{ position: 'relative', flex: 1, paddingTop: '18px' }}>
+            <div className={styles['floating-field']}>
               <input
                 id="channel-name-input"
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder=" "
-                className="tg-clean-input"
+                className={styles['floating-input']}
                 autoComplete="off"
               />
-              <label htmlFor="channel-name-input" className="tg-floating-label">
+              <label htmlFor="channel-name-input" className={styles['floating-label']}>
                 Название канала
               </label>
-              <div className="tg-active-border" />
+              <div className={styles['floating-border']} />
             </div>
           </div>
 
-          <div className="tg-field-group" style={{ position: 'relative', width: '100%', paddingTop: '18px' }}>
+          <div className={styles['floating-field']}>
             <input
               id="channel-desc-input"
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder=" "
-              className="tg-clean-input"
+              className={styles['floating-input']}
               autoComplete="off"
             />
-            <label htmlFor="channel-desc-input" className="tg-floating-label">
+            <label htmlFor="channel-desc-input" className={styles['floating-label']}>
               Описание (необязательно)
             </label>
-            <div className="tg-active-border" />
+            <div className={styles['floating-border']} />
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '16px', marginTop: '6px' }}>
+          <div className={styles['dialog-footer']}>
             <button
               type="button"
               onClick={onClose}
               disabled={loading}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#8b84f7',
-                fontSize: '15px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                padding: '6px 8px',
-              }}
+              className={styles['btn-text-accent']}
             >
               Отмена
             </button>
             <button
               type="submit"
               disabled={!name.trim() || loading}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: name.trim() && !loading ? '#8b84f7' : '#4d4a65',
-                fontSize: '15px',
-                fontWeight: '600',
-                cursor: name.trim() && !loading ? 'pointer' : 'not-allowed',
-                padding: '6px 8px',
-                transition: 'color 0.15s ease',
-              }}
+              className={styles['btn-text-accent']}
             >
               {loading ? 'Создание...' : 'Создать'}
             </button>
           </div>
         </form>
       </div>
-
-      <style>{`
-        .tg-clean-input {
-          width: 100%;
-          background: transparent;
-          border: none;
-          border-bottom: 1px solid #3d3b4a;
-          color: #fff;
-          font-size: 15px;
-          padding: 4px 0 6px 0;
-          outline: none;
-          display: block;
-          box-sizing: border-box;
-        }
-
-        .tg-floating-label {
-          position: absolute;
-          left: 0;
-          top: 22px;
-          color: #7a7889;
-          font-size: 15px;
-          pointer-events: none;
-          transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
-          transform-origin: left top;
-        }
-
-        .tg-active-border {
-          position: absolute;
-          bottom: 0;
-          left: 0;
-          right: 0;
-          height: 2px;
-          background-color: #a894e6;
-          transform: scaleX(0);
-          transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
-        }
-
-        .tg-clean-input:focus ~ .tg-active-border {
-          transform: scaleX(1);
-        }
-
-        .tg-clean-input:focus ~ .tg-floating-label {
-          top: 0px;
-          font-size: 12px;
-          color: #a894e6;
-        }
-
-        .tg-clean-input:not(:placeholder-shown):not(:focus) ~ .tg-floating-label {
-          top: 0px;
-          font-size: 12px;
-          color: #7a7889;
-        }
-      `}</style>
     </div>,
     document.body
   );

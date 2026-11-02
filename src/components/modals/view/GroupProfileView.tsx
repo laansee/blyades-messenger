@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import styles from '../../css/profile.module.css';
 import { supabase } from '../../../services/supabaseClient';
 import { userService, type AppUser } from '../../../services/userService';
-import { Search, UserPlus, Users, X, Copy, Hash } from 'lucide-react';
+import { Search, UserPlus, Users, X, Hash, AudioLines, SlidersHorizontal, Bell, Ellipsis, LogOut } from 'lucide-react';
 import { renderUserStatusBadge } from '../../../utils/statusBadge';
 import { formatUserOnlineStatus } from '../../../context/messengerContext';
 import { AddParticipantsModal } from '../../common/GlobalUI';
@@ -21,6 +21,10 @@ export default function GroupProfileView({
   onClose,
   ctx
 }: GroupProfileViewProps) {
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [menuState, setMenuState] = useState<'main' | 'folders'>('main');
+  const [menuCoords, setMenuCoords] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+
   const [groupMembers, setGroupMembers] = useState<AppUser[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
   
@@ -90,11 +94,6 @@ export default function GroupProfileView({
     });
   }, [groupMembers, searchQuery]);
 
-  const ownerUser = groupMembers.find(m => m.uuid === String(currentChatUser.ownerId));
-  const ownerNameText = ownerUser 
-    ? userService.resolveDisplayName(ownerUser)
-    : `Пользователь #${String(currentChatUser.ownerId).slice(0, 8)}`;
-
   function formatMembersCountUpper(count: number): string {
     const mod10 = count % 10;
     const mod100 = count % 100;
@@ -103,6 +102,38 @@ export default function GroupProfileView({
     if (mod10 >= 2 && mod10 <= 4) return `${count} УЧАСТНИКА`;
     return `${count} УЧАСТНИКОВ`;
   }
+  
+  const myId = String(ctx.currentUser?.id || '');
+  const myUuid = String(ctx.currentUser?.uuid || '');
+  
+  const creatorId = String(currentChatUser.createdBy || currentChatUser.created_by || currentChatUser.ownerId || '');
+  const userRole = currentChatUser.role || currentChatUser.myRole;
+
+  const isOwner = Boolean(
+    (creatorId && (creatorId === myId || creatorId === myUuid)) ||
+    userRole === 'owner' || 
+    userRole === 'admin'
+  );
+
+  const isAdmin = Boolean(userRole === 'admin')
+
+  const handleToggleMore = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    if (showMoreMenu) {
+      setShowMoreMenu(false);
+      setMenuState('main');
+      return;
+    }
+    const rect = e.currentTarget.getBoundingClientRect();
+    const menuWidth = 260;
+    let targetX = rect.right - menuWidth;
+    if (targetX < 10) targetX = 10;
+    const targetY = rect.bottom + 8;
+
+    setMenuCoords({ x: targetX, y: targetY });
+    setMenuState('main');
+    setShowMoreMenu(true);
+  };
 
   return (
     <div className={styles['view-mode']}> 
@@ -133,75 +164,142 @@ export default function GroupProfileView({
           {groupMembers.length} {groupMembers.length === 1 ? 'участник' : (groupMembers.length >= 2 && groupMembers.length <= 4) ? 'участника' : 'участников'}
         </span>
 
-        <div className={styles['action-buttons-row']}>
+        <div className={styles['action-top-buttons-row']}>
           <button 
             type="button" 
-            className={styles['action-btn']} 
-            onClick={() => { ctx.setActiveChatId(String(currentChatUser.id)); onClose(); }}
-          >
-            <span className={styles['btn-icon']}>💬</span>
-            <span className={styles['btn-text']}>Чат</span>
-          </button>
-
-          <button 
-            type="button" 
-            className={styles['action-btn']}
+            className={styles['action-top-btn']}
+            style={{ opacity: 0.5, cursor: 'not-allowed' }}
             onClick={() => ctx.showToast('Настройки уведомлений в разработке', 'info')}
           >
-            <span className={styles['btn-icon']}>🔔</span>
+            <span className={styles['btn-icon']}><Bell size={20} /></span>
             <span className={styles['btn-text']}>Звук</span>
           </button>
 
-          {/* <button type="button" className={styles['action-btn']} onClick={onEditToggle}>
-            <span className={styles['btn-icon']}>⚙️</span>
-            <span className={styles['btn-text']}>Настройки</span>
-          </button> */}
+          {isOwner ? (
+            <>
+              <button 
+                type="button" 
+                className={styles['action-top-btn']} 
+                style={{ opacity: 0.5, cursor: 'not-allowed' }}
+                // onClick={onEditToggle}
+              >
+                <span className={styles['btn-icon']}><SlidersHorizontal size={20} /></span>
+                <span className={styles['btn-text']}>Настройки</span>
+              </button>
+
+              <button
+                type="button"
+                className={styles['action-top-btn']}
+                style={{ opacity: 0.5, cursor: 'not-allowed' }}
+                onClick={() => ctx.showToast?.('Трансляция в разработке', 'info')}
+              >
+                <span className={styles['btn-icon']}><AudioLines size={20} /></span>
+                <span className={styles['btn-text']}>Трансляция</span>
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                className={styles['action-top-btn']}
+                style={{ opacity: 0.5, cursor: 'not-allowed' }}
+                onClick={() => ctx.showToast?.('Трансляция в разработке', 'info')}
+              >
+                <span className={styles['btn-icon']}><LogOut size={20} /></span>
+                <span className={styles['btn-text']}>Покинуть</span>
+              </button>
+            </>
+          )}
+
+          <button 
+            // ref={moreBtnRef}
+            type="button" 
+            className={styles['action-top-btn']}
+            // style={{ opacity: 0.5, cursor: 'not-allowed' }}
+            onClick={handleToggleMore}
+          >
+            <span className={styles['btn-icon']}><Ellipsis size={20} /></span>
+            <span className={styles['btn-text']}>Ещё</span>
+          </button>
         </div>
       </div>
 
-      <div className={styles['info-section']}>
-        {(currentChatUser.aboutMe || currentChatUser.description) && (
-          <div className={styles['info-item']} style={{ cursor: 'default' }}>
-            <div className={styles['info-item-content']}>
-              <span className={`${styles['info-value']} ${styles['multiline']}`}>
-                {currentChatUser.aboutMe || currentChatUser.description}
-              </span>
-              <span className={styles['info-label']}>Описание группы</span>
+      <div>
+        <div className={styles['info-section']}>
+          {(currentChatUser.aboutMe || currentChatUser.description) && (
+            <div className={styles['info-item']} style={{ cursor: 'default' }}>
+              <div className={styles['info-item-content']}>
+                <span className={`${styles['info-value']} ${styles['multiline']}`}>
+                  {currentChatUser.aboutMe || currentChatUser.description}
+                </span>
+                <span className={styles['info-label']}>Описание группы</span>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        <div className={styles['info-item']} style={{ cursor: 'default' }}>
-          <div className={styles['info-item-content']}>
-            <span className={styles['info-value']}>Групповая беседа</span>
-            <span className={styles['info-label']}>Тип чата</span>
+          <div 
+            onClick={() => handleCopy(String(chatIdNumeric), 'ID комнаты')}
+            className={styles['info-item']}
+          >
+            <div className={styles['info-item-content']}>
+              <span className={`${styles['info-value']} ${styles['mono']}`}>#{chatIdNumeric}</span>
+              <span className={styles['info-label']}>Идентификатор комнаты</span>
+            </div>
+            <Hash size={16} className={styles['info-icon']} />
           </div>
-        </div>
-        
-        <div 
-          onClick={() => handleCopy(ownerNameText, 'Создатель')}
-          className={styles['info-item']}
-        >
-          <div className={styles['info-item-content']}>
-            <span className={`${styles['info-value']} ${styles['accent']}`}>{ownerNameText}</span>
-            <span className={styles['info-label']}>Создатель беседы</span>
-          </div>
-          <Copy size={16} className={styles['info-icon']} />
         </div>
 
-        <div 
-          onClick={() => handleCopy(String(chatIdNumeric), 'ID комнаты')}
-          className={styles['info-item']}
-        >
-          <div className={styles['info-item-content']}>
-            <span className={`${styles['info-value']} ${styles['mono']}`}>#{chatIdNumeric}</span>
-            <span className={styles['info-label']}>Идентификатор комнаты</span>
+        {/* <div className={styles['info-divider']}/>
+
+        <div className={styles['action-bottom-buttons-row']}>
+          <div className={styles['action-bottom-btn']} aria-disabled>
+            <Copy size={20}/>
+            <span>2 сообщения в Избранном</span>
           </div>
-          <Hash size={16} className={styles['info-icon']} />
-        </div>
+          
+          <div className={styles['action-bottom-btn']} aria-disabled>
+            <Copy size={20}/>
+            <span>1943 фотографии</span>
+          </div>
+          
+          <div className={styles['action-bottom-btn']} aria-disabled>
+            <Copy size={20}/>
+            <span>624 видео</span>
+          </div>
+          
+          <div className={styles['action-bottom-btn']} aria-disabled>
+            <Copy size={20}/>
+            <span>37 файлов</span>
+          </div>
+          
+          <div className={styles['action-bottom-btn']} aria-disabled>
+            <Copy size={20}/>
+            <span>4 аудиофайла</span>
+          </div>
+          
+          <div className={styles['action-bottom-btn']} aria-disabled>
+            <Copy size={20}/>
+            <span>421 ссылка</span>
+          </div>
+          
+          <div className={styles['action-bottom-btn']} aria-disabled>
+            <Copy size={20}/>
+            <span>5 опросов</span>
+          </div>
+          
+          <div className={styles['action-bottom-btn']} aria-disabled>
+            <Copy size={20}/>
+            <span>1785 голосовых сообщений</span>
+          </div>
+          
+          <div className={styles['action-bottom-btn']} aria-disabled>
+            <Copy size={20}/>
+            <span>81 GIF</span>
+          </div>
+        </div> */}
 
         <div className={styles['info-divider']} />
-
+        
         <div className={styles['info-users']}>
           <div className={styles['info-users-header']}>
             <div className={styles['info-users-header-icon']}>
@@ -310,9 +408,9 @@ export default function GroupProfileView({
                           <span className={styles['role-badge-owner']}>
                             владелец
                           </span>
-                        ) : (member.userStatus === 'administrator' || member.userStatus === 'moderator') ? (
+                        ) : (isAdmin) ? (
                           <span className={styles['role-badge-admin']}>
-                            админ
+                            модер
                           </span>
                         ) : null}
                       </div>
@@ -324,6 +422,9 @@ export default function GroupProfileView({
           )}
         </div>
       </div>
+
+      
+
 
       <AddParticipantsModal
         show={showAddModal}

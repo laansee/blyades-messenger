@@ -2,22 +2,9 @@ import { useState, useEffect } from 'react';
 import { NavLink } from 'react-router';
 import styles from '../../components/css/nav-sidebar.module.css';
 import { 
-  Archive,
-  CircleUser, 
-  Users, 
-  Megaphone, 
-  User, 
-  Phone,
-  Bookmark,
-  Settings, 
-  Plus, 
-  ChevronDown, 
-  ChevronUp,
-  ShieldAlert,
-  LogOut,
-  MessagesCircle
+  Archive, CircleUser, Users, Megaphone, User, Phone, Bookmark, Settings, 
+  Plus, ChevronDown, ChevronUp, ShieldAlert, LogOut, MessagesCircle
 } from 'lucide-react';
-import ContactsModal from '../../components/modals/view/ContactsModal';
 import useMessengerContext from '../../context/messengerContext';
 import SmartAvatar from '../../components/common/SmartAvatar';
 
@@ -35,7 +22,6 @@ export default function NavSidebar({
 
   // Стейты меню
   const [showAccountsList, setShowAccountsList] = useState(false);
-  const [showContactsModal, setShowContactsModal] = useState(false);
 
   const closeNav = () => {
     if (ctx.setIsNavOpen) ctx.setIsNavOpen(false);
@@ -90,7 +76,6 @@ export default function NavSidebar({
           <div className={styles.headerMetaRow}>
             <div className={styles.headerText}>
               <span className={styles.displayName}>{myAccountDisplayName}</span>
-              {/* <span className={styles.subText}>Настройки Blyades</span> */}
             </div>
 
             <button 
@@ -107,7 +92,6 @@ export default function NavSidebar({
         {/* Выпадающий список нескольких аккаунтов (AyuGram style) */}
         {showAccountsList && (
           <div className={styles.accountsDropdown}>
-            {/* Текущий активный аккаунт */}
             <div className={`${styles.accountRow} ${styles.accountActive}`}>
               <SmartAvatar
                 size={34}
@@ -120,7 +104,6 @@ export default function NavSidebar({
               <span className={styles.accountBadge}>active</span>
             </div>
 
-            {/* Заглушка мультиаккаунта */}
             <div 
               className={`${styles.accountRow} ${styles.disabledItem}`}
               title="Мульти-аккаунты в разработке"
@@ -153,7 +136,7 @@ export default function NavSidebar({
             <span className={styles.itemText}>Чат</span>
           </NavLink>
           
-          {/* Архив (не реализован) */}
+          {/* Архив */}
           <button 
             type="button" 
             className={`${styles.menuItem} ${styles.disabledItem}`}
@@ -208,7 +191,7 @@ export default function NavSidebar({
             <span className={styles.itemText}>Мой профиль</span>
           </button>
 
-          {/* Избранное (не реализовано) */}
+          {/* Избранное */}
           <button 
             type="button" 
             className={`${styles.menuItem} ${styles.disabledItem}`}
@@ -219,13 +202,13 @@ export default function NavSidebar({
             <span className={styles.itemText}>Избранное</span>
           </button>
 
-          {/* 👥 Контакты */}
+          {/* 👥 Контакты (открывает глобальное модальное окно) */}
           <button 
             type="button" 
             className={styles.menuItem}
             onClick={() => {
               closeNav();
-              ctx.setShowContactsModal(true);
+              ctx.setShowContactsModal?.(true);
             }}
           >
             <User size={20} className={styles.itemIcon} />
@@ -273,37 +256,6 @@ export default function NavSidebar({
 
           <div className={styles.menuDivider} />
 
-          {/* ======================================================== */}
-          {/* 3. ПЕРЕКЛЮЧАТЕЛИ (НОЧНОЙ РЕЖИМ И РЕЖИМ ПРИЗРАКА)        */}
-          {/* ======================================================== */}
-          {/* <div 
-            className={styles.switchRow}
-            onClick={() => setNightMode(!nightMode)}
-          >
-            <div className={styles.switchLeft}>
-              <Moon size={20} className={styles.itemIcon} />
-              <span>Ночной режим</span>
-            </div>
-            <div className={`${styles.switchTrack} ${nightMode ? styles.switchOn : ''}`}>
-              <div className={styles.switchThumb} />
-            </div>
-          </div>
-
-          <div 
-            className={styles.switchRow}
-            onClick={() => setGhostMode(!ghostMode)}
-          >
-            <div className={styles.switchLeft}>
-              <Ghost size={20} className={styles.itemIcon} />
-              <span>Режим призрака</span>
-            </div>
-            <div className={`${styles.switchTrack} ${ghostMode ? styles.switchOn : ''}`}>
-              <div className={styles.switchThumb} />
-            </div>
-          </div>
-
-          <div className={styles.menuDivider} /> */}
-
           {/* Выход из профиля */}
           <button 
             type="button" 
@@ -319,12 +271,10 @@ export default function NavSidebar({
         </div>
 
         {/* ======================================================== */}
-        {/* 4. ФУТЕР ВЕРСИИ (КАК В AYUGRAM DESKTOP)                  */}
+        {/* 4. ФУТЕР ВЕРСИИ                                          */}
         {/* ======================================================== */}
         <div className={styles.drawerFooter}>
           <p className={styles.footerAppTitle}>Blyades Messanger</p>
-          {/* <p className={styles.footerAppTitle}>Blyades Desktop</p>
-          <p className={styles.footerVersion}>Версия 1.48.8 x64 – О программе</p> */}
           <p className={styles.footerVersion}>Версия 1.48.8</p>
         </div>
       </aside>

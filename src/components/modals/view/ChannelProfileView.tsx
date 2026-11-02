@@ -1,16 +1,17 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import styles from '../../css/profile.module.css';
 import { 
-  X, Copy, Bell, AudioLines, Ellipsis, 
+  X, Copy, Bell, SlidersHorizontal, AudioLines, Ellipsis, 
   UserPlus, FolderPlus, LogOut, MessageSquare, AlertTriangle, 
-  Clock, Shield
+  Clock, Archive, Shield, Users,
 } from 'lucide-react';
 import SmartAvatar from '../../common/SmartAvatar';
 import { DropdownMenu, type DropdownItem } from '../../common/GlobalUI';
 import { supabase } from '../../../services/supabaseClient';
 import { SubscribersModal } from './SubscribersModal';
 import { AdministratorsModal } from './AdministratorsModal';
+import EditChannelModal from '../edit/EditChannelModal';
 
 interface ChannelProfileViewProps {
   currentChatUser: any;
@@ -28,8 +29,14 @@ export default function ChannelProfileView({
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [menuCoords, setMenuCoords] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [menuState, setMenuState] = useState<'main' | 'folders'>('main');
+  
   const [showSubscribersModal, setShowSubscribersModal] = useState(false);
   const [showAdminsModal, setShowAdminsModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+
+  const [subscribersCount, setSubscribersCount] = useState<number>(1);
+  const [adminsCount, setAdminsCount] = useState<number>(1);
+
   const moreBtnRef = useRef<HTMLButtonElement>(null);
 
   const myId = String(ctx.currentUser?.id || '');
@@ -44,13 +51,56 @@ export default function ChannelProfileView({
     userRole === 'admin'
   );
 
-  const isNewsChannel = String(currentChatUser.id) === '1' || currentChatUser.publicId === 'news' || currentChatUser.uniqueId === 'news';
+  const channelIdNum = Number(currentChatUser.internalChatId || currentChatUser.id);
+
+  // Подсчёт количества подписчиков и администраторов
+  const fetchCounts = async () => {
+    if (!channelIdNum) return;
+    try {
+      const { data } = await supabase
+        .from('chat_members')
+        .select('role')
+        .eq('chatId', channelIdNum);
+
+      if (data) {
+        setSubscribersCount(data.length);
+        const admins = data.filter((m: any) => m.role === 'owner' || m.role === 'admin');
+        setAdminsCount(admins.length);
+      }
+    } catch (e) {
+      console.error('Ошибка подсчёта участников канала:', e);
+    }
+  };
+
+  useEffect(() => {
+    fetchCounts();
+  }, [channelIdNum]);
 
   const displayTag = currentChatUser.publicId 
     ? `@${currentChatUser.publicId}` 
     : (currentChatUser.uniqueId && !currentChatUser.uniqueId.startsWith('channel_') ? `@${currentChatUser.uniqueId}` : null);
 
   const displayDescription = currentChatUser.description || currentChatUser.aboutMe || null;
+  
+  const displayId = currentChatUser.uniqueId;
+
+  const formatSubscribersWord = (count: number) => {
+    const mod10 = count % 10;
+    const mod100 = count % 100;
+    if (mod100 >= 11 && mod100 <= 19) return `${count} подписчиков`;
+    if (mod10 === 1) return `${count} подписчик`;
+    if (mod10 >= 2 && mod10 <= 4) return `${count} подписчика`;
+    return `${count} подписчиков`;
+  };
+
+  const formatAdminsWord = (count: number) => {
+    const mod10 = count % 10;
+    const mod100 = count % 100;
+    if (mod100 >= 11 && mod100 <= 19) return `${count} администраторов`;
+    if (mod10 === 1) return `${count} администратор`;
+    if (mod10 >= 2 && mod10 <= 4) return `${count} администратора`;
+    return `${count} администраторов`;
+  };
 
   const handleCopy = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -68,11 +118,11 @@ export default function ChannelProfileView({
           await supabase
             .from('chat_members')
             .delete()
-            .eq('chatId', currentChatUser.id)
+            .eq('chatId', channelIdNum)
             .eq('userId', userIdentifier);
 
           ctx.showToast?.('Вы покинули канал', 'info');
-          if (String(ctx.activeChatId) === String(currentChatUser.id)) {
+          if (String(ctx.activeChatId) === String(channelIdNum)) {
             ctx.setActiveChatId(null);
           }
           if (ctx.fetchAndMatchChats) {
@@ -88,7 +138,7 @@ export default function ChannelProfileView({
   };
 
   const handleOpenChannel = () => {
-    ctx.setActiveChatId(String(currentChatUser.id));
+    ctx.setActiveChatId(String(channelIdNum));
     onClose();
   };
 
@@ -140,8 +190,17 @@ export default function ChannelProfileView({
     if (isOwner) {
       return [
         {
-          id: 'subscribers',
-          text: 'Подписчики',
+          id: 'auto-delete',
+          text: 'Автоудаление',
+          badge: 'В разработке',
+          disabled: true,
+          isSeparatorBefore: true,
+          icon: Clock,
+          onClick: () => {},
+        },
+        {
+          id: 'add-users',
+          text: 'Добавить пользователей',
           icon: UserPlus,
           onClick: () => {
             setShowMoreMenu(false);
@@ -149,22 +208,21 @@ export default function ChannelProfileView({
           },
         },
         {
-          id: 'administrators',
-          text: 'Администраторы',
-          icon: Shield,
-          onClick: () => {
-            setShowMoreMenu(false);
-            setShowAdminsModal(true);
-          },
-        },
-        {
-          id: 'auto-delete',
-          text: 'Автоудаление',
+          id: 'archive-stories',
+          text: 'Архив историй',
           badge: 'В разработке',
           disabled: true,
-          icon: Clock,
-          isSeparatorBefore: true,
+          icon: Archive,
           onClick: () => {},
+        },
+        {
+          id: 'manage-channel',
+          text: 'Управление каналом',
+          icon: SlidersHorizontal,
+          onClick: () => {
+            setShowMoreMenu(false);
+            setShowEditModal(true);
+          },
         },
         {
           id: 'add-to-folder',
@@ -179,7 +237,6 @@ export default function ChannelProfileView({
           text: 'Покинуть канал',
           icon: LogOut,
           danger: true,
-          isSeparatorBefore: true,
           onClick: handleLeaveChannel,
         },
       ];
@@ -200,15 +257,30 @@ export default function ChannelProfileView({
         text: 'Покинуть канал',
         icon: LogOut,
         danger: true,
-        isSeparatorBefore: true,
         onClick: handleLeaveChannel,
       },
     ];
   };
 
+  // 🎯 Если включён режим редактирования — сразу показываем форму настроек канала
+  if (showEditModal) {
+    return (
+      <EditChannelModal
+        currentChatUser={currentChatUser}
+        onCancel={() => setShowEditModal(false)}
+        onSuccess={() => {
+          setShowEditModal(false);
+          fetchCounts();
+          if (ctx.fetchAndMatchChats) ctx.fetchAndMatchChats();
+        }}
+      />
+    );
+  }
+
   return (
     <>
       <div className={styles['view-mode']}>
+        {/* Шапка канала */}
         <div className={styles['profile-header-gradient']}>
           <div className={styles['profile-header-actions']}>
             <button
@@ -233,13 +305,15 @@ export default function ChannelProfileView({
 
           <h2 className={styles['profile-name']}>{baseName}</h2>
           <span className={styles['profile-status']}>
-            {isNewsChannel ? 'официальный новостной канал' : 'публичный канал'}
+            {formatSubscribersWord(subscribersCount)}
           </span>
 
-          <div className={styles['action-buttons-row']}>
+          {/* Кнопки действий под шапкой */}
+          <div className={styles['action-top-buttons-row']}>
             <button
               type="button"
-              className={styles['action-btn']}
+              className={styles['action-top-btn']}
+                  style={{ opacity: 0.5, cursor: 'not-allowed' }}
               onClick={() => ctx.showToast?.('Настройки звука в разработке', 'info')}
             >
               <span className={styles['btn-icon']}><Bell size={20} /></span>
@@ -248,18 +322,20 @@ export default function ChannelProfileView({
 
             {isOwner ? (
               <>
+                {/* 🎯 «Управление» вместо «Подписчики» */}
                 <button
                   type="button"
-                  className={styles['action-btn']}
-                  onClick={() => setShowSubscribersModal(true)}
+                  className={styles['action-top-btn']}
+                  onClick={() => setShowEditModal(true)}
                 >
-                  <span className={styles['btn-icon']}><UserPlus size={20} /></span>
-                  <span className={styles['btn-text']}>Подписчики</span>
+                  <span className={styles['btn-icon']}><SlidersHorizontal size={20} /></span>
+                  <span className={styles['btn-text']}>Управление</span>
                 </button>
 
                 <button
                   type="button"
-                  className={styles['action-btn']}
+                  className={styles['action-top-btn']}
+                  style={{ opacity: 0.5, cursor: 'not-allowed' }}
                   onClick={() => ctx.showToast?.('Трансляция в разработке', 'info')}
                 >
                   <span className={styles['btn-icon']}><AudioLines size={20} /></span>
@@ -270,7 +346,7 @@ export default function ChannelProfileView({
               <>
                 <button
                   type="button"
-                  className={styles['action-btn']}
+                  className={styles['action-top-btn']}
                   style={{ opacity: 0.5, cursor: 'not-allowed' }}
                   onClick={() => ctx.showToast?.('Обсуждение в разработке', 'info')}
                 >
@@ -280,7 +356,7 @@ export default function ChannelProfileView({
 
                 <button
                   type="button"
-                  className={styles['action-btn']}
+                  className={styles['action-top-btn']}
                   onClick={handleLeaveChannel}
                 >
                   <span className={styles['btn-icon']}><LogOut size={20} color="#ff453a" /></span>
@@ -292,7 +368,7 @@ export default function ChannelProfileView({
             <button 
               ref={moreBtnRef}
               type="button" 
-              className={`${styles['action-btn']} dropdown-trigger-btn`}
+              className={styles['action-top-btn']}
               onClick={handleToggleMore}
             >
               <span className={styles['btn-icon']}><Ellipsis size={20} /></span>
@@ -301,6 +377,7 @@ export default function ChannelProfileView({
           </div>
         </div>
 
+        {/* Выпадающий список "Ещё" через портал */}
         {showMoreMenu && createPortal(
           <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 9999999 }}>
             <div style={{ pointerEvents: 'auto' }}>
@@ -327,9 +404,9 @@ export default function ChannelProfileView({
         )}
 
         <div className={styles['info-section']}>
-          {displayTag ? (
+          {Boolean(displayTag) && (
             <div 
-              onClick={() => handleCopy(displayTag, 'Ссылка')}
+              onClick={() => handleCopy(displayTag!, 'Ссылка')}
               className={styles['info-item']}
             >
               <div className={styles['info-item-content']}>
@@ -340,89 +417,119 @@ export default function ChannelProfileView({
               </div>
               <Copy size={18} className={styles['info-icon']} />
             </div>
-          ) : (
-            <div className={styles['info-item']} style={{ cursor: 'default', opacity: 0.7 }}>
+          )}
+
+          {Boolean(displayDescription && displayDescription.trim()) && (
+            <div className={styles['info-item']} style={{ cursor: 'default' }}>
               <div className={styles['info-item-content']}>
-                <span className={styles['info-value']} style={{ color: '#8e8e93', fontStyle: 'italic' }}>
-                  Публичный тег не установлен
+                <span className={`${styles['info-value']} ${styles['multiline']}`}>
+                  {displayDescription}
                 </span>
-                <span className={styles['info-label']}>Ссылка для перехода</span>
+                <span className={styles['info-label']}>Описание канала</span>
               </div>
             </div>
           )}
 
-          <div className={styles['info-item']} style={{ cursor: 'default' }}>
+          <div 
+            className={styles['info-item']} 
+            style={{ cursor: 'default' }}
+            title='Тут убрать "channel_" и сделать видимость только для админов канала и разрабов проекта'
+          >
             <div className={styles['info-item-content']}>
               <span className={`${styles['info-value']} ${styles['multiline']}`}>
-                {displayDescription || (
-                  <span style={{ color: '#8e8e93', fontStyle: 'italic' }}>Описание отсутствует</span>
-                )}
+                {displayId}
               </span>
-              <span className={styles['info-label']}>Описание канала</span>
+              <span className={styles['info-label']}>ID</span>
             </div>
           </div>
 
-          <div style={{ marginTop: '8px', borderTop: '1px solid #282933', paddingTop: '12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <button
-              type="button"
-              onClick={handleOpenChannel}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#3ea6ff',
-                fontSize: '13px',
-                fontWeight: 700,
-                letterSpacing: '0.5px',
-                textAlign: 'left',
-                padding: '10px 12px',
-                cursor: 'pointer',
-                borderRadius: '8px',
-                transition: 'background-color 0.15s ease'
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(62, 166, 255, 0.08)')}
-              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-            >
-              ОТКРЫТЬ КАНАЛ
-            </button>
+          {/* Кнопка «ОТКРЫТЬ КАНАЛ» */}
+          <button
+            type="button"
+            onClick={handleOpenChannel}
+            className={styles['action-bottom-btn']}
+            style={{ marginBottom: "6px" }}
+          >
+            ОТКРЫТЬ КАНАЛ
+          </button>
 
-            <div style={{ height: '1px', backgroundColor: '#282933', margin: '4px 0' }} />
+          <div className={styles['info-divider']}/>
 
-            <button
-              type="button"
-              onClick={handleLeaveChannel}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '12px', width: '100%',
-                padding: '10px 12px', background: 'none', border: 'none', borderRadius: '8px',
-                fontSize: '14px', fontWeight: 500, cursor: 'pointer', textAlign: 'left',
-                transition: 'background-color 0.15s ease'
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#1e2029')}
-              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-            >
-              <LogOut size={18} color="#8e8e93" />
-              <span style={{ color: '#fff' }}>Покинуть канал</span>
-            </button>
-          </div>
+          {/* 🎯 Блок «Подписчики» и «Администраторы» в стиле Telegram (как на референсе) */}
+          {isOwner && (
+            <div className={styles['action-bottom-buttons-row']}>
+              <div 
+                onClick={() => setShowSubscribersModal(true)}
+                className={styles['action-bottom-btn']}
+                style={{ display: 'flex', alignItems: 'center', gap: '14px' }}
+              >
+                <Users size={20} />
+                <span>
+                  {formatSubscribersWord(subscribersCount)}
+                </span>
+              </div>
+
+              <div 
+                onClick={() => setShowSubscribersModal(true)}
+                className={styles['action-bottom-btn']}
+                style={{ display: 'flex', alignItems: 'center', gap: '14px' }}
+              >
+                <Shield size={20} />
+                <span>
+                  {formatAdminsWord(adminsCount)}
+                </span>
+              </div>
+
+              <div 
+                onClick={() => setShowSubscribersModal(true)}
+                className={styles['action-bottom-btn']}
+                title='В другой бок добавить span с цифрой'
+                style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: "6px" }}
+              >
+                <Shield size={20} />
+                <span>
+                  Баланс:
+                </span>
+              </div>
+            </div>
+          )}
+
+          <div className={styles['info-divider']}/>
+
+          {/* Нижняя кнопка «Покинуть канал» */}
+          <button
+            type="button"
+            onClick={handleLeaveChannel}
+            className={styles['action-bottom-btn']}
+            data-red
+            style={{ margin: "6px 0" }}
+          >
+            <LogOut size={18}/>
+            <span>Покинуть канал</span>
+          </button>
         </div>
       </div>
 
-      {/* Модалки подписчиков и администраторов */}
+      {/* Модалка подписчиков */}
       <SubscribersModal
         show={showSubscribersModal}
-        channelId={currentChatUser.id}
+        channelId={channelIdNum}
         channelName={baseName}
         currentUserId={myUuid || myId}
         isOwnerOrAdmin={isOwner}
         onClose={() => setShowSubscribersModal(false)}
+        onSubscribersUpdated={fetchCounts}
       />
 
+      {/* Модалка администраторов */}
       <AdministratorsModal
         show={showAdminsModal}
-        channelId={currentChatUser.id}
+        channelId={channelIdNum}
         channelName={baseName}
         currentUserId={myUuid || myId}
         isOwner={isOwner}
         onClose={() => setShowAdminsModal(false)}
+        onAdminsUpdated={fetchCounts}
       />
     </>
   );
