@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styles from '../../css/profile.module.css';
-import { X, Smile, Camera } from 'lucide-react';
+import { Smile } from 'lucide-react';
 import useMessengerContext from '../../../context/messengerContext';
 import { supabase } from '../../../services/supabaseClient';
 import SmartAvatar from '../../common/SmartAvatar';

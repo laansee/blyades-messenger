@@ -13,14 +13,14 @@
 
 @media (min-width: 740px) {
   .profile-modal-card {
-    max-height: 85vh;
+    /* max-height: 85vh; */
     width: 100%;
     max-width: 420px;
     border-radius: 6px;
   }
   .modal-edit-container {
     /* height: 80vh; */
-    max-height: 700px;
+    max-height: 95vh;
   }
 }
 
@@ -964,22 +964,6 @@
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 /* СТИЛИЗАЦИЯ САМОГО ТЕКСТОВОГО ПОЛЯ */
 .profile-line-input {
   width: 100%;
@@ -1016,42 +1000,3 @@
   transform: translateY(-22px);
   font-size: 13px;}
 .profile-line-input:focus ~ .profile-field-label {color: #9d7bf6; }
-
-
-
-
-
-
-
-
-
-
-
-/* .modal-setting-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 10px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background-color 0.12s ease;
-  font-size: 14px;
-  user-select: none;}
-.modal-setting-item:hover {background-color: rgba(255, 255, 255, 0.05);}
-.modal-setting-item-col {
-  display: flex;
-  flex-direction: column;
-  padding: 6px 4px;
-  gap: 4px;} */
-
-/* .modal-setting-card {
-  display: flex;
-  flex-direction: column;
-  padding: 10px 10px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background-color 0.12s ease;
-  gap: 4px;
-  user-select: none;
-  font-size: 14px;}
-.modal-setting-card:hover {background-color: rgba(255, 255, 255, 0.05);} */

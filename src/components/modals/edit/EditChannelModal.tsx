@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import styles from '../../css/profile.module.css';
 import { 
-  Camera, Smile, KeyRound, MessageSquare, Palette, 
+  Camera, KeyRound, MessageSquare, Palette, 
   PenTool, Heart, Hand, Link2, Shield, 
   Users, UserX, ClipboardList, Sparkles 
 } from 'lucide-react';

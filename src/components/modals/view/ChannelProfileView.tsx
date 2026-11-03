@@ -480,7 +480,7 @@ export default function ChannelProfileView({
                 </span>
               </div>
 
-              <div 
+              {/* <div 
                 onClick={() => setShowSubscribersModal(true)}
                 className={styles['action-bottom-btn']}
                 title='В другой бок добавить span с цифрой'
@@ -490,7 +490,7 @@ export default function ChannelProfileView({
                 <span>
                   Баланс:
                 </span>
-              </div>
+              </div> */}
             </div>
           )}
 

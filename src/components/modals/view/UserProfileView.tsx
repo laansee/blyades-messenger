@@ -1,7 +1,7 @@
 import { formatUserOnlineStatus } from '../../../context/messengerContext';
 import styles from '../../css/profile.module.css';
 import { renderUserStatusBadge } from '../../../utils/statusBadge';
-import { X, Copy, Hash, Plus, Settings, MessagesCircle, Bell, Phone, Trash, Pen, Hand, Redo, Ellipsis } from 'lucide-react';
+import { X, Copy, Hash, MessagesCircle, Bell, Phone, Trash, Pen, Hand, Redo, Ellipsis } from 'lucide-react';
 import SmartAvatar from '../../common/SmartAvatar';
 
 interface UserProfileViewProps {
@@ -14,33 +14,11 @@ interface UserProfileViewProps {
   ctx: any;
 }
 
-// Хелпер для читаемого форматирования разницы времени без слипания
-function formatExactDiff(updatedAt: string | undefined): string {
-  if (!updatedAt) return '∞';
-  const diffMs = new Date().getTime() - new Date(updatedAt).getTime();
-  if (diffMs < 0) return 'только что';
-
-  const totalSec = Math.floor(diffMs / 1000);
-  const days = Math.floor(totalSec / 86400);
-  const hours = Math.floor((totalSec % 86400) / 3600);
-  const mins = Math.floor((totalSec % 3600) / 60);
-  const secs = totalSec % 60;
-
-  const parts: string[] = [];
-  if (days > 0) parts.push(`${days} дн.`);
-  if (hours > 0 || days > 0) parts.push(`${hours} ч.`);
-  if (mins > 0 || hours > 0 || days > 0) parts.push(`${mins} мин.`);
-  parts.push(`${secs} сек. назад`);
-
-  return parts.join(' ');
-}
-
 export default function UserProfileView({
   currentChatUser,
   baseName,
   shouldShowField,
   onStartCall,
-  onEditToggle,
   onClose,
   ctx
 }: UserProfileViewProps) {
@@ -49,11 +27,6 @@ export default function UserProfileView({
   const partnerIdentifier = String(
     currentChatUser.partnerId || currentChatUser.uuid || currentChatUser.id || ''
   );
-
-  const savedContact = (ctx.contacts || []).find((c: any) => 
-    String(c.contactId || c.partnerId || c.uuid || c.id) === partnerIdentifier
-  );
-  const isContact = Boolean(savedContact || currentChatUser.isContact);
 
   const isOnline = ctx.isUserOnline ? ctx.isUserOnline(currentChatUser) : false;
   const statusInfo = formatUserOnlineStatus(currentChatUser?.updatedAt, currentChatUser?.privacyOnline);

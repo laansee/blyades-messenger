@@ -1,10 +1,16 @@
 import { useState, useEffect, useMemo } from 'react';
-import styles from '../../css/profile.module.css';
 import { supabase } from '../../../services/supabaseClient';
-import { userService, type AppUser } from '../../../services/userService';
-import { Search, UserPlus, Users, X, Hash, AudioLines, SlidersHorizontal, Bell, Ellipsis, LogOut } from 'lucide-react';
-import { renderUserStatusBadge } from '../../../utils/statusBadge';
 import { formatUserOnlineStatus } from '../../../context/messengerContext';
+import { userService, type AppUser } from '../../../services/userService';
+import styles from '../../css/profile.module.css';
+
+import { 
+  Search, UserPlus, Users, X, Hash, 
+  AudioLines, SlidersHorizontal, Bell, 
+  Ellipsis, LogOut 
+} from 'lucide-react';
+
+import { renderUserStatusBadge } from '../../../utils/statusBadge';
 import { AddParticipantsModal } from '../../common/GlobalUI';
 import SmartAvatar from '../../common/SmartAvatar';
 
