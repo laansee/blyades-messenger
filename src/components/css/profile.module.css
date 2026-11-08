@@ -472,12 +472,6 @@
 .modal-edit-label {
   font-size: 11px;
   color: #8b8e9b;}
-/* .modal-edit-input-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  border-bottom: 1px solid #2b2c3a;
-  padding-bottom: 4px;} */
 .modal-clean-input {
   width: 100%;
   background: transparent;
@@ -488,16 +482,6 @@
   font-family: inherit;
   padding: 4px 0;}
 .modal-clean-input::placeholder {color: #636573;}
-/* .modal-emoji-btn {
-  background: none;
-  border: none;
-  color: #7a7d8d;
-  cursor: pointer;
-  padding: 2px;
-  display: flex;
-  align-items: center;
-  transition: color 0.15s ease;}
-.modal-emoji-btn:hover {color: #9d7bf6;} */
 .modal-desc-block {margin: 0 20px 10px;}
 .modal-settings-list {
   display: flex;
@@ -534,8 +518,7 @@
   padding: 10px 20px;
   width: stretch;
   font-weight: 500;
-  transition: background-color 0.15s ease;
-  margin: 0 0 12px;}
+  transition: background-color 0.15s ease;}
 .modal-delete-btn:hover {background-color: #352020;}
 .modal-edit-footer {
   flex-shrink: 0;

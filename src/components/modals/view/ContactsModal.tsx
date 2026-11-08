@@ -112,15 +112,10 @@ export default function ContactsModal({ show, onClose }: ContactsModalProps) {
           className={styles['profile-modal-card']} 
           onClick={(e) => e.stopPropagation()}
           style={{
-            width: '100%',
-            maxWidth: '440px',
-            maxHeight: '82vh',
             display: 'flex',
             flexDirection: 'column',
             backgroundColor: '#1b1b24',
-            borderRadius: '16px',
             overflow: 'hidden',
-            boxShadow: '0 16px 40px rgba(0, 0, 0, 0.7)'
           }}
         >
           <div style={{

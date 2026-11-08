@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import styles from '../../css/profile.module.css';
 import { 
-  Camera, Smile, KeyRound, MessageSquare, Palette, 
+  Camera, KeyRound, MessageSquare, Palette, 
   Heart, Link2, Shield, Users, UserX, ClipboardList 
 } from 'lucide-react';
 import { supabase } from '../../../services/supabaseClient';
