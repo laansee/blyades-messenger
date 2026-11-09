@@ -5,6 +5,7 @@ import { ToastNotification, type ToastState } from '../../components/common/Glob
 import Image from '../../assets/img/auth-backImg.jpg';
 import styles from '../../components/css/auth.module.css';
 import uiStyles from '../../components/css/global-ui.module.css';
+import { getRandomDefaultNameColor } from '../../utils/themeColors';
 
 export default function AuthPage() {
   const [loading, setLoading] = useState(false);
@@ -89,6 +90,8 @@ export default function AuthPage() {
     setLoading(true);
 
     try {
+      const generatedNameColor = getRandomDefaultNameColor();
+
       const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
         password: password.trim(),
@@ -96,6 +99,8 @@ export default function AuthPage() {
           data: {
             username: login.trim(),
             firstName: login.trim(),
+            nameColor: generatedNameColor,
+            profileColor: '#312b3a',
           }
         }
       });
@@ -107,6 +112,15 @@ export default function AuthPage() {
       }
 
       if (data?.user) {
+        // 2. Если создание строки в public.users происходит вручную на клиенте (а не через SQL-триггер):
+        // await supabase.from('users').upsert({
+        //   uuid: data.user.id,
+        //   username: login.trim(),
+        //   email: email.trim(),
+        //   nameColor: generatedNameColor,
+        //   profileColor: '#312b3a',
+        // });
+        
         localStorage.setItem('blyades_user_id', data.user.id);
         localStorage.setItem('blyades_username', login.trim());
         localStorage.setItem('blyades_unique_id', login.trim());

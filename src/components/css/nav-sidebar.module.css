@@ -1,3 +1,16 @@
+@media (max-width: 739px) {
+  .drawerContainer {
+    min-width: 100vw;
+  }
+}
+
+@media (min-width: 740px) {
+  .drawerContainer {
+    max-width: 85vw;
+    width: 280px;
+  }
+}
+
 /* Затемняющая подложка */
 .drawerOverlay {
   position: fixed;
@@ -18,13 +31,11 @@
   pointer-events: auto;
 }
 
-/* Выдвижное окно в стилистике Telegram / AyuGram */
+/* Выдвижное окно */
 .drawerContainer {
   position: fixed;
   top: 0;
   left: 0;
-  width: 280px;
-  max-width: 85vw;
   height: 100vh;
   background-color: #171821;
   border-right: 1px solid #232430;

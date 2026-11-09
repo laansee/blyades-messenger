@@ -15,6 +15,7 @@ import SmartAvatar from '../../components/common/SmartAvatar';
 import StartGroupCallModal from '../calls/StartGroupCallModal';
 import { SendAsModal } from '../../components/modals/common/SendAsModal';
 import { type ContextMenuItem } from '../../components/common/ContextMenu';
+import { getNameColor, getNameTheme } from '../../utils/themeColors';
 
 function formatHoursAndMinutes(isoString: string | undefined): string {
   if (!isoString) return '';
@@ -929,7 +930,7 @@ export default function ChatWindow() {
                                 {(isGroupChat || isChannelPostWithUser) && !cluster.isOutgoing && isFirstInGroup && (
                                   <span 
                                     className={styles['group-msg-sender-name']} 
-                                    style={{ color: cluster.senderNameColor, cursor: 'pointer' }}
+                                    style={{ color: getNameColor(cluster.senderNameColor), cursor: 'pointer' }}
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       ctx.setShowUserModal(cluster.senderId);

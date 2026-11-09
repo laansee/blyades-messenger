@@ -3,6 +3,7 @@ import styles from '../../css/profile.module.css';
 import { renderUserStatusBadge } from '../../../utils/statusBadge';
 import { X, Copy, Hash, MessagesCircle, Bell, Phone, Trash, Pen, Hand, Redo, Ellipsis } from 'lucide-react';
 import SmartAvatar from '../../common/SmartAvatar';
+import { getProfileGradient } from '../../../utils/themeColors.ts';
 
 interface UserProfileViewProps {
   currentChatUser: any;
@@ -47,7 +48,10 @@ export default function UserProfileView({
 
   return (
     <div className={styles['view-mode']}>
-      <div className={styles['profile-header-gradient']}>
+      <div 
+        className={styles['profile-header-gradient']}
+        style={{ background: getProfileGradient(currentChatUser?.profileColor) }}
+      >
         <div className={styles['profile-header-actions']}>
           <button
             type="button"

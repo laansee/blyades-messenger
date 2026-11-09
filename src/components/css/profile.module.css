@@ -91,6 +91,8 @@
   align-items: center;
   gap: 8px;
   z-index: 10;}
+.profile-avatar-wrapper {
+  margin-bottom: 10px;}
 .profile-name {
   margin: 0;
   color: #ffffff;
@@ -649,7 +651,7 @@
   max-width: 380px;
   background-color: #1b1b24;
   border: 1px solid #282833;
-  border-radius: 16px;
+  border-radius: 6px;
   padding: 24px;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.75);
   color: #ffffff;

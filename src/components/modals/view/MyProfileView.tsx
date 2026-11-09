@@ -1,8 +1,9 @@
 import { NavLink } from 'react-router';
 import { Pencil, X, Copy, QrCode, Hash } from 'lucide-react';
-import SmartAvatar from '../../common/SmartAvatar';
-import { renderUserStatusBadge } from '../../../utils/statusBadge';
 import styles from '../../css/profile.module.css';
+import SmartAvatar from '../../common/SmartAvatar';
+import { getProfileGradient } from '../../../utils/themeColors';
+import { renderUserStatusBadge } from '../../../utils/statusBadge';
 
 interface MyProfileViewProps {
   currentUser: any;
@@ -48,7 +49,10 @@ export default function MyProfileView({
       {/* ======================================================== */}
       {/* 🔮 ВЕРХНЯЯ ФИОЛЕТОВАЯ ПЛАШКА В СТИЛЕ AYUGRAM              */}
       {/* ======================================================== */}
-      <div className={styles['profile-header-gradient']}>
+      <div 
+        className={styles['profile-header-gradient']}
+        style={{ background: getProfileGradient(currentUser?.profileColor) }}
+      >
         <div className={styles['profile-header-actions']}>
           <NavLink
             to="/settings?tab=account"

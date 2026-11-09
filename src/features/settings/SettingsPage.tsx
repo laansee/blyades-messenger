@@ -7,6 +7,7 @@ import useMessengerContext from '../../context/messengerContext';
 import NavSidebar from '../navigation/NavSidebar';
 import { renderUserStatusBadge } from '../../utils/statusBadge';
 import SmartAvatar from '../../components/common/SmartAvatar';
+import { getProfileGradient, getNameColor } from '../../utils/themeColors';
 
 import EditProfile from './EditProfile';
 import PrivacySettings from './PrivacySettings';
@@ -72,6 +73,7 @@ export default function SettingsPage() {
   const [avatarColor, setAvatarColor] = useState(currentUser?.avatarColor || '#007aff');
   const [nameColor, setNameColor] = useState(currentUser?.nameColor || '#5eaddf');
   const [avatarUrl, setAvatarUrl] = useState(currentUser?.avatarUrl || null);
+  const [profileColor, setProfileColor] = useState(currentUser?.profileColor || '#312b3a');
 
   // 🚀 ОБЩИЕ СТЕЙТЫ НАСТРОЕК КОНФИДЕНЦИАЛЬНОСТИ
   const [privacyPhone, setPrivacyPhone] = useState(currentUser?.privacyPhone || 'all');
@@ -93,6 +95,7 @@ export default function SettingsPage() {
       setAvatarColor(currentUser.avatarColor || '#007aff');
       setNameColor(currentUser.nameColor || '#5eaddf');
       setAvatarUrl(currentUser.avatarUrl || null);
+      setProfileColor(currentUser.profileColor || '#312b3a');
       setPrivacyPhone(currentUser.privacyPhone || 'all');
       setPrivacyEmail(currentUser.privacyEmail || 'all');
       setPrivacyOnline(currentUser.privacyOnline || 'all');
@@ -348,7 +351,10 @@ export default function SettingsPage() {
             backgroundColor: '#1c1c24'
           }}
         >
-          <div className={profileStyles['profile-header-gradient']}>
+          <div 
+            className={profileStyles['profile-header-gradient']}
+            style={{ background: getProfileGradient(profileColor || currentUser?.profileColor) }}
+          >
             <div className={profileStyles['profile-avatar-wrapper']}>
               <SmartAvatar
                 size={84}
@@ -466,8 +472,8 @@ export default function SettingsPage() {
                 <div className={chatStyles['message-bubble']}>
                   <div className={chatStyles['message-text']}>
                     <span 
-                      className={chatStyles['group-msg-sender-name']} 
-                      style={{ color: nameColor, fontWeight: '600' }}
+                      className={chatStyles['group-msg-sender-name']}
+                      style={{ color: getNameColor(nameColor || currentUser?.nameColor), fontWeight: '600' }}
                     >
                       {renderUserStatusBadge(currentUser)}
                       {previewDisplayName}

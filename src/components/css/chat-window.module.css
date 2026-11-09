@@ -791,3 +791,62 @@ form.chat-input-zone {
   font-feature-settings: "tnum";
   font-variant-numeric: tabular-nums;
 }
+
+/* ======================================================== */
+/* ↩️ БЛОК ЦИТАТЫ И ОТВЕТА (REPLY / QUOTE)                   */
+/* ======================================================== */
+
+.message-reply-quote {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 5px 10px 5px 12px;
+  margin-bottom: 4px;
+  border-radius: 6px;
+  background-color: var(--reply-bg, rgba(255, 255, 255, 0.05));
+  overflow: hidden;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.15s ease;
+}
+
+.message-reply-quote:hover {
+  background-color: var(--reply-bg-hover, rgba(255, 255, 255, 0.08));
+}
+
+/* Левая декоративная линия (зебра или сплошная полоса цвета автора) */
+.message-reply-stripe {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background-color: var(--reply-color, #5eaddf);
+  border-radius: 2px 0 0 2px;
+  transition: background 0.2s ease;
+}
+
+/* Модификатор: полосатая зебра (Telegram Premium / pattern stripe) */
+.message-reply-stripe.striped {
+  width: 4px;
+}
+
+.message-reply-name {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--reply-color, #5eaddf);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.message-reply-text {
+  font-size: 13px;
+  line-height: 1.25;
+  color: rgba(255, 255, 255, 0.78);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

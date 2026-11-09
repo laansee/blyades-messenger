@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import useMessengerContext from '../../context/messengerContext';
 import SmartAvatar from '../../components/common/SmartAvatar';
+import { getProfileTheme, getSidebarHeaderGradient } from '../../utils/themeColors';
 
 export default function NavSidebar({
   onOpenCreateGroup,
@@ -19,6 +20,8 @@ export default function NavSidebar({
 }) {
   const ctx = useMessengerContext();
   const isOpen = Boolean(ctx.isNavOpen);
+  const profileTheme = getProfileTheme(ctx.currentUser?.profileColor);
+  const sidebarBg = getSidebarHeaderGradient(profileTheme);
 
   // Стейты меню
   const [showAccountsList, setShowAccountsList] = useState(false);
@@ -56,12 +59,24 @@ export default function NavSidebar({
         {/* 1. ВЕРХНЯЯ ШАПКА: АВАТАР И СЕЛЕКТОР АККАУНТОВ            */}
         {/* ======================================================== */}
 
-        <div className={styles.headerProfile}>
+        <div 
+          className={styles.headerProfile}
+          style={{
+            background: sidebarBg,
+            transition: 'background 0.3s ease',
+        }}>
           <div 
             className={styles.avatarMain}
             onClick={() => {
               closeNav();
               ctx.setShowUserModal(ctx.currentUser?.uuid || ctx.currentUser?.id || ctx.currentUser);
+            }}
+            style={{
+              padding: '2px',
+              borderRadius: '50%',
+              border: `2px solid ${profileTheme.avatarRingColor || 'transparent'}`,
+              boxShadow: profileTheme.avatarRingColor ? `0 0 12px ${profileTheme.avatarRingColor}44` : 'none',
+              transition: 'all 0.3s ease'
             }}
           >
             <SmartAvatar
@@ -89,7 +104,7 @@ export default function NavSidebar({
           </div>
         </div>
 
-        {/* Выпадающий список нескольких аккаунтов (AyuGram style) */}
+        {/* Выпадающий список нескольких аккаунтов */}
         {showAccountsList && (
           <div className={styles.accountsDropdown}>
             <div className={`${styles.accountRow} ${styles.accountActive}`}>

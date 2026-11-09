@@ -4,26 +4,35 @@ import useMessengerContext from '../../context/messengerContext';
 import { supabase } from '../../services/supabaseClient';
 import { userService } from '../../services/userService';
 import { 
+  PROFILE_COLOR_PALETTE, 
+  getNameColor, 
+  getProfileColor, 
+  getProfileTheme 
+} from '../../utils/themeColors';
+import ColorSettingsModal from '../../components/modals/edit/ColorSettingsModal';
+import { 
   EditorModal, 
   type EditorInputField,
   AvatarCropModal,
   AvatarUploadSelectorModal,
   NameColorSelectorModal
 } from '../../components/common/GlobalUI';
+import { ChevronRight } from 'lucide-react';
 
 export default function EditProfile({ state, setters }: any) {
   const ctx = useMessengerContext();
   const currentUser = ctx.currentUser;
   const userUuid = String(currentUser?.uuid || currentUser?.id);
 
-  const { uniqueId, username, firstName, lastName, email, phone, aboutMe, avatarColor, avatarUrl, nameColor } = state;
-  const { setUniqueId, setUsername, setFirstName, setLastName, setEmail, setPhone, setAboutMe, setAvatarColor, setAvatarUrl, setNameColor } = setters;
+  const { uniqueId, username, firstName, lastName, email, phone, aboutMe, avatarColor, avatarUrl, nameColor, profileColor } = state;
+  const { setUniqueId, setUsername, setFirstName, setLastName, setEmail, setPhone, setAboutMe, setAvatarColor, setAvatarUrl, setNameColor, setProfileColor } = setters;
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [rawImageSrc, setRawImageSrc] = useState<string | null>(null);
   const [showCropModal, setShowCropModal] = useState(false);
   const [showUploadSelector, setShowUploadSelector] = useState(false);
+  const [showColorModal, setShowColorModal] = useState(false);
   const [colorModalConfig, setColorModalConfig] = useState<{
     show: boolean;
     selectedColor: string;
@@ -31,13 +40,6 @@ export default function EditProfile({ state, setters }: any) {
     show: false,
     selectedColor: '#5eaddf'
   });
-
-  const openNameColorSelector = () => {
-    setColorModalConfig({
-      show: true,
-      selectedColor: nameColor || currentUser?.nameColor || '#5eaddf'
-    });
-  };
 
   const handleSaveNameColor = async (chosenColor: string) => {
     const res = await userService.updateNameColor(userUuid, chosenColor);
@@ -283,7 +285,7 @@ export default function EditProfile({ state, setters }: any) {
             <span className={styles.settingsFormInputTitle}>Фото</span>
             <span className={styles.settingsFormInputValue}>Сменить...</span>
           </div>
-          <span className={styles.settingsFormInputArrow}>▶</span>
+          <ChevronRight size={18} color="#8e8e93" />
         </div>
 
         <div 
@@ -295,36 +297,46 @@ export default function EditProfile({ state, setters }: any) {
             <span className={styles.settingsFormInputTitle}>Имя</span>
             <span className={styles.settingsFormInputValue}>{`${firstName || ''} ${lastName || ''}`.trim() || 'Не указано'}</span>
           </div>
-          <span className={styles.settingsFormInputArrow}>▶</span>
+          <ChevronRight size={18} color="#8e8e93" />
         </div>
 
+        {/* Объединенный пункт «Цвета» */}
         <div 
-          onClick={() => openEditor('username')} 
+          onClick={() => setShowColorModal(true)} 
           className={styles.settingsFormInput}
           style={{ cursor: 'pointer' }}
         >
           <div className={styles.settingsFormInputText}>
-            <span className={styles.settingsFormInputTitle}>Имя пользователя (ID / Никнейм)</span>
-            <span className={styles.settingsFormInputValue}>@{uniqueId} {username && `(${username})`}</span>
+            <span className={styles.settingsFormInputTitle}>Цвета</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '2px' }}>
+              {/* Индикатор цвета имени */}
+              <span 
+                style={{
+                  display: 'inline-block',
+                  width: '12px',
+                  height: '12px',
+                  borderRadius: '50%',
+                  backgroundColor: getNameColor(nameColor || currentUser?.nameColor)
+                }} 
+                title="Цвет имени"
+              />
+              {/* Индикатор цвета профиля */}
+              <span 
+                style={{
+                  display: 'inline-block',
+                  width: '12px',
+                  height: '12px',
+                  borderRadius: '50%',
+                  backgroundColor: getProfileColor(profileColor || currentUser?.profileColor)
+                }} 
+                title="Цвет профиля"
+              />
+              <span className={styles.settingsFormInputValue}>
+                {PROFILE_COLOR_PALETTE.find(c => c.hex.toLowerCase() === (profileColor || currentUser?.profileColor || '#312b3a').toLowerCase())?.name || 'По умолчанию'}
+              </span>
+            </div>
           </div>
-          <span className={styles.settingsFormInputArrow}>▶</span>
-        </div>
-
-        <div 
-          onClick={openNameColorSelector} 
-          className={styles.settingsFormInput}
-          style={{ cursor: 'pointer' }}
-        >
-          <div className={styles.settingsFormInputText}>
-            <span className={styles.settingsFormInputTitle}>Цвет имени</span>
-            <span 
-              className={styles.settingsFormInputValue} 
-              style={{ color: nameColor || currentUser?.nameColor || '#5eaddf', fontWeight: 'bold' }}
-            >
-              {nameColor || currentUser?.nameColor || '#5eaddf'}
-            </span>
-          </div>
-          <span className={styles.settingsFormInputArrow}>▶</span>
+          <ChevronRight size={18} color="#8e8e93" />
         </div>
 
         <div 
@@ -336,7 +348,7 @@ export default function EditProfile({ state, setters }: any) {
             <span className={styles.settingsFormInputTitle}>Номер телефона</span>
             <span className={styles.settingsFormInputValue}>{phone || 'Не указан'}</span>
           </div>
-          <span className={styles.settingsFormInputArrow}>▶</span>
+          <ChevronRight size={18} color="#8e8e93" />
         </div>
 
         <div 
@@ -348,7 +360,7 @@ export default function EditProfile({ state, setters }: any) {
             <span className={styles.settingsFormInputTitle}>Электронная почта</span>
             <span className={styles.settingsFormInputValue}>{email || 'Не указана'}</span>
           </div>
-          <span className={styles.settingsFormInputArrow}>▶</span>
+          <ChevronRight size={18} color="#8e8e93" />
         </div>
 
         <div 
@@ -360,7 +372,7 @@ export default function EditProfile({ state, setters }: any) {
             <span className={styles.settingsFormInputTitle}>О себе</span>
             <span className={styles.settingsFormInputValue}>{aboutMe || 'Расскажите о себе...'}</span>
           </div>
-          <span className={styles.settingsFormInputArrow}>▶</span>
+          <ChevronRight size={18} color="#8e8e93" />
         </div>
       </div>
 
@@ -426,6 +438,17 @@ export default function EditProfile({ state, setters }: any) {
         selectedColor={colorModalConfig.selectedColor}
         onClose={() => setColorModalConfig(prev => ({ ...prev, show: false }))}
         onSelect={handleSaveNameColor}
+      />
+
+      <ColorSettingsModal
+        show={showColorModal}
+        currentProfileColor={profileColor || currentUser?.profileColor}
+        currentNameColor={nameColor || currentUser?.nameColor}
+        onClose={() => setShowColorModal(false)}
+        onSuccess={({ profileColor: pColor, nameColor: nColor }) => {
+          if (setProfileColor) setProfileColor(pColor);
+          if (setNameColor) setNameColor(nColor);
+        }}
       />
     </div>
   );
