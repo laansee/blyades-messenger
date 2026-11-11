@@ -275,7 +275,7 @@ export const GlobalSearchView: React.FC<GlobalSearchViewProps> = ({
 
       <div className={styles['chats-list']} style={{ overflowY: 'auto' }}>
         {isQueryEmpty ? (
-          <div>
+          <div className={styles['a']}>
             {frequentContacts.length > 0 && (
               <div>
                 <div className={styles['search-section-header']}>

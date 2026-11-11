@@ -145,6 +145,9 @@
   flex: 1; 
   overflow-y: auto; 
   padding: 0 10px; }
+.chats-list > .a { 
+  margin: 0 -10px;
+}
 .chats-list::-webkit-scrollbar {width: 5px; }
 .chats-list::-webkit-scrollbar-track {background: #00000000;}
 .chats-list::-webkit-scrollbar-thumb {

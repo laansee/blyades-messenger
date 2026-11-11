@@ -55,19 +55,40 @@ html, body, #root {
 }
 
 @media (max-width: 739px) {
-  /* По умолчанию на мобилках скрываем окно переписки, пока чат не выбран */
-  .messenger-container > main {
-    display: none !important;
+  .messenger-container {
+    position: relative;
+    overflow: hidden;
+  }
+  
+  /* 🎯 Навигационная колонка (NavSidebar) на мобилках скрыта или прячется */
+  .messenger-container > nav {
+    display: none;
   }
 
-  /* Когда чат открыт — скрываем сайдбар со списком чатов и показываем само окно переписки */
-  .messenger-container.chat-opened > section {
-    display: none !important;
-  }
-
-  .messenger-container.chat-opened > main {
+  /* 🎯 Сайдбар со списком чатов (<section>): больше НЕ скрывается в display: none */
+  .messenger-container > section {
     display: flex !important;
-    flex-direction: column;
-    width: 100% !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 10;
+    transform: translate3d(0, 0, 0);
+    transition: transform 0.28s cubic-bezier(0.25, 1, 0.5, 1),
+                filter 0.28s cubic-bezier(0.25, 1, 0.5, 1);
+    will-change: transform;
+  }
+
+  /* 🎯 Когда чат открывается: сайдбар плавно отъезжает влево на 25% и слегка темнеет */
+  .messenger-container.chat-opened > section {
+    transform: translate3d(-25%, 0, 0);
+    filter: brightness(0.65);
+    pointer-events: none; /* Защита от случайных кликов по чатам под выехавшим окном */
+  }
+
+  /* 🎯 Окно переписки (<main>): управляет своей позицией самостоятельно через fixed/translate3d */
+  .messenger-container > main {
+    width: 100vw !important;
   }
 }

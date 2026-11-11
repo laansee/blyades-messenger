@@ -201,6 +201,7 @@ export default function ChatsSidebar() {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
 
+      // 1. Всплывающие окна фильтров поиска
       if (showUserPopover) {
         e.preventDefault();
         setShowUserPopover(false);
@@ -211,30 +212,66 @@ export default function ChatsSidebar() {
         setShowCalendarPopover(false);
         return;
       }
+
+      // 2. Активные плашки фильтров (по юзеру / дате)
       if (selectedUserFilter || selectedDateFilter) {
         e.preventDefault();
         setSelectedUserFilter(null);
         setSelectedDateFilter(null);
         return;
       }
+
+      // 3. Открытое контекстное меню
       if (ctx.ctxMenu?.show) {
         e.preventDefault();
         return ctx.closeContextMenu?.();
       }
+
+      // 4. Режим поиска по сообщениям чата
       if (ctx.showMsgSearch) {
         e.preventDefault();
         handleCloseMessageSearch();
         return;
       }
+
+      // 5. Режим глобального поиска
       if (isGlobalSearchActive) {
         e.preventDefault();
         handleCloseGlobalSearch();
         return;
       }
+
+      // 6. Сброс режима редактирования сообщения (если правили текст)
+      if (ctx.editingMessage) {
+        e.preventDefault();
+        ctx.setEditingMessage(null);
+        ctx.setMessageText('');
+        return;
+      }
+
+      // 🎯 7. ЗАКРЫТИЕ АКТИВНОГО ЧАТА
+      if (ctx.activeChatId) {
+        e.preventDefault();
+        ctx.setActiveChatId(null);
+        if (ctx.setEditingMessage) ctx.setEditingMessage(null);
+        if (ctx.setMessageText) ctx.setMessageText('');
+        return;
+      }
     };
+
     window.addEventListener('keydown', handleGlobalKeyDown);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [showUserPopover, showCalendarPopover, selectedUserFilter, selectedDateFilter, ctx.showMsgSearch, isGlobalSearchActive, ctx.ctxMenu]);
+  }, [
+    showUserPopover,
+    showCalendarPopover,
+    selectedUserFilter,
+    selectedDateFilter,
+    ctx.showMsgSearch,
+    isGlobalSearchActive,
+    ctx.ctxMenu,
+    ctx.editingMessage,
+    ctx.activeChatId
+  ]);
 
   const isMessageSearchMode = Boolean(ctx.showMsgSearch);
   const showGlobal = !isMessageSearchMode && (isGlobalSearchActive || Boolean((ctx.searchQuery || '').trim()));

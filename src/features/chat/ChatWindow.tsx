@@ -41,6 +41,32 @@ export default function ChatWindow() {
   const [showMenu, setShowMenu] = useState(false);
   const [showStartGroupCallModal, setShowStartGroupCallModal] = useState(false);
 
+  // 🎯 Стейты для плавной анимации открытия и закрытия на мобилках
+  const [renderedChatId, setRenderedChatId] = useState<string | null>(
+    ctx.activeChatId ? String(ctx.activeChatId) : null
+  );
+  const [isMobileOpen, setIsMobileOpen] = useState<boolean>(Boolean(ctx.activeChatId));
+
+  useEffect(() => {
+    if (ctx.activeChatId) {
+      setRenderedChatId(String(ctx.activeChatId));
+      const rafId = requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setIsMobileOpen(true);
+        });
+      });
+      return () => cancelAnimationFrame(rafId);
+    } else {
+      setIsMobileOpen(false);
+      // Таймаут сброса: для продакшна 300мс (под transition: 0.28s).
+      // Если тестируете на 3 секундах, поставьте здесь 3000
+      const closeTimer = setTimeout(() => {
+        setRenderedChatId(null);
+      }, 300);
+      return () => clearTimeout(closeTimer);
+    }
+  }, [ctx.activeChatId]);
+
   // Канал: настройки и выбор авторства
   const [sendAsType, setSendAsType] = useState<'user' | 'channel'>('channel');
   const [showSendAsModal, setShowSendAsModal] = useState(false);
@@ -51,11 +77,12 @@ export default function ChatWindow() {
   const [existingUsers, setExistingUsers] = useState<string[]>([]);
 
   const myId = String(ctx.currentUser?.uuid || ctx.currentUser?.id || '');
-  const activeChatIdStr = String(ctx.activeChatId || '');
+  const activeChatIdStr = String(renderedChatId || ctx.activeChatId || '');
 
   const currentChatUser = useMemo(() => {
-    if (!ctx.activeChatId) return null;
-    const targetIdStr = String(ctx.activeChatId);
+    // 🎯 Проверяем activeChatIdStr (он сохраняет ID до конца анимации)
+    if (!activeChatIdStr) return null;
+    const targetIdStr = activeChatIdStr;
 
     const foundInChats = (ctx.chats || []).find((c: any) => 
       String(c.id) === targetIdStr ||
@@ -103,7 +130,7 @@ export default function ChatWindow() {
     }
 
     return null;
-  }, [ctx.chats, ctx.contacts, ctx.users, ctx.activeChatId]);
+  }, [ctx.chats, ctx.contacts, ctx.users, activeChatIdStr]);
 
   // 2. Определение режима чата
   const isChannel = Boolean(currentChatUser?.isChannel || currentChatUser?.type === 'channel');
@@ -263,7 +290,8 @@ export default function ChatWindow() {
   };
 
   const displayedMessages = useMemo(() => {
-    if (!myId || !ctx.activeChatId) return [];
+    // 🎯 Сообщения остаются в DOM на время уезда окна
+    if (!myId || !activeChatIdStr) return [];
 
     const roomMessages = (ctx.allMessages || []).filter(
       (m: any) => String(m.chatId) === activeChatIdStr
@@ -416,8 +444,35 @@ export default function ChatWindow() {
 
   const inputPlaceholder = isChannel ? 'Публикация...' : 'Сообщение...';
 
-  const openMessageContextMenu = (e: React.MouseEvent, msg: any, isMyMsg: boolean) => {
-    e.preventDefault();
+  const openMessageContextMenu = (
+    e: React.MouseEvent | React.TouchEvent | { clientX: number; clientY: number; preventDefault?: () => void },
+    msg: any,
+    isMyMsg: boolean
+  ) => {
+    if ('preventDefault' in e && typeof e.preventDefault === 'function') {
+      e.preventDefault();
+    }
+
+    // Определяем координаты клика или тапа
+    let clientX = 0;
+    let clientY = 0;
+
+    if ('touches' in e && e.touches.length > 0) {
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else if ('changedTouches' in e && e.changedTouches.length > 0) {
+      clientX = e.changedTouches[0].clientX;
+      clientY = e.changedTouches[0].clientY;
+    } else if ('clientX' in e) {
+      clientX = e.clientX;
+      clientY = e.clientY;
+    }
+
+    // Если координаты по какой-то причине нулевые (программный вызов), центрируем по экрану
+    if (!clientX && !clientY) {
+      clientX = window.innerWidth / 2;
+      clientY = window.innerHeight / 2;
+    }
 
     const menuItems: ContextMenuItem[] = [
       {
@@ -433,6 +488,7 @@ export default function ChatWindow() {
         onClick: () => {
           if (ctx.handleCopyMessageText) ctx.handleCopyMessageText(msg.text);
           else navigator.clipboard.writeText(msg.text);
+          ctx.showToast?.('Текст скопирован', 'success');
         } 
       },
       {
@@ -482,7 +538,47 @@ export default function ChatWindow() {
       }
     );
 
-    ctx.setCtxMenu({ show: true, x: e.clientX, y: e.clientY, items: menuItems });
+    ctx.setCtxMenu({ show: true, x: clientX, y: clientY, items: menuItems });
+  };
+
+  const touchTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const touchStartPosRef = useRef<{ x: number; y: number } | null>(null);
+  const isLongPressTriggeredRef = useRef(false);
+
+  const handleTouchStart = (e: React.TouchEvent, msg: any, isOutgoing: boolean) => {
+    isLongPressTriggeredRef.current = false;
+    const touch = e.touches[0];
+    touchStartPosRef.current = { x: touch.clientX, y: touch.clientY };
+
+    // Запускаем таймер долгого нажатия (420мс)
+    touchTimerRef.current = setTimeout(() => {
+      isLongPressTriggeredRef.current = true;
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate(35); // Тактильный отклик при срабатывании
+      }
+      openMessageContextMenu(e, msg, isOutgoing);
+    }, 420);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    // Если палец сдвинулся более чем на 8px (пользователь просто скроллит ленту) — отменяем меню
+    if (!touchStartPosRef.current) return;
+    const touch = e.touches[0];
+    const diffX = Math.abs(touch.clientX - touchStartPosRef.current.x);
+    const diffY = Math.abs(touch.clientY - touchStartPosRef.current.y);
+    if (diffX > 8 || diffY > 8) {
+      if (touchTimerRef.current) {
+        clearTimeout(touchTimerRef.current);
+        touchTimerRef.current = null;
+      }
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (touchTimerRef.current) {
+      clearTimeout(touchTimerRef.current);
+      touchTimerRef.current = null;
+    }
   };
 
   const handleCallButton = () => {
@@ -506,7 +602,11 @@ export default function ChatWindow() {
       prevMessagesLengthRef.current = displayedMessages.length;
       messagesBodyRef.current.scrollTop = messagesBodyRef.current.scrollHeight;
       setShowScrollBtn(false);
-      messageInputRef.current?.focus();
+
+      // 🎯 Автофокус только на ПК (> 739px), чтобы мобильный экран не дёргался
+      if (window.innerWidth > 739) {
+        messageInputRef.current?.focus();
+      }
       return;
     }
 
@@ -537,16 +637,17 @@ export default function ChatWindow() {
       if (messagesBodyRef.current) {
         messagesBodyRef.current.scrollTop = messagesBodyRef.current.scrollHeight;
       }
-      if (messageInputRef.current) {
+      // 🎯 Автофокус только на ПК (> 739px)
+      if (messageInputRef.current && window.innerWidth > 739) {
         messageInputRef.current.focus();
       }
     }, 50);
     return () => clearTimeout(timer);
   }, [ctx.activeChatId, ctx.allMessages]);
 
-  if (!ctx.activeChatId) {
+  if (!activeChatIdStr) {
     return (
-      <main className={styles['chat-window']}>
+      <main className={`${styles['chat-window']} ${isMobileOpen ? styles['chat-mobile-open'] : ''}`}>
         <div className={styles['chat-placeholder']}>
           <div className={styles['placeholder-content']}>
             <div className={styles['placeholder-icon']}>
@@ -760,10 +861,8 @@ export default function ChatWindow() {
     currentChatUser?.role !== 'admin';
 
   return (
-    <main className={styles['chat-window']}>
-      {/* ======================================================== */}
-      {/* ШАПКА ЧАТА С АДАПТИВНОЙ АВАТАРКОЙ (<= 739px)             */}
-      {/* ======================================================== */}
+    <main className={`${styles['chat-window']} ${isMobileOpen ? styles['chat-mobile-open'] : ''}`}>
+      {/* Шапка чата */}
       <header className={styles['chat-header']} style={{ height: '58px', padding: '0 16px', display: 'flex', alignItems: 'center' }}>
         <div style={{display: "flex"}}>
           {/* Кнопка «Назад» для мобильных экранов (<= 739px) */}
@@ -883,18 +982,6 @@ export default function ChatWindow() {
               items={headerDropdownItems} 
             />
           </div>
-
-          <button 
-            type="button"
-            className={styles['header-btn']} 
-            onClick={() => {
-              ctx.setActiveChatId(null);
-              if (ctx.setEditingMessage) ctx.setEditingMessage(null);
-              if (ctx.setMessageText) ctx.setMessageText('');
-            }}
-          >
-            <X size={24} />
-          </button>
         </div>
       </header>
 
@@ -1015,6 +1102,12 @@ export default function ChatWindow() {
 
                     <div className={styles['sender-messages-col']}>
                       {cluster.messages.map(({ msg, isFirstInGroup, isLastInGroup }) => {
+                        const showSenderHeaderName = isFirstInGroup && (
+                          isChannel 
+                            ? cluster.isRenderAsAuthor 
+                            : (isGroup && !cluster.isOutgoing)
+                        );
+
                         // Подпись автора снизу: только если пост рендерится как от канала и в базе сохранился authorSignature
                         const resolvedSignature = isChannel && !cluster.isRenderAsAuthor
                           ? (
@@ -1038,27 +1131,40 @@ export default function ChatWindow() {
                               className={`${styles.message} ${
                                 cluster.isOutgoing ? styles['message-outgoing'] : styles['message-incoming']
                               }`}
+                              // ПК: правый клик мыши
                               onContextMenu={(e) => openMessageContextMenu(e, msg, cluster.isOutgoing)}
+                              // Мобилка 1: Долгое удержание пальца (как в Telegram Android/iOS)
+                              onTouchStart={(e) => handleTouchStart(e, msg, cluster.isOutgoing)}
+                              onTouchMove={handleTouchMove}
+                              onTouchEnd={handleTouchEnd}
+                              onTouchCancel={handleTouchEnd}
+                              // Мобилка 2: Обычный тап пальцем на экранах <= 739px (если не сработало долгое нажатие)
+                              onClick={(e) => {
+                                if (window.innerWidth <= 739) {
+                                  if (isLongPressTriggeredRef.current) {
+                                    isLongPressTriggeredRef.current = false;
+                                    return;
+                                  }
+                                  openMessageContextMenu(e, msg, cluster.isOutgoing);
+                                }
+                              }}
                             >
                               <div className={styles['message-bubble']}>
                                 <div className={styles['message-text']}>
                                   
-                                  {isFirstInGroup && (
+                                  {/* 🎯 Рендерим имя только если выполняется условие */}
+                                  {showSenderHeaderName && (
                                     <span 
                                       className={styles['group-msg-sender-name']} 
                                       style={{ 
-                                        color: isChannel && !cluster.isRenderAsAuthor 
-                                          ? '#5288c1'
+                                        color: isChannel 
+                                          ? '#5288c1' 
                                           : getNameColor(cluster.senderNameColor), 
                                         cursor: 'pointer' 
                                       }}
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        if (isChannel && !cluster.isRenderAsAuthor) {
-                                          ctx.setShowUserModal(true);
-                                        } else {
-                                          ctx.setShowUserModal(cluster.senderId);
-                                        }
+                                        ctx.setShowUserModal(cluster.senderId);
                                       }}
                                     >
                                       {!isChannel && renderUserStatusBadge(cluster.senderUserObj)}
@@ -1069,7 +1175,7 @@ export default function ChatWindow() {
                                   {msg.text}
                                 
                                   <span className={styles['message-meta']}>
-                                    {/* 👁️ Глазок с количеством просмотров в канале (как в Telegram) */}
+                                    {/* Глазок с просмотрами в канале */}
                                     {isChannel && (
                                       <span 
                                         style={{ 
@@ -1078,8 +1184,7 @@ export default function ChatWindow() {
                                           gap: '3px', 
                                           color: '#8e8e93', 
                                           fontSize: '11px', 
-                                          marginRight: '6px', 
-                                          marginTop: '5px'
+                                          marginRight: '6px'
                                         }}
                                       >
                                         <Eye size={13} />
@@ -1087,8 +1192,9 @@ export default function ChatWindow() {
                                       </span>
                                     )}
 
+                                    {/* Подпись снизу в канале */}
                                     {showBottomSignature && (
-                                      <span style={{ color: '#ffffff73', fontSize: '11px', marginRight: '5px', marginTop: '5px' }}>
+                                      <span style={{ color: '#ffffff73', fontSize: '11px', marginRight: '5px' }}>
                                         {resolvedSignature},
                                       </span>
                                     )}

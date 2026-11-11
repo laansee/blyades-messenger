@@ -4,14 +4,51 @@
 @media (min-width: 481px) and (max-width: 739px) {}
 /* всё до компа */
 @media (max-width: 739px) {
-  .chat-window {display: none}
-  .chat-header-back-btn {
+  .chat-window {
     display: flex !important;
+    flex-direction: column !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+    z-index: 1000 !important;
+    background-color: #121217 !important;
+    margin: 0 !important;
+    overflow: hidden;
+
+    visibility: hidden;
+    pointer-events: none;
+    
+    /* 🎯 Исходная позиция: за ПРАВЫМ краем экрана */
+    transform: translate3d(100%, 0, 0);
+    
+    transition: transform 0.28s cubic-bezier(0.25, 1, 0.5, 1),
+                visibility 0.28s step-end;
+    will-change: transform;
+    box-shadow: -8px 0 24px rgba(0, 0, 0, 0.5);
   }
-  .chat-header-avatar-mobile {
-    display: flex !important;
+
+  /* 🎯 Чат открыт: выезжает на экран */
+  .chat-window.chat-mobile-open {
+    visibility: visible;
+    transform: translate3d(0, 0, 0);
+    pointer-events: auto;
+    transition: transform 0.28s cubic-bezier(0.25, 1, 0.5, 1);
+  }
+
+  .chat-window .chat-placeholder {display: none !important;}
+  .chat-header-back-btn {display: flex !important;}
+  .chat-header-avatar-mobile {display: flex !important;}
+  .message-bubble {
+    -webkit-touch-callout: none !important;
+    user-select: none;
+    -webkit-user-select: none;
   }
 }
+
 /* комп */
 @media (min-width: 740px) {
   .chat-window {display: flex; flex: 1; flex-direction: column; }}
@@ -44,7 +81,7 @@
 
 .user-status {color: #666666; font-size: 12px;}
 .user-status.online {color: #00cc66;}
-.chat-header-actions {display: flex; gap: 10px; }
+.chat-header-actions {display: flex;}
 .header-btn {padding: 7px; background: none; border: none; font-size: 18px; cursor: pointer; color: #a0a0ab; }
 
 .close-chat-btn {font-size: 22px; color: #9ca3af; cursor: pointer; transition: color 0.2s ease;}
