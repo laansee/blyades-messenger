@@ -3,7 +3,8 @@ import styles from '../../css/profile.module.css';
 import { 
   Camera, KeyRound, MessageSquare, Palette, 
   PenTool, Heart, Hand, Link2, Shield, 
-  Users, UserX, ClipboardList, Sparkles 
+  Users, UserX, ClipboardList, Sparkles, 
+  CircleUser
 } from 'lucide-react';
 import { supabase } from '../../../services/supabaseClient';
 import useMessengerContext from '../../../context/messengerContext';
@@ -61,6 +62,9 @@ export default function EditChannelModal({
   const [signMessagesEnabled, setSignMessagesEnabled] = useState<boolean>(
     Boolean(currentChatUser?.signMessages)
   );
+  const [showAuthorProfilesEnabled, setShowAuthorProfilesEnabled] = useState<boolean>(
+    Boolean(currentChatUser?.showAuthorProfiles)
+  );
 
   const [isDragOver, setIsDragOver] = useState(false);
   const [rawImageSrc, setRawImageSrc] = useState<string | null>(null);
@@ -81,27 +85,32 @@ export default function EditChannelModal({
     const entityId = Number(rawId);
     if (!entityId || isNaN(entityId)) return;
 
-    // 1. Всегда проверяем актуальное значение signMessages из БД (чтобы после F5 ничего не сбрасывалось)
     const { data: chatRow } = await supabase
       .from('chats')
-      .select('signMessages, postMode')
+      .select('signMessages, showAuthorProfiles, postMode')
       .eq('id', entityId)
       .single();
 
     if (chatRow) {
       const actualSign = Boolean(chatRow.signMessages);
+      const actualShowAuthors = Boolean(chatRow.showAuthorProfiles);
       setSignMessagesEnabled(actualSign);
+      setShowAuthorProfilesEnabled(actualSign ? actualShowAuthors : false);
 
       if (ctx.setChats) {
         ctx.setChats((prev: any[]) =>
           prev.map((c: any) =>
-            Number(c.id) === entityId ? { ...c, signMessages: actualSign, postMode: chatRow.postMode } : c
+            Number(c.id) === entityId ? { 
+              ...c, 
+              signMessages: actualSign, 
+              showAuthorProfiles: actualSign ? actualShowAuthors : false,
+              postMode: chatRow.postMode 
+            } : c
           )
         );
       }
     }
 
-    // 2. Считаем администраторов
     const { data: adminsData } = await supabase
       .from('chat_members')
       .select('role')
@@ -190,6 +199,7 @@ export default function EditChannelModal({
       avatarColor: channelColor,
       avatarUrl: channelUrl.trim() || null,
       signMessages: signMessagesEnabled,
+      showAuthorProfiles: signMessagesEnabled ? showAuthorProfilesEnabled : false,
       postMode: signMessagesEnabled ? 'user' : 'channel',
       updatedAt: new Date().toISOString()
     };
@@ -284,7 +294,7 @@ export default function EditChannelModal({
           <div 
             className={styles['modal-edit-avatar-btn']}
             onClick={() => setShowUploadSelector(true)}
-            title="Сменить фото канала"
+            // title="Сменить фото канала"
           >
             {channelUrl ? (
               <img src={channelUrl} alt="Avatar" className={styles['modal-edit-avatar-img']} />
@@ -389,7 +399,13 @@ export default function EditChannelModal({
           {/* 🎯 РАБОЧИЙ ПЕРЕКЛЮЧАТЕЛЬ: Подписывать сообщения */}
           <div 
             className={styles['action-bottom-btn']} 
-            onClick={() => setSignMessagesEnabled(prev => !prev)}
+            onClick={() => {
+              const nextSign = !signMessagesEnabled;
+              setSignMessagesEnabled(nextSign);
+              if (!nextSign) {
+                setShowAuthorProfilesEnabled(false);
+              }
+            }}
             style={{ cursor: 'pointer' }}
           >
             <div className={styles['modal-setting-left']}>
@@ -400,16 +416,43 @@ export default function EditChannelModal({
               <input 
                 type="checkbox" 
                 checked={signMessagesEnabled} 
-                onChange={(e) => setSignMessagesEnabled(e.target.checked)} 
+                onChange={(e) => {
+                  const nextSign = e.target.checked;
+                  setSignMessagesEnabled(nextSign);
+                  if (!nextSign) {
+                    setShowAuthorProfilesEnabled(false);
+                  }
+                }} 
               />
               <span className={styles['toggle-slider']} />
             </label>
-            {/* <span className={styles['modal-setting-hint']}>
-              {signMessagesEnabled 
-                ? 'Включено: сообщения авторов будут отображаться с их аватарками и именами (как в беседе).'
-                : 'Выключено: все сообщения от имени канала. Доступна текстовая подпись автора внизу.'}
-            </span> */}
           </div>
+          
+          {signMessagesEnabled && (
+            <div 
+              className={styles['action-bottom-btn']} 
+              onClick={() => setShowAuthorProfilesEnabled(prev => !prev)}
+              style={{ cursor: 'pointer' }}
+            >
+              <div className={styles['modal-setting-left']}>
+                <CircleUser size={18} className={styles['modal-setting-icon']} />
+                <span>Показывать профили авторов</span>
+              </div>
+              <label className={styles['toggle-switch']} onClick={(e) => e.stopPropagation()}>
+                <input 
+                  type="checkbox" 
+                  checked={showAuthorProfilesEnabled} 
+                  onChange={(e) => setShowAuthorProfilesEnabled(e.target.checked)} 
+                />
+                <span className={styles['toggle-slider']} />
+              </label>
+            </div>
+          )}
+          {/* <span className={styles['modal-setting-hint']}>
+            {signMessagesEnabled 
+              ? 'Включено: сообщения авторов будут отображаться с их аватарками и именами (как в беседе).'
+              : 'Выключено: все сообщения от имени канала. Доступна текстовая подпись автора внизу.'}
+          </span> */}
         </div>
 
         <div className={styles['info-divider']} />
@@ -553,7 +596,7 @@ export default function EditChannelModal({
           setChannelColor(chosenColor);
         }}
         targetType="channels"
-        title="Аватар канала"
+        // title="Аватар канала"
       />
 
       <AvatarCropModal 

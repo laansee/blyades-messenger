@@ -75,7 +75,7 @@ export const ColorCirclePicker: React.FC<ColorCirclePickerProps> = ({
           <div
             key={key}
             onClick={() => onSelect(key)}
-            title={title}
+            // title={title}
             style={{
               position: 'relative',
               width: `${circleSize}px`,

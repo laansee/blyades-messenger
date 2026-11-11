@@ -4,6 +4,24 @@ export type PrivacyType = 'all' | 'contacts' | 'none';
 export type NameFormatType = 'username' | 'full_name';
 export type UserStatusType = 'default' | 'moderator' | 'administrator' | string;
 
+export interface UserPrivacySettings {
+  phone: PrivacyType;
+  email: PrivacyType;
+  online: PrivacyType;
+  fullName: PrivacyType;
+  privacyNameFormat: NameFormatType;
+  search: PrivacyType;
+}
+
+export const DEFAULT_USER_PRIVACY: UserPrivacySettings = {
+  phone: 'all',
+  email: 'all',
+  online: 'all',
+  fullName: 'all',
+  privacyNameFormat: 'username',
+  search: 'all',
+};
+
 export interface AppUser {
   uuid: string;
   id: number | null;
@@ -18,12 +36,13 @@ export interface AppUser {
   avatarUrl: string | null;
   nameColor: string;
   aboutMe: string | null;
-  privacyPhone: PrivacyType;
-  privacyEmail: PrivacyType;
-  privacyOnline: PrivacyType;
-  privacyNameFormat: NameFormatType;
-  privacyFullName: PrivacyType;
-  privacySearch: PrivacyType;
+  privacy?: UserPrivacySettings;
+  privacyPhone?: PrivacyType;
+  privacyEmail?: PrivacyType;
+  privacyOnline?: PrivacyType;
+  privacyNameFormat?: NameFormatType;
+  privacyFullName?: PrivacyType;
+  privacySearch?: PrivacyType;
   userStatus: UserStatusType;
   isBanned: boolean;
   bannedAt: string | null;
@@ -43,6 +62,18 @@ export interface ResolveNameOptions {
   viewerType?: 'contact' | 'stranger';
   contact?: UserContactContext | null;
   isAmHisContact?: boolean;
+}
+
+export function getUserPrivacy(user: Partial<AppUser> | null | undefined): UserPrivacySettings {
+  const p = user?.privacy || {};
+  return {
+    phone: (p as any).phone || user?.privacyPhone || DEFAULT_USER_PRIVACY.phone,
+    email: (p as any).email || user?.privacyEmail || DEFAULT_USER_PRIVACY.email,
+    online: (p as any).online || user?.privacyOnline || DEFAULT_USER_PRIVACY.online,
+    fullName: (p as any).fullName || user?.privacyFullName || DEFAULT_USER_PRIVACY.fullName,
+    privacyNameFormat: (p as any).privacyNameFormat || user?.privacyNameFormat || DEFAULT_USER_PRIVACY.privacyNameFormat,
+    search: (p as any).search || user?.privacySearch || DEFAULT_USER_PRIVACY.search,
+  };
 }
 
 export const userService = {
@@ -144,27 +175,26 @@ export const userService = {
 
     return allFound.filter(u => {
       if (currentUuid && u.uuid === currentUuid) return false;
-      if (u.privacySearch === 'none') return false;
+      const privacy = getUserPrivacy(u);
+      if (privacy.search === 'none') return false;
       return true;
     });
   },
 
   /**
    * 👤 1. Имя, которое видит НЕЗНАКОМЕЦ
-   * Незнакомец никогда не видит ваши локальные заметки/имена контактов.
-   * Настоящее имя видит ТОЛЬКО если privacyFullName === 'all' И privacyNameFormat === 'full_name'.
    */
   getDisplayNameAsStranger(user: Partial<AppUser> | null | undefined): string {
     if (!user) return 'Пользователь';
 
+    const privacy = getUserPrivacy(user);
     const userFirst = user.firstName ? user.firstName.trim() : '';
     const userLast = user.lastName ? user.lastName.trim() : '';
     const userFullName = `${userFirst} ${userLast}`.trim();
 
-    // Незнакомцу видно полное имя только при публичной настройке 'all'
     const canStrangerSeeFullName = 
-      user.privacyNameFormat === 'full_name' && 
-      user.privacyFullName === 'all';
+      privacy.privacyNameFormat === 'full_name' && 
+      privacy.fullName === 'all';
 
     if (canStrangerSeeFullName && userFullName) {
       return userFullName;
@@ -175,8 +205,6 @@ export const userService = {
 
   /**
    * 👥 2. Имя, которое видит КОНТАКТ
-   * Контакт в первую очередь видит то, как вы его записали у себя.
-   * Если не записали — видит полное имя, если разрешено ('all' или 'contacts').
    */
   getDisplayNameAsContact(
     user: Partial<AppUser> | null | undefined,
@@ -184,23 +212,20 @@ export const userService = {
   ): string {
     if (!user) return 'Пользователь';
 
-    // 1. Имя из записной книги (контактов)
     const contactFirst = contact?.firstName && contact.firstName !== 'EMPTY' ? contact.firstName.trim() : '';
     const contactLast = contact?.lastName && contact.lastName !== 'EMPTY' ? contact.lastName.trim() : '';
     const contactFullName = `${contactFirst} ${contactLast}`.trim();
 
-    if (contactFullName) {
-      return contactFullName;
-    }
+    if (contactFullName) return contactFullName;
 
-    // 2. Имя из профиля (для контакта доступно и при 'all', и при 'contacts')
+    const privacy = getUserPrivacy(user);
     const userFirst = user.firstName ? user.firstName.trim() : '';
     const userLast = user.lastName ? user.lastName.trim() : '';
     const userFullName = `${userFirst} ${userLast}`.trim();
 
     const canContactSeeFullName = 
-      user.privacyNameFormat === 'full_name' && 
-      user.privacyFullName !== 'none';
+      privacy.privacyNameFormat === 'full_name' && 
+      privacy.fullName !== 'none';
 
     if (canContactSeeFullName && userFullName) {
       return userFullName;
@@ -215,32 +240,19 @@ export const userService = {
   resolveDisplayName(user: AppUser | any, context?: any): string {
     if (!user) return 'Пользователь';
 
-    // 1. Если это контакт и у него задано локальное имя в записной книжке
     if (context?.isContact && (context.contactFirstName || context.contactLastName)) {
       return `${context.contactFirstName || ''} ${context.contactLastName || ''}`.trim();
     }
 
+    const privacy = getUserPrivacy(user);
     const realFullName = `${user.firstName || ''} ${user.lastName || ''}`.trim();
-    const isFullNamePreferred = 
-      user.privacyNameFormat === 'full_name' || 
-      user.privacyNameFormat === 'name';
+    const isFullNamePreferred = privacy.privacyNameFormat === 'full_name';
 
-    // 2. Если в настройках выбрано "Имя и Фамилия" и они заполнены
     if (isFullNamePreferred && realFullName) {
       return realFullName;
     }
 
-    // 3. Иначе дефолтный никнейм
     return user.username || realFullName || 'Пользователь';
-  },
-
-  /**
-   * Проверка видимости закрытых полей (телефон, email, полное имя)
-   */
-  isFieldVisible(privacy: PrivacyType | undefined, isAmHisContact: boolean): boolean {
-    if (!privacy || privacy === 'all') return true;
-    if (privacy === 'contacts') return Boolean(isAmHisContact);
-    return false;
   },
 
   /**
@@ -290,13 +302,30 @@ export const userService = {
   },
 
   /**
-   * Быстрое обновление конкретной настройки приватности
+   * Обновление настройки приватности внутри JSONB
    */
   async updatePrivacySetting(
     uuid: string,
-    key: 'privacyPhone' | 'privacyEmail' | 'privacyOnline' | 'privacyNameFormat' | 'privacyFullName' | 'privacySearch',
-    value: PrivacyType | NameFormatType
-  ): Promise<{ success: boolean; error?: string }> {
-    return this.updateProfile(uuid, { [key]: value } as any);
+    key: keyof UserPrivacySettings,
+    value: PrivacyType | NameFormatType,
+    currentPrivacy?: UserPrivacySettings
+  ): Promise<{ success: boolean; updatedPrivacy?: UserPrivacySettings; error?: string }> {
+    try {
+      // 1. Берем текущий объект или дефолтный
+      const basePrivacy = currentPrivacy || DEFAULT_USER_PRIVACY;
+      const updatedPrivacy: UserPrivacySettings = {
+        ...basePrivacy,
+        [key]: value
+      };
+
+      // 2. Отправляем в Supabase целый jsonb-объект privacy
+      const res = await this.updateProfile(uuid, { privacy: updatedPrivacy } as any);
+      if (!res.success) throw new Error(res.error);
+
+      return { success: true, updatedPrivacy };
+    } catch (e: any) {
+      console.error('[userService.updatePrivacySetting] Ошибка:', e);
+      return { success: false, error: e.message };
+    }
   }
 };

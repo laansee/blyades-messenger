@@ -116,7 +116,7 @@ export const ChatCard: React.FC<ChatCardProps> = ({
         
         <div className={styles['chat-last-message']}>
           <p style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: unreadCount > 0 ? '75%' : '85%' }}>
-            {!isSystemMessage && isMyLast ? (
+            {!isSystemMessage && isMyLast && (isGroup || isChannel) ? (
               <span style={{ color: '#007aff', fontWeight: 'bold' }}>Вы: </span>
             ) : otherSenderName ? (
               <span style={{ color: '#8e8e93', fontWeight: 500 }}>{otherSenderName}: </span>

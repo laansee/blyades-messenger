@@ -1,3 +1,50 @@
+/* 📱 Смартфоны и узкие экраны (до 768px): поведение строго по экранам */
+@media (max-width: 768px) {
+  .setSidebar {
+    width: 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+    border-right: none !important;
+  }
+
+  .settingsContainer {
+    width: 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Режим списка разделов (меню) — сайдбар на весь экран, контент скрыт */
+  .viewMenu .settingsContainer {
+    display: none !important;
+  }
+  .viewMenu .setSidebar {
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 !important;
+    width: 100% !important;
+  }
+
+  /* Режим открытой вкладки (контент) — сайдбар скрыт, контент на весь экран */
+  .viewContent .setSidebar {
+    display: none !important;
+  }
+  .viewContent .settingsContainer {
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 !important;
+    width: 100% !important;
+  }
+}
+
+@media (max-width: 1000px) {
+  .tgProfilePage {
+    margin: 0 !important;
+    padding: 0 0 40px !important;
+    max-width: none !important;
+  }
+  .tgBioCard, .tgSectionCard {border-radius: 0 !important}
+}
+
 .setSidebar {
   background-color: var(--bg-main);
   border-right: 1px solid var(--border);
@@ -61,8 +108,8 @@
 .setSidebarItem:hover {background-color: #232327;}
 .setSidebarItem[aria-disabled=true] {color: #707579; cursor: not-allowed;}
 .setSidebarItem[aria-disabled=true]:hover {background-color: #00000000;}
-.setSidebarItem[aria-exit=true] {color: #ef4444;}
-.setSidebarItem[aria-exit=true]:hover {background-color: #ef44441f;}
+.setSidebarItem[data-exit=true] {color: #ef4444;}
+.setSidebarItem[data-exit=true]:hover {background-color: #ef44441f;}
 .setSidebarItem.active {
   background-color: rgba(255, 255, 255, 0.06);
   color: #fff;
@@ -72,26 +119,41 @@
 
 .settingsContainer {
   flex: 1;
-  background-color: #121216;
-  overflow: hidden; /* 🚫 Отключаем скролл на самом окне */
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   height: 100%;
-  min-height: 0; /* 🎯 Позволяет дочерним flex-элементам сжиматься и скроллиться */
+  min-height: 0;
   box-sizing: border-box;
-  font-family: system-ui, -apple-system, sans-serif;}
-.settingsFormCard {
+  font-family: system-ui, -apple-system, sans-serif;
+  background: #16171b;}
+.settingsPlaceholder {
   display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
+  align-items: center;
   gap: 16px;
-  padding: 20px;
-  box-sizing: border-box;
-  width: 100%;}
-.settingsHeader {
-  width: 100%;
+  user-select: none;
+  flex-direction: column;
+  justify-content: center;
+  color: rgb(110, 111, 122);}
+.settingsPlaceholderIcon {
+  width: 80px;
+  height: 80px;
+  border-radius: 20px;
+  background-color: rgb(27, 27, 34);
   display: flex;
-  justify-content: space-between;}
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgb(40, 40, 50);}
+.settingsPlaceholder p {
+  font-size: 16px;
+  font-weight: 500;
+  color: rgb(237, 237, 237);}
+.settingsHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  user-select: none;}
 .settingsFormTitle {
   color: #ffffff;
   margin: 0 0 4px 0;
@@ -109,9 +171,6 @@
   font-family: sans-serif}
 
 .settingsFormFields {
-  background-color: #1c1c24;
-  border: 1px solid #2b2d31;
-  border-radius: 14px; 
   display: flex; 
   flex-direction: column; 
   overflow-y: auto;
@@ -209,23 +268,6 @@
   font-size: 14px; 
   cursor: pointer;
   color: #fff}
-  
-
-/* Кнопка «Назад» для мобильного режима */
-.mobileBackBtn {
-  display: none;
-  background: none;
-  border: none;
-  color: #9d7bf6;
-  cursor: pointer;
-  padding: 6px;
-  border-radius: 8px;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.15s ease;
-}.mobileBackBtn:hover {
-  background-color: rgba(255, 255, 255, 0.08);
-}
 
 /* Кнопка вызова выдвижного предпросмотра */
 .togglePreviewBtn {
@@ -261,113 +303,301 @@
   padding: 4px;
 }
 
-/* 💻 Планшетный режим (скрываем правую колонку, предпросмотр по кнопке) */
-@media (max-width: 1100px) {
-  .togglePreviewBtn {
-    display: flex !important;
-  }
-
-  /* Панель предпросмотра */
-  .settingsPreview {
-    position: fixed !important;
-    top: 0 !important;
-    right: 0 !important;
-    width: 380px !important;
-    max-width: 90vw !important;
-    height: 100vh !important;
-    background-color: #16171b !important;
-    border-left: 1px solid #2b2d31 !important;
-    z-index: 10000 !important;
-    /* 🎯 Тень активируется ТОЛЬКО в открытом состоянии, чтобы не светить справа в закрытом */
-    box-shadow: none !important;
-    overflow-y: auto !important;
-    padding: 10px 12px 24px !important;
-    box-sizing: border-box !important;
-    transform: translateX(110%) !important;
-    visibility: hidden; /* Полностью скрываем закрытую шторку от рендера */
-    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.25s ease !important;
-    display: flex !important;
-  }
-
-  .settingsPreview.open {
-    transform: translateX(0) !important;
-    visibility: visible !important;
-    box-shadow: -10px 0 30px rgba(0, 0, 0, 0.7) !important;
-  }
-
-  .previewCloseBtn {
-    display: flex !important;
-    align-items: center;
-    justify-content: flex-end;
-  }
-
-  .previewBackdrop {
-    display: block !important;
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
-    background-color: rgba(0, 0, 0, 0.65) !important;
-    backdrop-filter: blur(4px) !important;
-    z-index: 9999 !important;
-  }
-}
-
-/* 📱 Смартфоны (до 768px): поведение экрана 1-в-1 как в /chat */
-@media (max-width: 768px) {
-  .mobileBackBtn {
-    display: flex !important;
-  }
-
-  .setSidebar {
-    width: 100% !important;
-    min-width: 100% !important;
-    max-width: 100% !important;
-    border-right: none !important;
-  }
-
-  .settingsContainer {
-    width: 100% !important;
-    min-width: 100% !important;
-    max-width: 100% !important;
-  }
-
-  /* Если открыт список разделов — прячем форму */
-  .viewMenu .settingsContainer {
-    display: none !important;
-  }
-  .viewMenu .setSidebar {
-    display: flex !important;
-    flex-direction: column !important;
-    flex: 1 !important;
-  }
-
-  /* Если открыта форма — прячем список разделов */
-  .viewContent .setSidebar {
-    display: none !important;
-  }
-  .viewContent .settingsContainer {
-    display: flex !important;
-    flex-direction: column !important;
-    flex: 1 !important;
-  }
-}
 
 /* Кастомизация скроллбара внутри закругленного блока (аккуратный тонкий ползунок) */
-.settingsFormFields::-webkit-scrollbar {
-  width: 6px;
-}
-
-.settingsFormFields::-webkit-scrollbar-track {
-  background: transparent;
-}
-
+.settingsFormFields::-webkit-scrollbar {width: 6px;}
+.settingsFormFields::-webkit-scrollbar-track {background: transparent;}
 .settingsFormFields::-webkit-scrollbar-thumb {
   background-color: #2b2d38;
-  border-radius: 10px;
+  border-radius: 10px;}
+.settingsFormFields::-webkit-scrollbar-thumb:hover {background-color: #9d7bf6;}
+
+/* ======================================================== */
+/*    СТИЛИ В РЕЖИМЕ TELEGRAM DESKTOP                       */
+/* ======================================================== */
+
+/* Голубой заголовок группы настроек (как в Telegram «Конфиденциальность») */
+.tgSectionTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: #5288c1;
+  padding: 8px 16px 4px;
+  user-select: none;
+  letter-spacing: -0.1px;
 }
 
-.settingsFormFields::-webkit-scrollbar-thumb:hover {
-  background-color: #9d7bf6;
+.tgProfilePage {
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 0 20px 40px;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+/* Шапка с центрированной аватаркой */
+.tgHeader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 0 8px;
+}
+
+.tgAvatarWrapper {
+  position: relative;
+  width: 84px;
+  height: 84px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.tgCameraBadge {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background-color: #5288c1;
+  border: 3px solid #17212b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  transition: transform 0.15s ease, background-color 0.15s ease;
+}
+
+.tgCameraBadge:hover {
+  background-color: #6499d3;
+  transform: scale(1.06);
+}
+
+.tgHeaderName {
+  margin: 12px 0 2px;
+  font-size: 19px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.2px;
+  text-align: center;
+}
+
+.tgHeaderStatus {
+  font-size: 13px;
+  color: #5288c1;
+  font-weight: 500;
+  text-align: center;
+}
+
+/* Блок-карточка секции */
+.tgSectionCard {
+  /* background-color: #17212b; */
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 5px 0;
+  /* box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2); */
+}
+
+/* Строка поля внутри блока */
+.tgRow {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  position: relative;
+  cursor: pointer;
+  background-color: transparent;
+  transition: background-color 0.15s ease;
+  user-select: none;
+}
+
+.tgRow:hover {
+  background-color: #312b3a;
+}
+
+.tgRow:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 30px; /* отступ слева под иконку */
+  right: 30px;
+  height: 1px;
+  background-color: rgba(255, 255, 255, 0.06);
+}
+.tgRowLast::after {
+  left: 0 !important;
+  right: 0 !important;
+  height: 0 !important;}
+
+.tgRowIcon {
+  width: 22px;
+  height: 22px;
+  margin-right: 14px;
+  color: #708499;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tgRowLabel {
+  flex: 1;
+  font-size: 14px;
+  color: #ffffff;
+  font-weight: 500;
+}
+
+.tgRowValue {
+  font-size: 14px;
+  color: #708499;
+  font-weight: 400;
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: right;
+}
+
+.tgRowValueAccent {
+  color: #5288c1;
+  font-weight: 500;
+}
+
+/* Блок ввода «О себе» */
+.tgBioCard {
+  /* background-color: #17212b; */
+  border-radius: 12px;
+  padding: 12px 16px;
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  /* box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2); */
+  transition: background-color 0.15s ease;
+}
+
+.tgBioCard:focus-within {
+  /* background-color: #1a2530; */
+}
+
+/* Счётчик символов в правом верхнем углу */
+.tgBioCounter {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #708499;
+  user-select: none;
+  pointer-events: none;
+  line-height: 1.45;
+  transition: color 0.15s ease;
+}
+
+/* Красный цвет счётчика при превышении 70 символов */
+.tgBioCounterLimit {
+  color: #e55050 !important;
+  font-weight: 600;
+}
+
+/* Само поле ввода без рамки с отступом под счётчик */
+.tgBioInputArea {
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #ffffff;
+  font-size: 14px;
+  line-height: 1.45;
+  resize: none;
+  padding: 0 46px 0 0; /* Отступ справа 46px, чтобы текст не наползал на счётчик */
+  margin: 0;
+  font-family: inherit;
+  box-sizing: border-box;
+  overflow: hidden;
+  min-height: 20px;
+}
+
+.tgBioInputArea::placeholder {
+  color: #708499;
+}
+
+.tgBioHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  color: #708499;
+  margin-bottom: 4px;
+}
+
+.tgBioValue {
+  font-size: 14px;
+  color: #ffffff;
+  line-height: 1.4;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.tgBioPlaceholder {
+  color: #5e6b7a;
+}
+
+/* Подсказки под блоками */
+.tgSectionHint {
+  padding: 12px 16px 16px;
+  font-size: 12px;
+  color: #b0adb7;
+  line-height: 1.4;
+  background-color: #22202b;
+}
+
+/* Бейдж предпросмотра цвета имени как в TG */
+.tgNameBadge {
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+/* Верхняя панель заголовка вкладки с кнопками «Назад» и «Закрыть» */
+.tgTabHeaderBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background-color: #17212b;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px 12px 0 0;
+  margin-bottom: -4px;
+}
+
+.tgTabHeaderTitle {
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tgTabIconBtn {
+  background: none;
+  border: none;
+  color: #708499;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.tgTabIconBtn:hover {
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.08);
 }

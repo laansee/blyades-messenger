@@ -2,11 +2,12 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import styles from '../../components/css/chat-window.module.css';
 import useMessengerContext, { formatUserOnlineStatus } from '../../context/messengerContext';
 import { supabase } from '../../services/supabaseClient';
+import { chatSendStrategies } from '../../services/chatSendStrategies';
 import { 
   Search, EllipsisVertical, X, Check, CheckCheck, Pencil, Paperclip, 
-  Send, ArrowUp, ArrowDown, User, 
+  Send, ArrowUp, ArrowDown, User, Eye,
   BellOff, MessageSquare, Trash, Phone, Clock, 
-  Pin, Users, Megaphone
+  Pin, Users, Megaphone, Bookmark, ArrowLeft,
 } from 'lucide-react';
 
 import { DropdownMenu, AddParticipantsModal } from '../../components/common/GlobalUI'; 
@@ -15,7 +16,7 @@ import SmartAvatar from '../../components/common/SmartAvatar';
 import StartGroupCallModal from '../calls/StartGroupCallModal';
 import { SendAsModal } from '../../components/modals/common/SendAsModal';
 import { type ContextMenuItem } from '../../components/common/ContextMenu';
-import { getNameColor, getNameTheme } from '../../utils/themeColors';
+import { getNameColor } from '../../utils/themeColors';
 
 function formatHoursAndMinutes(isoString: string | undefined): string {
   if (!isoString) return '';
@@ -40,13 +41,17 @@ export default function ChatWindow() {
   const [showMenu, setShowMenu] = useState(false);
   const [showStartGroupCallModal, setShowStartGroupCallModal] = useState(false);
 
-  // Выбор в модалке "Написать от имени...": 'user' (личный аккаунт) или 'channel' (от имени канала)
-  const [sendAsType, setSendAsType] = useState<'user' | 'channel'>('user');
+  // Канал: настройки и выбор авторства
+  const [sendAsType, setSendAsType] = useState<'user' | 'channel'>('channel');
   const [showSendAsModal, setShowSendAsModal] = useState(false);
   const [channelSignMessages, setChannelSignMessages] = useState<boolean>(false);
+  const [channelShowAuthorProfiles, setChannelShowAuthorProfiles] = useState<boolean>(false);
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [existingUsers, setExistingUsers] = useState<string[]>([]);
+
+  const myId = String(ctx.currentUser?.uuid || ctx.currentUser?.id || '');
+  const activeChatIdStr = String(ctx.activeChatId || '');
 
   const currentChatUser = useMemo(() => {
     if (!ctx.activeChatId) return null;
@@ -100,18 +105,29 @@ export default function ChatWindow() {
     return null;
   }, [ctx.chats, ctx.contacts, ctx.users, ctx.activeChatId]);
 
-  const myId = String(ctx.currentUser?.uuid || ctx.currentUser?.id || '');
-  const activeChatIdStr = String(ctx.activeChatId || '');
-  const memberCount = currentChatUser?.type === 'group' ? (currentChatUser?.memberCount ?? 0) : null;
-  const isGroup = currentChatUser?.isGroup || String(ctx.activeChatId).startsWith('group_');
-  const isChannel = currentChatUser?.isChannel || currentChatUser?.type === 'channel';
+  // 2. Определение режима чата
+  const isChannel = Boolean(currentChatUser?.isChannel || currentChatUser?.type === 'channel');
+  const isGroup = Boolean(currentChatUser?.isGroup || currentChatUser?.type === 'group' || activeChatIdStr.startsWith('group_'));
+  
+  const isSavedMessages = Boolean(
+    currentChatUser?.type === 'saved' || 
+    currentChatUser?.isSaved || 
+    activeChatIdStr === 'saved' ||
+    (currentChatUser?.partnerId && String(currentChatUser.partnerId) === myId) ||
+    (currentChatUser?.uuid && String(currentChatUser.uuid) === myId)
+  );
 
-  // 🎯 Синхронизация флага signMessages из БД при открытии канала или после F5
+  const memberCount = isGroup ? (currentChatUser?.memberCount ?? null) : null;
+
+  // Синхронизация флагов канала
   useEffect(() => {
     if (!isChannel || !activeChatIdStr) return;
 
     if (typeof currentChatUser?.signMessages === 'boolean') {
       setChannelSignMessages(currentChatUser.signMessages);
+    }
+    if (typeof currentChatUser?.showAuthorProfiles === 'boolean') {
+      setChannelShowAuthorProfiles(currentChatUser.showAuthorProfiles);
     }
 
     const numId = Number(currentChatUser?.internalChatId || currentChatUser?.id || activeChatIdStr);
@@ -119,97 +135,131 @@ export default function ChatWindow() {
 
     supabase
       .from('chats')
-      .select('signMessages, postMode')
+      .select('signMessages, showAuthorProfiles, postMode')
       .eq('id', numId)
       .single()
       .then(({ data }) => {
         if (data) {
           const isSigned = Boolean(data.signMessages);
+          const isShowAuthors = Boolean(data.showAuthorProfiles);
           setChannelSignMessages(isSigned);
-          if (ctx.setChats) {
-            ctx.setChats((prev: any[]) =>
-              prev.map((c: any) => Number(c.id) === numId ? { ...c, signMessages: isSigned, postMode: data.postMode } : c)
-            );
-          }
+          setChannelShowAuthorProfiles(isShowAuthors);
         }
       });
-  }, [isChannel, activeChatIdStr, currentChatUser?.signMessages]);
+  }, [isChannel, activeChatIdStr, currentChatUser?.signMessages, currentChatUser?.showAuthorProfiles]);
 
   const handleCustomSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     const text = (ctx.messageText || '').trim();
-    if (!text) return;
+    if (!text || !myId) return;
 
-    if (isChannel) {
-      const channelIdNum = Number(currentChatUser?.internalChatId || currentChatUser?.id || activeChatIdStr);
-      const isSignModeActive = Boolean(currentChatUser?.signMessages ?? channelSignMessages);
-
-      // Имя автора без фамилии (или никнейм)
-      const authorFirstName = (ctx.currentUser?.firstName || '').trim();
-      const authorSignature = authorFirstName || ctx.currentUser?.username || 'Автор';
-
-      let senderType: 'channel' | 'user' = 'channel';
-      let payloadSignature: string | null = null;
-
-      if (sendAsType === 'channel') {
-        // Выбрано «От имени канала» -> всегда от канала и без подписи
-        senderType = 'channel';
-        payloadSignature = null;
-      } else {
-        // Выбрано «От своего имени (личный аккаунт)»
-        if (isSignModeActive) {
-          // В настройках канала ВКЛЮЧЕНО «Подписывать сообщения» -> с аватаркой автора как в беседе
-          senderType = 'user';
-          payloadSignature = null;
-        } else {
-          // В настройках канала ВЫКЛЮЧЕНО «Подписывать сообщения» -> от канала, но с подписью автора внизу
-          senderType = 'channel';
-          payloadSignature = authorSignature;
-        }
-      }
-
-      const nowIso = new Date().toISOString();
-
+    // Редактирование[cite: 30]
+    if (ctx.editingMessage) {
       try {
-        const { data: newMsg, error } = await supabase
+        const { error } = await supabase
           .from('messages')
-          .insert([{
-            chatId: channelIdNum,
-            senderId: myId,
-            senderType: senderType,
-            authorSignature: payloadSignature,
-            authorId: myId,
-            text: text,
-            status: 'send',
-            createdAt: nowIso
-          }])
-          .select()
-          .single();
+          .update({ text, isEdited: true })
+          .eq('id', ctx.editingMessage.id);
 
         if (error) throw error;
 
-        await supabase
-          .from('chats')
-          .update({
-            lastMessageText: text,
-            lastMessageAt: nowIso,
-            lastMessageSenderUUID: myId
-          })
-          .eq('id', channelIdNum);
-
-        if (ctx.setAllMessages && newMsg) {
-          ctx.setAllMessages((prev: any[]) => [...prev, newMsg]);
+        if (ctx.setAllMessages) {
+          ctx.setAllMessages((prev: any[]) =>
+            prev.map(m => m.id === ctx.editingMessage.id ? { ...m, text, isEdited: true } : m)
+          );
         }
-        if (ctx.setMessageText) ctx.setMessageText('');
-        if (ctx.fetchAndMatchChats) await ctx.fetchAndMatchChats();
+        ctx.setEditingMessage(null);
+        ctx.setMessageText('');
+        return;
       } catch (err: any) {
-        console.error('Ошибка отправки:', err);
-        ctx.showToast?.(`Ошибка отправки: ${err.message}`, 'error');
+        ctx.showToast?.(`Ошибка редактирования: ${err.message}`, 'error');
+        return;
       }
-      return;
     }
 
-    ctx.handleSendMessage(e);
+    const nowIso = new Date().toISOString();
+    const tempId = `temp-${Date.now()}`;
+    const targetRoomId = Number(currentChatUser?.internalChatId || currentChatUser?.id || activeChatIdStr);
+
+    const isSignActive = Boolean(currentChatUser?.signMessages ?? channelSignMessages);
+    const isShowAuthorsActive = Boolean(currentChatUser?.showAuthorProfiles ?? channelShowAuthorProfiles);
+
+    const optimisticSenderType = (isChannel && isShowAuthorsActive && sendAsType !== 'channel')
+      ? 'user'
+      : (isChannel ? 'channel' : 'user');
+
+    const userDisplayName = (ctx.currentUser?.username || '').trim();
+    const userFullName = `${ctx.currentUser?.firstName || ''} ${ctx.currentUser?.lastName || ''}`.trim();
+    const fallbackId = (ctx.currentUser?.uniqueId || '').trim();
+
+    const authorSignature = userDisplayName || userFullName || fallbackId || 'Автор';
+
+    const optimisticMessage = {
+      id: tempId,
+      chatId: activeChatIdStr,
+      senderId: myId,
+      senderType: optimisticSenderType,
+      authorId: myId,
+      authorSignature: isSignActive && sendAsType !== 'channel'
+        ? authorSignature
+        : null,
+      text,
+      status: 'sending',
+      createdAt: nowIso
+    };
+
+    if (ctx.setAllMessages) {
+      ctx.setAllMessages((prev: any[]) => [...prev, optimisticMessage]);
+    }
+    ctx.setMessageText('');
+
+    try {
+      let createdMessage: any = null;
+
+      if (isChannel) {
+        createdMessage = await chatSendStrategies.sendChannel({
+          chatId: isNaN(targetRoomId) ? activeChatIdStr : targetRoomId,
+          myId,
+          text,
+          nowIso,
+          sendAsType,
+          isSignModeActive: isSignActive,
+          isShowAuthorProfilesActive: isShowAuthorsActive,
+          authorSignature
+        });
+      } else if (isSavedMessages) {
+        createdMessage = await chatSendStrategies.sendSaved({
+          chatId: isNaN(targetRoomId) ? activeChatIdStr : targetRoomId,
+          myId,
+          text,
+          nowIso
+        });
+      } else if (isGroup) {
+        createdMessage = await chatSendStrategies.sendGroup({
+          chatId: isNaN(targetRoomId) ? activeChatIdStr : targetRoomId,
+          myId,
+          text,
+          nowIso
+        });
+      } else {
+        createdMessage = await chatSendStrategies.sendDirect({
+          chatId: isNaN(targetRoomId) ? activeChatIdStr : targetRoomId,
+          myId,
+          text,
+          nowIso
+        });
+      }
+
+      if (ctx.setAllMessages && createdMessage) {
+        ctx.setAllMessages((prev: any[]) =>
+          prev.map(m => m.id === tempId ? createdMessage : m)
+        );
+      }
+      if (ctx.fetchAndMatchChats) await ctx.fetchAndMatchChats();
+    } catch (err: any) {
+      console.error('Ошибка отправки:', err);
+      ctx.showToast?.(`Ошибка отправки: ${err.message}`, 'error');
+    }
   };
 
   const displayedMessages = useMemo(() => {
@@ -231,6 +281,9 @@ export default function ChatWindow() {
       });
   }, [ctx.allMessages, activeChatIdStr, ctx.showMsgSearch, ctx.messageSearchQuery, myId]);
 
+  // 5. Группировка с учётом динамического состояния канала
+  const currentShowAuthors = Boolean(currentChatUser?.showAuthorProfiles ?? channelShowAuthorProfiles);
+
   const groupedDays = useMemo(() => {
     if (!displayedMessages || displayedMessages.length === 0) return [];
 
@@ -240,9 +293,9 @@ export default function ChatWindow() {
       clusters: Array<{
         clusterId: string;
         senderId: string;
-        senderType: string;
         isOutgoing: boolean;
         isSystem: boolean;
+        isRenderAsAuthor: boolean;
         senderUserObj: any;
         senderDisplayName: string;
         senderAvatarColor: string;
@@ -274,50 +327,50 @@ export default function ChatWindow() {
       }
 
       const isSystemMsg = msg.senderId === 'system' || String(msg.senderId) === '00000000-0000-0000-0000-000000000000';
-      const msgSenderType = msg.senderType || 'user';
-      const isChannelPostFromChannel = isChannel && msgSenderType === 'channel';
-      const isMyMsg = !isChannelPostFromChannel && (String(msg.senderId) === myId || (msgSenderType === 'user' && String(msg.authorId) === myId));
-      const senderIdStr = String(msg.senderId);
 
-      const contactEntry = (ctx.contacts || []).find((c: any) => 
-        String(c.contactId || c.partnerId || c.uuid || c.id) === senderIdStr
-      );
-      const baseUserObj = (ctx.users || []).find((u: any) => String(u.uuid) === senderIdStr) || 
-                          (ctx.chats || []).find((c: any) => String(c.uuid) === senderIdStr);
-      const senderUserObj = contactEntry ? { ...baseUserObj, ...contactEntry } : baseUserObj;
+      // 🎯 Проверка авторства для канала:
+      // Рендерится как автор ТОЛЬКО если сообщение было отправлено с senderType === 'user' И прямо сейчас showAuthorProfiles === true
+      const isPostCreatedByUser = msg.senderType === 'user';
+      const isRenderAsAuthor = isChannel && isPostCreatedByUser && currentShowAuthors;
 
-      const senderDisplayName = isChannelPostFromChannel
-        ? (currentChatUser?.name || 'Канал')
+      const effectiveSenderId = isChannel
+        ? (isRenderAsAuthor ? String(msg.authorId || msg.senderId) : String(currentChatUser?.id || activeChatIdStr))
+        : String(msg.senderId);
+
+      // В Избранном и Канале все сообщения выводятся слева
+      const isOutgoing = (isSavedMessages || isChannel)
+        ? false
+        : (effectiveSenderId === myId);
+
+      const authorUserObj = (ctx.users || []).find((u: any) => String(u.uuid || u.id) === String(msg.authorId || msg.senderId)) ||
+                            (ctx.contacts || []).find((c: any) => String(c.contactId || c.partnerId || c.uuid || c.id) === String(msg.authorId || msg.senderId));
+
+      const senderDisplayName = isChannel
+        ? (isRenderAsAuthor ? (authorUserObj?.username || authorUserObj?.name || 'Автор') : (currentChatUser?.name || 'Канал'))
         : (() => {
-            if (contactEntry && (contactEntry.firstName || contactEntry.lastName)) {
-              return `${contactEntry.firstName || ''} ${contactEntry.lastName || ''}`.trim();
+            const contact = (ctx.contacts || []).find((c: any) => String(c.contactId || c.partnerId || c.uuid || c.id) === effectiveSenderId);
+            if (contact && (contact.firstName || contact.lastName)) {
+              return `${contact.firstName || ''} ${contact.lastName || ''}`.trim();
             }
-
-            const fullName = `${senderUserObj?.firstName || ''} ${senderUserObj?.lastName || ''}`.trim();
-            const privacyFormat = senderUserObj?.privacyNameFormat || 'username';
-
-            if ((privacyFormat === 'full_name' || privacyFormat === 'name') && fullName) {
-              return fullName;
-            }
-
-            return senderUserObj?.username || fullName || senderUserObj?.name || 'Участник';
+            const user = (ctx.users || []).find((u: any) => String(u.uuid) === effectiveSenderId);
+            return user?.username || user?.name || 'Участник';
           })();
 
-      const senderAvatarColor = isChannelPostFromChannel
-        ? (currentChatUser?.avatarColor || '#9d7bf6')
-        : (senderUserObj?.avatarColor || '#007aff');
+      const senderAvatarColor = isChannel
+        ? (isRenderAsAuthor ? (authorUserObj?.avatarColor || '#5865F2') : (currentChatUser?.avatarColor || '#9d7bf6'))
+        : (authorUserObj?.avatarColor || '#007aff');
 
-      const senderNameColor = isChannelPostFromChannel
-        ? '#9d7bf6'
-        : (senderUserObj?.nameColor || '#007aff');
+      const senderNameColor = isChannel
+        ? (isRenderAsAuthor ? (authorUserObj?.nameColor || '#5eaddf') : '#5288c1')
+        : (authorUserObj?.nameColor || '#007aff');
 
       let canAppendToCluster = false;
       if (
         currentCluster && 
         !currentCluster.isSystem && 
         !isSystemMsg && 
-        currentCluster.senderId === senderIdStr &&
-        currentCluster.senderType === msgSenderType
+        currentCluster.senderId === effectiveSenderId &&
+        currentCluster.isRenderAsAuthor === isRenderAsAuthor
       ) {
         const lastMsg = currentCluster.messages[currentCluster.messages.length - 1]?.msg;
         if (lastMsg) {
@@ -340,11 +393,11 @@ export default function ChatWindow() {
       } else {
         currentCluster = {
           clusterId: `cluster-${msg.id}`,
-          senderId: senderIdStr,
-          senderType: msgSenderType,
-          isOutgoing: isMyMsg,
+          senderId: effectiveSenderId,
+          isOutgoing,
           isSystem: isSystemMsg,
-          senderUserObj: isChannelPostFromChannel ? currentChatUser : senderUserObj,
+          isRenderAsAuthor,
+          senderUserObj: isChannel ? (isRenderAsAuthor ? authorUserObj : currentChatUser) : authorUserObj,
           senderDisplayName,
           senderAvatarColor,
           senderNameColor,
@@ -359,7 +412,9 @@ export default function ChatWindow() {
     });
 
     return days;
-  }, [displayedMessages, myId, ctx.contacts, ctx.users, ctx.chats, isChannel, currentChatUser]);
+  }, [displayedMessages, myId, ctx.contacts, ctx.users, isChannel, currentShowAuthors, isSavedMessages, currentChatUser, activeChatIdStr]);
+
+  const inputPlaceholder = isChannel ? 'Публикация...' : 'Сообщение...';
 
   const openMessageContextMenu = (e: React.MouseEvent, msg: any, isMyMsg: boolean) => {
     e.preventDefault();
@@ -495,7 +550,7 @@ export default function ChatWindow() {
         <div className={styles['chat-placeholder']}>
           <div className={styles['placeholder-content']}>
             <div className={styles['placeholder-icon']}>
-              <MessageSquare size={64}/>
+              <MessageSquare size={38} color="#585966"/>
             </div>
             <p>Выберите чат, чтобы начать общение</p>
           </div>
@@ -524,7 +579,7 @@ export default function ChatWindow() {
         },
         { id: 'to-top', text: 'Наверх', icon: ArrowUp, onClick: scrollInToTop },
       ]
-    : isGroup 
+    : isGroup
     ? [
         {
           id: 'add-members',
@@ -565,7 +620,12 @@ export default function ChatWindow() {
           }
         }
       ]
-    : [{ 
+    : isSavedMessages
+    ? [
+        { id: 'to-top', text: 'Наверх', icon: ArrowUp, onClick: scrollInToTop }
+      ]
+    : [
+        { 
           id: 'notifications', 
           text: 'Уведомления', 
           icon: BellOff, 
@@ -694,28 +754,80 @@ export default function ChatWindow() {
     return <>{elements}</>;
   };
 
+  const isChannelReadOnlyForUser = isChannel && 
+    ctx.currentUser?.userStatus !== 'administrator' && 
+    currentChatUser?.role !== 'owner' && 
+    currentChatUser?.role !== 'admin';
+
   return (
     <main className={styles['chat-window']}>
-      <header className={styles['chat-header']} style={{height: '58px', padding: '0 16px'}}>
-        <div 
-          className={styles['chat-header-user']} 
-          onClick={() => ctx.setShowUserModal(true)}
-          style={{flexDirection: 'column', alignItems: 'flex-start', gap: '0'}}
-        >
-            <h3 className={styles['chat-header-user-name']}>
-              {renderUserStatusBadge(currentChatUser)} 
-              {currentChatUser?.name || currentChatUser?.username || 'Загрузка...'}
+      {/* ======================================================== */}
+      {/* ШАПКА ЧАТА С АДАПТИВНОЙ АВАТАРКОЙ (<= 739px)             */}
+      {/* ======================================================== */}
+      <header className={styles['chat-header']} style={{ height: '58px', padding: '0 16px', display: 'flex', alignItems: 'center' }}>
+        <div style={{display: "flex"}}>
+          {/* Кнопка «Назад» для мобильных экранов (<= 739px) */}
+          <button
+            type="button"
+            className={styles['chat-header-back-btn']}
+            onClick={() => {
+              ctx.setActiveChatId(null);
+              if (ctx.setEditingMessage) ctx.setEditingMessage(null);
+              if (ctx.setMessageText) ctx.setMessageText('');
+            }}
+            title="Назад к чатам"
+          >
+            <ArrowLeft size={20} />
+          </button>
+
+          {/* 🎯 Аватарка в шапке окна чатов при скрытом сайдбаре (<= 739px) */}
+          <div 
+            className={styles['chat-header-avatar-mobile']}
+            onClick={() => !isSavedMessages && ctx.setShowUserModal(true)}
+            style={{ cursor: isSavedMessages ? 'default' : 'pointer' }}
+          >
+            {isSavedMessages ? (
+              <div className={styles['saved-messages-header-circle']}>
+                <Bookmark size={20} />
+              </div>
+            ) : (
+              <SmartAvatar
+                size={40}
+                avatarUrl={currentChatUser?.avatarUrl}
+                avatarColor={currentChatUser?.avatarColor || '#5865F2'}
+                name={currentChatUser?.name || currentChatUser?.username || 'Чат'}
+                isChannel={isChannel}
+              />
+            )}
+          </div>
+
+          <div 
+            className={styles['chat-header-user']} 
+            onClick={() => !isSavedMessages && ctx.setShowUserModal(true)}
+            style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0', cursor: isSavedMessages ? 'default' : 'pointer', flex: 1 }}
+          >
+            <h3 className={styles['chat-header-user-name']} style={{ margin: 0 }}>
+              {isSavedMessages ? (
+                'Избранное'
+              ) : (
+                <>
+                  {renderUserStatusBadge(currentChatUser)} 
+                  {currentChatUser?.name || currentChatUser?.username || 'Загрузка...'}
+                </>
+              )}
             </h3>
 
-            <span 
-              className={`${styles['user-status']} ${
-                !isGroup && ctx.isUserOnline && ctx.isUserOnline(currentChatUser) ? styles['online'] : ''
-              }`}
-            >
-              {currentChatUser?.isChannel 
-                ? 'официальный канал' 
-                : isGroup 
-                ? (memberCount !== null 
+            {/* Онлайн-статус скрыт для «Избранного» */}
+            {!isSavedMessages && (
+              <span 
+                className={`${styles['user-status']} ${
+                  !isGroup && !isChannel && ctx.isUserOnline && ctx.isUserOnline(currentChatUser) ? styles['online'] : ''
+                }`}
+              >
+                {isChannel ? (
+                  'официальный канал'
+                ) : isGroup ? (
+                  memberCount !== null 
                     ? `${memberCount} ${
                         memberCount % 10 === 1 && memberCount % 100 !== 11
                           ? 'участник'
@@ -724,39 +836,32 @@ export default function ChatWindow() {
                           : 'участников'
                       }`
                     : 'Загрузка участников...'
-                  )
-                : ctx.isUserOnline && ctx.isUserOnline(currentChatUser)
-                ? 'в сети'
-                : formatUserOnlineStatus(currentChatUser?.updatedAt, currentChatUser?.privacyOnline).text
-              }
-            </span>
+                ) : ctx.isUserOnline && ctx.isUserOnline(currentChatUser) ? (
+                  'в сети'
+                ) : (
+                  formatUserOnlineStatus(currentChatUser?.updatedAt, currentChatUser?.privacyOnline).text
+                )}
+              </span>
+            )}
+          </div>
         </div>
 
         <div className={styles['chat-header-actions']}>
           <button 
             type="button"
             className={`${styles['header-btn']} ${ctx.showMsgSearch ? styles['active-search'] : ''}`} 
-            style={ctx.showMsgSearch ? { 
-              backgroundColor: 'rgba(255, 255, 255, 0.1)', 
-              borderRadius: '50%',
-              color: '#fff' 
-            } : {}}
-            onClick={() => {
-              if (ctx.setShowMsgSearch) {
-                ctx.setShowMsgSearch(!ctx.showMsgSearch);
-              }
-            }}
+            onClick={() => ctx.setShowMsgSearch?.(!ctx.showMsgSearch)}
             title="Поиск сообщений"
           >
             <Search size={20} />
           </button>
 
-          {currentChatUser && (
+          {!isSavedMessages && !isChannel && currentChatUser && (
             <button 
               type="button" 
               className={styles['header-btn']} 
               onClick={handleCallButton} 
-              title={currentChatUser.isGroup ? "Начать голосовой чат" : "Позвонить пользователю"}
+              title={isGroup ? "Начать голосовой чат" : "Позвонить пользователю"}
             >
               <Phone size={20} color="#aaa8a8" />
             </button>
@@ -847,9 +952,7 @@ export default function ChatWindow() {
         ) : (
           groupedDays.map((dayGroup) => (
             <div key={dayGroup.dateKey} className={styles['message-date-group']}>
-              <div className={styles['sticky-date']}>
-                {dayGroup.dateTitle}
-              </div>
+              <div className={styles['sticky-date']}>{dayGroup.dateTitle}</div>
 
               {dayGroup.clusters.map((cluster) => {
                 if (cluster.isSystem) {
@@ -888,8 +991,8 @@ export default function ChatWindow() {
                 }
 
                 const isGroupChat = currentChatUser?.type === 'group';
-                const isChannelPostWithUser = isChannel && cluster.senderType === 'user';
-                const showAvatar = (isGroupChat || isChannelPostWithUser) && !cluster.isOutgoing;
+                // Аватарка рендерится в беседах или в авторских постах канала (Скриншот 4)
+                const showAvatar = (isGroupChat && !cluster.isOutgoing) || (isChannel && cluster.isRenderAsAuthor);
 
                 return (
                   <div 
@@ -911,63 +1014,104 @@ export default function ChatWindow() {
                     )}
 
                     <div className={styles['sender-messages-col']}>
-                      {cluster.messages.map(({ msg, isFirstInGroup, isLastInGroup }) => (
-                        <div 
-                          key={msg.id}
-                          id={`message-${msg.id}`}
-                          className={`${styles['message-list-item']} ${
-                            isFirstInGroup ? styles['first-in-group'] : ''
-                          } ${isLastInGroup ? styles['last-in-group'] : ''}`}
-                        >
+                      {cluster.messages.map(({ msg, isFirstInGroup, isLastInGroup }) => {
+                        // Подпись автора снизу: только если пост рендерится как от канала и в базе сохранился authorSignature
+                        const resolvedSignature = isChannel && !cluster.isRenderAsAuthor
+                          ? (
+                              cluster.senderUserObj?.username ||
+                              `${cluster.senderUserObj?.firstName || ''} ${cluster.senderUserObj?.lastName || ''}`.trim() ||
+                              msg.authorSignature
+                            )
+                          : null;
+
+                        const showBottomSignature = Boolean(resolvedSignature && (msg.authorSignature || msg.authorId));
+
+                        return (
                           <div 
-                            className={`${styles.message} ${
-                              cluster.isOutgoing ? styles['message-outgoing'] : styles['message-incoming']
-                            }`}
-                            onContextMenu={(e) => openMessageContextMenu(e, msg, cluster.isOutgoing)}
+                            key={msg.id}
+                            id={`message-${msg.id}`}
+                            className={`${styles['message-list-item']} ${
+                              isFirstInGroup ? styles['first-in-group'] : ''
+                            } ${isLastInGroup ? styles['last-in-group'] : ''}`}
                           >
-                            <div className={styles['message-bubble']}>
-                              <div className={styles['message-text']}>
-                                {(isGroupChat || isChannelPostWithUser) && !cluster.isOutgoing && isFirstInGroup && (
-                                  <span 
-                                    className={styles['group-msg-sender-name']} 
-                                    style={{ color: getNameColor(cluster.senderNameColor), cursor: 'pointer' }}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      ctx.setShowUserModal(cluster.senderId);
-                                    }}
-                                  >
-                                    {renderUserStatusBadge(cluster.senderUserObj)}
-                                    {cluster.senderDisplayName}
-                                  </span>
-                                )}
+                            <div 
+                              className={`${styles.message} ${
+                                cluster.isOutgoing ? styles['message-outgoing'] : styles['message-incoming']
+                              }`}
+                              onContextMenu={(e) => openMessageContextMenu(e, msg, cluster.isOutgoing)}
+                            >
+                              <div className={styles['message-bubble']}>
+                                <div className={styles['message-text']}>
+                                  
+                                  {isFirstInGroup && (
+                                    <span 
+                                      className={styles['group-msg-sender-name']} 
+                                      style={{ 
+                                        color: isChannel && !cluster.isRenderAsAuthor 
+                                          ? '#5288c1'
+                                          : getNameColor(cluster.senderNameColor), 
+                                        cursor: 'pointer' 
+                                      }}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (isChannel && !cluster.isRenderAsAuthor) {
+                                          ctx.setShowUserModal(true);
+                                        } else {
+                                          ctx.setShowUserModal(cluster.senderId);
+                                        }
+                                      }}
+                                    >
+                                      {!isChannel && renderUserStatusBadge(cluster.senderUserObj)}
+                                      {cluster.senderDisplayName}
+                                    </span>
+                                  )}
 
-                                {msg.text}
+                                  {msg.text}
                                 
-                                <span className={styles['message-meta']}>
-                                  {/* Текстовая подпись автора */}
-                                  {msg.authorSignature && (
-                                    <span style={{ color: '#8e8e93', fontSize: '11px', marginRight: '5px' }}>
-                                      {msg.authorSignature},
-                                    </span>
-                                  )}
+                                  <span className={styles['message-meta']}>
+                                    {/* 👁️ Глазок с количеством просмотров в канале (как в Telegram) */}
+                                    {isChannel && (
+                                      <span 
+                                        style={{ 
+                                          display: 'inline-flex', 
+                                          alignItems: 'center', 
+                                          gap: '3px', 
+                                          color: '#8e8e93', 
+                                          fontSize: '11px', 
+                                          marginRight: '6px', 
+                                          marginTop: '5px'
+                                        }}
+                                      >
+                                        <Eye size={13} />
+                                        <span>{Array.isArray(msg.readBy) ? Math.max(1, msg.readBy.length) : (msg.views || 1)}</span>
+                                      </span>
+                                    )}
 
-                                  <span className={styles['message-time']}>
-                                    {msg.isEdited && <i>ред. </i>}
-                                    {formatHoursAndMinutes(msg.createdAt)}
-                                  </span>
-                                  {cluster.isOutgoing && (
-                                    <span className={styles['message-status']}>
-                                      {msg.status === 'sending' && <Clock size={12} style={{ color: '#9ca3af' }} />}
-                                      {msg.status === 'send' && <Check size={14} style={{ color: '#9ca3af' }} />}
-                                      {msg.status === 'read' && <CheckCheck size={14} style={{ color: '#9ca3af' }} />}
+                                    {showBottomSignature && (
+                                      <span style={{ color: '#ffffff73', fontSize: '11px', marginRight: '5px', marginTop: '5px' }}>
+                                        {resolvedSignature},
+                                      </span>
+                                    )}
+
+                                    <span className={styles['message-time']}>
+                                      {msg.isEdited && <i>ред. </i>}
+                                      {formatHoursAndMinutes(msg.createdAt)}
                                     </span>
-                                  )}
-                                </span>
+
+                                    {cluster.isOutgoing && (
+                                      <span className={styles['message-status']}>
+                                        {msg.status === 'sending' && <Clock size={12} style={{ color: '#9ca3af' }} />}
+                                        {msg.status === 'send' && <Check size={14} style={{ color: '#9ca3af' }} />}
+                                        {msg.status === 'read' && <CheckCheck size={14} style={{ color: '#9ca3af' }} />}
+                                      </span>
+                                    )}
+                                  </span>
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 );
@@ -995,7 +1139,10 @@ export default function ChatWindow() {
         <ArrowDown size={20} />
       </button>
 
-      {currentChatUser?.isChannel && ctx.currentUser?.userStatus !== 'administrator' && currentChatUser.role !== 'owner' && currentChatUser.role !== 'admin' ? (
+      {/* ======================================================== */}
+      {/* ЗОНА ВВОДА СООБЩЕНИЙ                                     */}
+      {/* ======================================================== */}
+      {isChannelReadOnlyForUser ? (
         <div style={{
           padding: '16px',
           textAlign: 'center',
@@ -1017,7 +1164,7 @@ export default function ChatWindow() {
             <Paperclip color='#585757'/>
           </button>
 
-          {/* 🎯 ВСЕГДА отображаем круглую аватарку выбора отправителя в канале */}
+          {/* Переключатель авторства в канале[cite: 37] */}
           {isChannel && (
             <div
               onClick={() => setShowSendAsModal(true)}
@@ -1026,7 +1173,7 @@ export default function ChatWindow() {
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                marginRight: '6px',
+                margin: 'auto 4px',
                 flexShrink: 0,
                 borderRadius: '50%'
               }}
@@ -1042,8 +1189,8 @@ export default function ChatWindow() {
           )}
 
           <textarea 
-            placeholder={isChannel ? 'Публикация...' : 'Напишите сообщение...'} 
             ref={messageInputRef} 
+            placeholder={inputPlaceholder}
             value={ctx.messageText}
             id="messageText-input"
             onChange={e => ctx.setMessageText(e.target.value)} 

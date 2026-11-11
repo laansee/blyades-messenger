@@ -4,7 +4,14 @@
 @media (min-width: 481px) and (max-width: 739px) {}
 /* всё до компа */
 @media (max-width: 739px) {
-  .chat-window {display: none}}
+  .chat-window {display: none}
+  .chat-header-back-btn {
+    display: flex !important;
+  }
+  .chat-header-avatar-mobile {
+    display: flex !important;
+  }
+}
 /* комп */
 @media (min-width: 740px) {
   .chat-window {display: flex; flex: 1; flex-direction: column; }}
@@ -271,19 +278,16 @@ form.chat-input-zone {
     padding: 0px 8px;
   border: none;}
 .chat-input-zone {
-  /* padding: 20px 24px;  */
   display: flex; 
-    align-items: flex-end;
+  align-items: flex-end;
   gap: 6px;
-  /* background-color: #131315;  */
   background-color: #1c1c1f; 
   border-top: 1px solid #232327;}
 .main-message-input {
   flex: 1 1;
-  padding: 10px 10px 4px;
+  padding: 10px 4px 4px;
   margin: 4px 0 10px 0;
   background-color: #1c1c1f;
-  /* background-color: #131315; */
   border: none;
   border-radius: 14px;
   color: white;
@@ -297,11 +301,11 @@ form.chat-input-zone {
   font-family: system-ui, -apple-system, sans-serif;}
 .input-action-btn { 
   background: none; border: none; font-size: 20px; cursor: pointer; color: #a0a0ab; 
-  display: flex; margin: 10px 0; }
+  display: flex; margin: auto 0; }
 .send-message-btn {
   background: none; border: none; width: 44px; height: 44px; border-radius: 12px; 
   cursor: pointer; display: flex; align-items: center; justify-content: center; 
-  font-size: 16px; transition: transform 0.1s; display: flex; margin-bottom: 1px;}
+  font-size: 16px; transition: transform 0.1s; display: flex; margin: auto 0;}
 .send-message-btn:active { transform: scale(0.95); }
 .emoji-picker-popup { 
   position: absolute; bottom: 50px; left: 0; background: #2a2a34; padding: 8px; border-radius: 8px; 
@@ -323,7 +327,8 @@ form.chat-input-zone {
   font-size: 16px;
   font-weight: 500;
   margin: 0 0 6px 0;
-  color: var(--text-color);}
+  color: var(--text-color);
+  user-select: none;}
 .placeholder-icon {
   font-size: 48px;
   margin-bottom: 12px;
@@ -849,4 +854,65 @@ form.chat-input-zone {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* Кнопка «Назад» на мобильных устройствах */
+.chat-header-back-btn {
+  display: none;
+  background: none;
+  border: none;
+  color: #8e8e93;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 8px;
+  align-items: center;
+  justify-content: center;
+  margin-right: 6px;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.chat-header-back-btn:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+/* Контейнер аватарки в шапке (виден только на экранах <= 739px) */
+.chat-header-avatar-mobile {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  margin-right: 10px;
+  flex-shrink: 0;
+}
+
+/* Кружок-заглушка для «Избранного» вместо аватарки */
+.saved-messages-header-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7c47eb, #4d26b8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
 }

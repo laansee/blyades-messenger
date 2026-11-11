@@ -148,7 +148,7 @@ export default function GroupProfileView({
           <button
             type="button"
             onClick={onClose}
-            title="Закрыть"
+            // title="Закрыть"
             className={styles['close-modal-btn']}
           >
             <X size={18} />
@@ -324,7 +324,7 @@ export default function GroupProfileView({
                   setIsSearchOpen(!isSearchOpen);
                   if (isSearchOpen) setSearchQuery('');
                 }}
-                title="Поиск участников"
+                // title="Поиск участников"
               >
                 <Search size={20} />
               </button>
@@ -333,7 +333,7 @@ export default function GroupProfileView({
                 type="button"
                 className={styles['info-users-action-btn']}
                 onClick={handleOpenAddModal}
-                title="Добавить участников"
+                // title="Добавить участников"
               >
                 <UserPlus size={20} />
               </button>

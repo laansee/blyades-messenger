@@ -57,7 +57,7 @@ export default function MyProfileView({
           <NavLink
             to="/settings?tab=account"
             className={styles['close-modal-btn']}
-            title="Редактировать профиль"
+            // title="Редактировать профиль"
             onClick={() => {
               if (ctx.setActiveTab) ctx.setActiveTab('settings');
               onClose();
@@ -69,7 +69,7 @@ export default function MyProfileView({
           <button
             type="button"
             onClick={onClose}
-            title="Закрыть"
+            // title="Закрыть"
             className={styles['close-modal-btn']}
           >
             <X size={18} />

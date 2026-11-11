@@ -338,7 +338,8 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  position: relative;}
+  position: relative;
+  margin: 10px 20px;}
 .sModal-label {font-size: 12px;
   color: #a2a2b5;
   font-weight: 600;}
@@ -424,3 +425,42 @@
   border-radius: 50%;
   background-color: #9d7bf6;}
 .sModal-radio-value span {font-size: 15px}
+
+
+
+/* СТИЛИЗАЦИЯ САМОГО ТЕКСТОВОГО ПОЛЯ */
+.profile-line-input {
+  width: 100%;
+  padding: 10px 0;
+  font-size: 16px;
+  color: #ffffff;
+  background: transparent;
+  border: none;
+  /* Базовая тонкая серая линия, как на первом скриншоте */
+  border-bottom: 1px solid #2b2d31; 
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.2s ease;}
+.profile-line-input:focus {border-bottom: 1px solid #9d7bf6;}
+
+.profile-input-field {
+  position: relative;
+  margin: 10px 20px;
+  width: stretch;
+}
+
+/* СТИЛИЗАЦИЯ ПЛАВАЮЩЕЙ ПОДСКАЗКИ (LABEL) */
+.profile-field-label {
+  position: absolute;
+  top: 10px;
+  left: 0;
+  font-size: 16px;
+  color: #8e8e93; /* Дефолтный серый цвет плейсхолдера */
+  pointer-events: none;
+  transition: all 0.2s ease;
+  transform-origin: left top;}
+.profile-line-input:focus ~ .profile-field-label,
+.profile-line-input:not(:placeholder-shown) ~ .profile-field-label {
+  transform: translateY(-22px);
+  font-size: 13px;}
+.profile-line-input:focus ~ .profile-field-label {color: #9d7bf6; }

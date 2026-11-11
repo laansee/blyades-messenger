@@ -1,13 +1,12 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import styles from '../../components/css/settings.module.css';
 import useMessengerContext from '../../context/messengerContext';
 import { supabase } from '../../services/supabaseClient';
 import { userService } from '../../services/userService';
 import { 
-  PROFILE_COLOR_PALETTE, 
+  getProfileTheme, 
   getNameColor, 
-  getProfileColor, 
-  getProfileTheme 
+  getProfileColor 
 } from '../../utils/themeColors';
 import ColorSettingsModal from '../../components/modals/edit/ColorSettingsModal';
 import { 
@@ -15,9 +14,18 @@ import {
   type EditorInputField,
   AvatarCropModal,
   AvatarUploadSelectorModal,
-  NameColorSelectorModal
 } from '../../components/common/GlobalUI';
-import { ChevronRight } from 'lucide-react';
+import { 
+  Camera, 
+  ChevronRight, 
+  User as UserIcon, 
+  Phone as PhoneIcon, 
+  AtSign, 
+  Mail, 
+  Palette,
+  Sparkles
+} from 'lucide-react';
+import SmartAvatar from '../../components/common/SmartAvatar';
 
 export default function EditProfile({ state, setters }: any) {
   const ctx = useMessengerContext();
@@ -26,35 +34,101 @@ export default function EditProfile({ state, setters }: any) {
 
   const { uniqueId, username, firstName, lastName, email, phone, aboutMe, avatarColor, avatarUrl, nameColor, profileColor } = state;
   const { setUniqueId, setUsername, setFirstName, setLastName, setEmail, setPhone, setAboutMe, setAvatarColor, setAvatarUrl, setNameColor, setProfileColor } = setters;
-  
+
+  // Локальный стейт для ввода без задержек
+  const [localAbout, setLocalAbout] = useState(aboutMe || '');
+  const latestAboutRef = useRef(localAbout);
+  const isSavingAboutRef = useRef(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Автоматический ресайз высоты textarea под контент
+  const adjustTextareaHeight = () => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    }
+  };
+
+  useEffect(() => {
+    setLocalAbout(aboutMe || '');
+    latestAboutRef.current = aboutMe || '';
+    setTimeout(adjustTextareaHeight, 0);
+  }, [aboutMe]);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [rawImageSrc, setRawImageSrc] = useState<string | null>(null);
   const [showCropModal, setShowCropModal] = useState(false);
   const [showUploadSelector, setShowUploadSelector] = useState(false);
   const [showColorModal, setShowColorModal] = useState(false);
-  const [colorModalConfig, setColorModalConfig] = useState<{
-    show: boolean;
-    selectedColor: string;
-  }>({
-    show: false,
-    selectedColor: '#5eaddf'
-  });
 
-  const handleSaveNameColor = async (chosenColor: string) => {
-    const res = await userService.updateNameColor(userUuid, chosenColor);
-    if (res.success) {
-      if (setNameColor) setNameColor(chosenColor);
-      ctx.setCurrentUser({ ...currentUser, nameColor: chosenColor });
-      ctx.showToast('Цвет имени успешно обновлён! 🎨', 'success');
-    } else {
-      ctx.showToast(`Ошибка смены цвета: ${res.error}`, 'error');
+  const showFullName = currentUser?.privacyNameFormat === 'full_name';
+  const hasNamesFilled = (firstName && firstName.trim() !== '') || (lastName && lastName.trim() !== '');
+
+  const previewDisplayName = (showFullName && hasNamesFilled)
+    ? `${firstName || ''} ${lastName || ''}`.trim()
+    : (username?.trim() !== '' ? username : `@${uniqueId}`);
+
+  // 💾 Функция сохранения «О себе» с автоматической обрезкой до 70 символов
+  const saveAboutMeDirectly = async (textToSave: string) => {
+    // 1. Обрезаем строку строго до первых 70 символов
+    const sliced = textToSave.slice(0, 70);
+    const trimmed = sliced.trim();
+
+    // Если текст был длиннее 70 символов, синхронизируем стейт и поле ввода
+    if (textToSave.length > 70) {
+      setLocalAbout(sliced);
+      latestAboutRef.current = sliced;
+      adjustTextareaHeight();
+    }
+
+    // Если значение не изменилось или уже идёт запрос к базе — пропускаем
+    if (trimmed === (aboutMe || '').trim() || isSavingAboutRef.current) return;
+
+    isSavingAboutRef.current = true;
+    ctx.showToast?.('Сохранение описания...', 'loading');
+
+    try {
+      const res = await userService.updateProfile(userUuid, { aboutMe: trimmed || null });
+      if (res.success) {
+        setAboutMe(trimmed);
+        ctx.setCurrentUser({ ...currentUser, aboutMe: trimmed || null });
+        ctx.showToast?.('Описание профиля сохранено! ✅', 'success');
+      } else {
+        ctx.showToast?.(`Ошибка сохранения: ${res.error}`, 'error');
+      }
+    } catch (err: any) {
+      console.error(err);
+      ctx.showToast?.('Не удалось сохранить изменения', 'error');
+    } finally {
+      isSavingAboutRef.current = false;
     }
   };
 
+  // Автосохранение при размонтировании (уход со страницы/закрытие вкладки)
+  useEffect(() => {
+    return () => {
+      const sliced = latestAboutRef.current.slice(0, 70).trim();
+      if (sliced !== (aboutMe || '').trim()) {
+        userService.updateProfile(userUuid, { aboutMe: sliced || null });
+      }
+    };
+  }, [aboutMe, userUuid]);
+
+  useEffect(() => {
+    return () => {
+      if (
+        latestAboutRef.current.length <= 70 &&
+        latestAboutRef.current.trim() !== (aboutMe || '').trim()
+      ) {
+        userService.updateProfile(userUuid, { aboutMe: latestAboutRef.current.trim() || null });
+      }
+    };
+  }, [aboutMe, userUuid]);
+
   const processSelectedFile = (file: File) => {
     if (!file.type.startsWith('image/')) {
-      ctx.showToast('Ошибка: Можно загружать только изображения!', 'error');
+      ctx.showToast?.('Ошибка: Можно загружать только изображения!', 'error');
       return;
     }
     const reader = new FileReader();
@@ -68,7 +142,7 @@ export default function EditProfile({ state, setters }: any) {
 
   const saveCroppedAvatar = async (croppedBlob: Blob) => {
     try {
-      ctx.showToast('Загрузка аватарки в облако...', 'info');
+      ctx.showToast?.('Загрузка аватарки в облако...', 'loading');
       const fileName = `users/${userUuid}-${Date.now()}.png`;
 
       const { error: uploadError } = await supabase.storage
@@ -86,11 +160,11 @@ export default function EditProfile({ state, setters }: any) {
 
         setAvatarUrl(freshUrl);
         ctx.setCurrentUser({ ...currentUser, avatarUrl: freshUrl });
-        ctx.showToast('Новое фото профиля успешно применено! 📸', 'success');
+        ctx.showToast?.('Новое фото профиля успешно применено! 📸', 'success');
       }
     } catch (err: any) {
       console.error(err);
-      ctx.showToast(`Ошибка сохранения: ${err.message}`, 'error');
+      ctx.showToast?.(`Ошибка сохранения: ${err.message}`, 'error');
     }
   };
 
@@ -108,7 +182,7 @@ export default function EditProfile({ state, setters }: any) {
     onSave: async () => {}
   });
 
-  const openEditor = (type: 'name' | 'username' | 'phone' | 'email' | 'about') => {
+  const openEditor = (type: 'name' | 'username' | 'displayName' | 'phone' | 'email') => {
     let titleModal = '';
     let fields: EditorInputField[] = [];
     let initialValues: Record<string, string> = {};
@@ -122,6 +196,7 @@ export default function EditProfile({ state, setters }: any) {
       ];
       initialValues = { firstName, lastName };
       onSaveAction = async (v) => {
+        ctx.showToast?.('Сохранение имени...', 'loading');
         const payload = { 
           firstName: v.firstName.trim() || null, 
           lastName: v.lastName.trim() || null 
@@ -131,90 +206,77 @@ export default function EditProfile({ state, setters }: any) {
           setFirstName(v.firstName.trim());
           setLastName(v.lastName.trim());
           ctx.setCurrentUser({ ...currentUser, ...payload });
-          ctx.showToast('Имя успешно обновлено', 'success');
+          ctx.showToast?.('Имя успешно обновлено ✅', 'success');
         } else {
-          ctx.showToast(`Ошибка: ${res.error}`, 'error');
+          ctx.showToast?.(`Ошибка: ${res.error}`, 'error');
+        }
+      };
+    } else if (type === 'displayName') {
+      titleModal = 'Отображаемое имя (Никнейм)';
+      fields = [{ key: 'username', label: 'Никнейм', placeholder: 'Ваш никнейм', maxLength: 25 }];
+      initialValues = { username };
+      onSaveAction = async (v) => {
+        ctx.showToast?.('Сохранение никнейма...', 'loading');
+        const payload = { username: v.username.trim() };
+        const res = await userService.updateProfile(userUuid, payload);
+        if (res.success) {
+          setUsername(v.username.trim());
+          ctx.setCurrentUser({ ...currentUser, ...payload });
+          ctx.showToast?.('Никнейм обновлен ✅', 'success');
+        } else {
+          ctx.showToast?.(`Ошибка: ${res.error}`, 'error');
         }
       };
     } else if (type === 'username') {
-      titleModal = 'Изменить имя пользователя';
-      fields = [
-        { key: 'username', label: 'Отображаемое имя (Никнейм)', placeholder: 'Никнейм' },
-        { key: 'uniqueId', label: 'Имя пользователя (ID)', placeholder: 'Логин' }
-      ];
-      initialValues = { username, uniqueId };
+      titleModal = 'Имя пользователя';
+      fields = [{ key: 'uniqueId', label: 'Имя пользователя', placeholder: 'username' }];
+      initialValues = { uniqueId };
       onSaveAction = async (v) => {
         if (!v.uniqueId.trim()) {
-          ctx.showToast('Логин не может быть пустым', 'warning');
+          ctx.showToast?.('Имя пользователя не может быть пустым', 'warning');
           return;
         }
-        
-        try {
-          await supabase.auth.updateUser({
-            data: { display_name: v.username.trim() }
-          });
-
-          const payload = { 
-            username: v.username.trim(), 
-            uniqueId: v.uniqueId.trim() 
-          };
-          const res = await userService.updateProfile(userUuid, payload);
-
-          if (res.success) {
-            setUsername(v.username.trim());
-            setUniqueId(v.uniqueId.trim());
-            ctx.setCurrentUser({ ...currentUser, ...payload });
-            ctx.showToast('Идентификаторы обновлены', 'success');
-          } else {
-            throw new Error(res.error);
-          }
-        } catch (err: any) {
-          ctx.showToast(`Ошибка сохранения: ${err.message}`, 'error');
+        ctx.showToast?.('Проверка и сохранение логина...', 'loading');
+        const payload = { uniqueId: v.uniqueId.trim() };
+        const res = await userService.updateProfile(userUuid, payload);
+        if (res.success) {
+          setUniqueId(v.uniqueId.trim());
+          ctx.setCurrentUser({ ...currentUser, ...payload });
+          ctx.showToast?.('Имя пользователя обновлено ✅', 'success');
+        } else {
+          ctx.showToast?.(`Ошибка: ${res.error}`, 'error');
         }
       };
     } else if (type === 'phone') {
-      titleModal = 'Изменить номер телефона';
+      titleModal = 'Номер телефона';
       fields = [{ key: 'phone', label: 'Номер телефона', type: 'tel', placeholder: '+7...' }];
       initialValues = { phone };
       onSaveAction = async (v) => {
+        ctx.showToast?.('Сохранение номера...', 'loading');
         const payload = { phone: v.phone.trim() || null };
         const res = await userService.updateProfile(userUuid, payload);
         if (res.success) {
           setPhone(v.phone.trim());
           ctx.setCurrentUser({ ...currentUser, ...payload });
-          ctx.showToast('Телефон сохранен', 'success');
+          ctx.showToast?.('Телефон сохранен ✅', 'success');
         } else {
-          ctx.showToast(`Ошибка: ${res.error}`, 'error');
+          ctx.showToast?.(`Ошибка: ${res.error}`, 'error');
         }
       };
     } else if (type === 'email') {
-      titleModal = 'Изменить электронную почту';
+      titleModal = 'Электронная почта';
       fields = [{ key: 'email', label: 'Электронная почта', type: 'email', placeholder: 'mail@example.com' }];
       initialValues = { email };
       onSaveAction = async (v) => {
+        ctx.showToast?.('Сохранение почты...', 'loading');
         const payload = { email: v.email.trim() || null };
         const res = await userService.updateProfile(userUuid, payload);
         if (res.success) {
           setEmail(v.email.trim());
           ctx.setCurrentUser({ ...currentUser, ...payload });
-          ctx.showToast('Почта сохранена', 'success');
+          ctx.showToast?.('Почта сохранена ✅', 'success');
         } else {
-          ctx.showToast(`Ошибка: ${res.error}`, 'error');
-        }
-      };
-    } else if (type === 'about') {
-      titleModal = 'О себе';
-      fields = [{ key: 'aboutMe', label: 'Любые подробности, например: возраст, род занятий...', type: 'textarea', maxLength: 70 }];
-      initialValues = { aboutMe };
-      onSaveAction = async (v) => {
-        const payload = { aboutMe: v.aboutMe.trim() || null };
-        const res = await userService.updateProfile(userUuid, payload);
-        if (res.success) {
-          setAboutMe(v.aboutMe.trim());
-          ctx.setCurrentUser({ ...currentUser, ...payload });
-          ctx.showToast('Информация "О себе" обновлена', 'success');
-        } else {
-          ctx.showToast(`Ошибка: ${res.error}`, 'error');
+          ctx.showToast?.(`Ошибка: ${res.error}`, 'error');
         }
       };
     }
@@ -222,160 +284,176 @@ export default function EditProfile({ state, setters }: any) {
     setModalConfig({ show: true, title: titleModal, fields, initialValues, onSave: onSaveAction });
   };
 
-  // const handleFormSubmit = async (e: React.FormEvent) => {
-  //   e.preventDefault();
-  //   if (!username.trim() && !firstName.trim()) {
-  //     ctx.showToast('Ошибка: Должно быть заполнено либо "Отображаемое имя", либо "Имя"!', 'error');
-  //     return;
-  //   }
-  //   setIsSaving(true);
-  //   try {
-  //     const { error } = await supabase
-  //       .from('users')
-  //       .update({
-  //         username: username.trim(),
-  //         uniqueId: uniqueId.trim(),
-  //         firstName: firstName.trim() || null,
-  //         lastName: lastName.trim() || null,
-  //         email: email.trim() || null,
-  //         phone: phone.trim() || null,
-  //         aboutMe: aboutMe.trim() || null,
-  //         avatarUrl: avatarUrl,
-  //         avatarColor,
-  //         updatedAt: new Date().toISOString()
-  //       })
-  //       .eq('uuid', currentUser.uuid);
+  const profileTheme = getProfileTheme(profileColor || currentUser?.profileColor);
+  const currentNameColorHex = getNameColor(nameColor || currentUser?.nameColor);
 
-  //     if (!error) {
-  //       ctx.setCurrentUser({
-  //         ...currentUser,
-  //         username: username.trim(),
-  //         uniqueId: uniqueId.trim(),
-  //         firstName: firstName.trim() || null,
-  //         lastName: lastName.trim() || null,
-  //         email: email.trim() || null,
-  //         phone: phone.trim() || null,
-  //         aboutMe: aboutMe.trim() || null,
-  //         avatarUrl: avatarUrl,
-  //         avatarColor
-  //       });
-        
-  //       ctx.showToast('Профиль успешно сохранен!', 'success');
-  //       onBack();
-  //     } else {
-  //       ctx.showToast(`Ошибка сохранения: ${error.message}`, 'error');
-  //     }
-  //   } catch (err) {
-  //     console.error(err);
-  //     ctx.showToast('Не удалось связаться с базой данных', 'error');
-  //   } finally {
-  //     setIsSaving(false);
-  //   }
-  // };
+  // Счётчик оставшихся символов (70 - длина)[cite: 37, 38, 39]
+  const remainingChars = 70 - localAbout.length;
+  const isOverLimit = remainingChars < 0;
 
   return (
-    <div className={styles.settingsFormCard} style={{ width: '100%' }}>
-      <div className={styles.settingsFormFields}>
-        <div 
-          onClick={() => setShowUploadSelector(true)} 
-          className={styles.settingsFormInput}
-          style={{ cursor: 'pointer' }}
-        >
-          <div className={styles.settingsFormInputText}>
-            <span className={styles.settingsFormInputTitle}>Фото</span>
-            <span className={styles.settingsFormInputValue}>Сменить...</span>
-          </div>
-          <ChevronRight size={18} color="#8e8e93" />
-        </div>
+    <>
+      <div className={styles.tgProfilePage}>
 
-        <div 
-          onClick={() => openEditor('name')} 
-          className={styles.settingsFormInput}
-          style={{ cursor: 'pointer' }}
-        >
-          <div className={styles.settingsFormInputText}>
-            <span className={styles.settingsFormInputTitle}>Имя</span>
-            <span className={styles.settingsFormInputValue}>{`${firstName || ''} ${lastName || ''}`.trim() || 'Не указано'}</span>
-          </div>
-          <ChevronRight size={18} color="#8e8e93" />
-        </div>
-
-        {/* Объединенный пункт «Цвета» */}
-        <div 
-          onClick={() => setShowColorModal(true)} 
-          className={styles.settingsFormInput}
-          style={{ cursor: 'pointer' }}
-        >
-          <div className={styles.settingsFormInputText}>
-            <span className={styles.settingsFormInputTitle}>Цвета</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '2px' }}>
-              {/* Индикатор цвета имени */}
-              <span 
-                style={{
-                  display: 'inline-block',
-                  width: '12px',
-                  height: '12px',
-                  borderRadius: '50%',
-                  backgroundColor: getNameColor(nameColor || currentUser?.nameColor)
-                }} 
-                title="Цвет имени"
+        {/* ======================================================== */}
+        {/* 1. ШАПКА: АВАТАРКА С КНОПКОЙ КАМЕРЫ + ИМЯ + СТАТУС     */}
+        {/* ======================================================== */}
+        <div className={styles.tgHeader}>
+          <div 
+            className={styles.tgAvatarWrapper}
+            onClick={() => setShowUploadSelector(true)}
+            title="Сменить фото профиля"
+          >
+            <div style={{
+              borderRadius: '50%',
+              border: `2px solid ${profileTheme.avatarRingColor || 'transparent'}`,
+              boxShadow: profileTheme.avatarRingColor ? `0 0 16px ${profileTheme.avatarRingColor}44` : 'none'
+            }}>
+              <SmartAvatar
+                size={80}
+                avatarUrl={avatarUrl}
+                avatarColor={avatarColor}
+                name={previewDisplayName}
+                isChannel={false}
               />
-              {/* Индикатор цвета профиля */}
+            </div>
+            <button 
+              type="button" 
+              className={styles.tgCameraBadge}
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowUploadSelector(true);
+              }}
+              title="Загрузить фото"
+            >
+              <Camera size={15} />
+            </button>
+          </div>
+
+          <h2 className={styles.tgHeaderName}>{previewDisplayName}</h2>
+          <span className={styles.tgHeaderStatus}>в сети</span>
+        </div>
+
+        {/* ======================================================== */}
+        {/* 2. БЛОК «О СЕБЕ» (TELEGRAM DESKTOP STYLE)                */}
+        {/* ======================================================== */}
+        <div className={styles.tgBioCard} onClick={() => textareaRef.current?.focus()}>
+          <textarea
+            ref={textareaRef}
+            className={styles.tgBioInputArea}
+            placeholder="О себе"
+            rows={1}
+            value={localAbout}
+            onChange={(e) => {
+              setLocalAbout(e.target.value);
+              latestAboutRef.current = e.target.value;
+              adjustTextareaHeight();
+            }}
+            onBlur={() => saveAboutMeDirectly(localAbout)}
+          />
+          <span className={`${styles.tgBioCounter} ${isOverLimit ? styles.tgBioCounterLimit : ''}`}>
+            {remainingChars}
+          </span>
+        </div>
+        <p className={styles.tgSectionHint}>
+          Любые подробности, например: возраст, род занятий или город.<br />
+          Пример: 23 года, дизайнер из Санкт-Петербурга.
+        </p>
+
+        {/* ======================================================== */}
+        {/* 3. ОСНОВНЫЕ ДАННЫЕ (Имя, Телефон, @username, Email)      */}
+        {/* ======================================================== */}
+        <div className={styles.tgSectionCard}>
+          {/* Имя */}
+          <div className={styles.tgRow} onClick={() => openEditor('name')}>
+            <div className={styles.tgRowIcon}>
+              <UserIcon size={20} />
+            </div>
+            <span className={styles.tgRowLabel}>Имя</span>
+            <span className={styles.tgRowValue}>
+              {`${firstName || ''} ${lastName || ''}`.trim() || 'Не указано'}
+            </span>
+          </div>
+
+          {/* Отображаемое имя (Никнейм) */}
+          <div className={styles.tgRow} onClick={() => openEditor('displayName')}>
+            <div className={styles.tgRowIcon}>
+              <Sparkles size={20} />
+            </div>
+            <span className={styles.tgRowLabel}>Отображаемое имя</span>
+            <span className={styles.tgRowValue}>
+              {username ? `${username}` : 'Не указано'}
+            </span>
+          </div>
+
+          {/* Телефон */}
+          <div className={styles.tgRow} onClick={() => openEditor('phone')}>
+            <div className={styles.tgRowIcon}>
+              <PhoneIcon size={20} />
+            </div>
+            <span className={styles.tgRowLabel}>Номер телефона</span>
+            <span className={styles.tgRowValue}>
+              {phone || 'Не указан'}
+            </span>
+          </div>
+
+          {/* Электронная почта */}
+          <div className={styles.tgRow} onClick={() => openEditor('email')}>
+            <div className={styles.tgRowIcon}>
+              <Mail size={20} />
+            </div>
+            <span className={styles.tgRowLabel}>Электронная почта</span>
+            <span className={styles.tgRowValue}>
+              {email || 'Не указана'}
+            </span>
+          </div>
+
+          {/* Имя пользователя (@username) */}
+          <div className={styles.tgRow} onClick={() => openEditor('username')}>
+            <div className={styles.tgRowIcon}>
+              <AtSign size={20} />
+            </div>
+            <span className={styles.tgRowLabel}>Имя пользователя</span>
+            <span className={`${styles.tgRowValue} ${styles.tgRowValueAccent}`}>
+              {uniqueId ? `@${uniqueId}` : 'Не указано'}
+            </span>
+          </div>
+        </div>
+        <p className={styles.tgSectionHint}>
+          С помощью имени пользователя другие люди смогут связаться с Вами в Blyades, не зная Вашего телефона.
+        </p>
+
+        {/* ======================================================== */}
+        {/* 4. ОФОРМЛЕНИЕ И ЦВЕТА                                    */}
+        {/* ======================================================== */}
+        <div className={styles.tgSectionCard}>
+          <div className={styles.tgRow} onClick={() => setShowColorModal(true)}>
+            <div className={styles.tgRowIcon}>
+              <Palette size={20} />
+            </div>
+            <span className={styles.tgRowLabel}>Цвет имени и профиля</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span className={styles.tgNameBadge} style={{ color: currentNameColorHex }}>
+                {previewDisplayName}
+              </span>
               <span 
                 style={{
                   display: 'inline-block',
-                  width: '12px',
-                  height: '12px',
+                  width: '14px',
+                  height: '14px',
                   borderRadius: '50%',
-                  backgroundColor: getProfileColor(profileColor || currentUser?.profileColor)
-                }} 
+                  backgroundColor: getProfileColor(profileColor || currentUser?.profileColor),
+                  border: '1px solid rgba(255,255,255,0.2)'
+                }}
                 title="Цвет профиля"
               />
-              <span className={styles.settingsFormInputValue}>
-                {PROFILE_COLOR_PALETTE.find(c => c.hex.toLowerCase() === (profileColor || currentUser?.profileColor || '#312b3a').toLowerCase())?.name || 'По умолчанию'}
-              </span>
+              <ChevronRight size={18} color="#708499" />
             </div>
           </div>
-          <ChevronRight size={18} color="#8e8e93" />
-        </div>
-
-        <div 
-          onClick={() => openEditor('phone')} 
-          className={styles.settingsFormInput}
-          style={{ cursor: 'pointer' }}
-        >
-          <div className={styles.settingsFormInputText}>
-            <span className={styles.settingsFormInputTitle}>Номер телефона</span>
-            <span className={styles.settingsFormInputValue}>{phone || 'Не указан'}</span>
-          </div>
-          <ChevronRight size={18} color="#8e8e93" />
-        </div>
-
-        <div 
-          onClick={() => openEditor('email')} 
-          className={styles.settingsFormInput}
-          style={{ cursor: 'pointer' }}
-        >
-          <div className={styles.settingsFormInputText}>
-            <span className={styles.settingsFormInputTitle}>Электронная почта</span>
-            <span className={styles.settingsFormInputValue}>{email || 'Не указана'}</span>
-          </div>
-          <ChevronRight size={18} color="#8e8e93" />
-        </div>
-
-        <div 
-          onClick={() => openEditor('about')} 
-          className={styles.settingsFormInput}
-          style={{ cursor: 'pointer', borderBottom: 'none' }}
-        >
-          <div className={styles.settingsFormInputText}>
-            <span className={styles.settingsFormInputTitle}>О себе</span>
-            <span className={styles.settingsFormInputValue}>{aboutMe || 'Расскажите о себе...'}</span>
-          </div>
-          <ChevronRight size={18} color="#8e8e93" />
         </div>
       </div>
 
+      {/* Модалки */}
       <EditorModal
         show={modalConfig.show}
         title={modalConfig.title}
@@ -405,12 +483,13 @@ export default function EditProfile({ state, setters }: any) {
         }}
         onFileSelect={(e) => e.target.files && e.target.files.length > 0 && processSelectedFile(e.target.files[0])}
         onColorSelect={async (chosenColor: string) => {
+          ctx.showToast?.('Сохранение цвета аватарки...', 'loading');
           const res = await userService.updateProfile(userUuid, { avatarColor: chosenColor });
           if (res.success) {
             ctx.setCurrentUser({ ...currentUser, avatarColor: chosenColor });
-            ctx.showToast('Базовый цвет аватарки сохранён! 🎨', 'success');
+            ctx.showToast?.('Цвет аватарки сохранён! 🎨', 'success');
           } else {
-            ctx.showToast(`Ошибка сохранения цвета: ${res.error}`, 'error');
+            ctx.showToast?.(`Ошибка сохранения: ${res.error}`, 'error');
           }
         }}
       />
@@ -420,24 +499,6 @@ export default function EditProfile({ state, setters }: any) {
         imageSrc={rawImageSrc} 
         onClose={() => { setShowCropModal(false); setRawImageSrc(null); }} 
         onSave={saveCroppedAvatar} 
-      />
-
-      <NameColorSelectorModal
-        show={colorModalConfig.show}
-        title="Предпросмотр цвета"
-        subtitle="Выберите цвет, которым будут выделяться Ваше имя."
-        colors={[
-          '#5eaddf',
-          '#7aca7c',
-          '#e49553',
-          '#e45a63',
-          '#a580de',
-          '#5bc1d1',
-          '#e8508a'
-        ]}
-        selectedColor={colorModalConfig.selectedColor}
-        onClose={() => setColorModalConfig(prev => ({ ...prev, show: false }))}
-        onSelect={handleSaveNameColor}
       />
 
       <ColorSettingsModal
@@ -450,6 +511,6 @@ export default function EditProfile({ state, setters }: any) {
           if (setNameColor) setNameColor(nColor);
         }}
       />
-    </div>
+    </>
   );
 }

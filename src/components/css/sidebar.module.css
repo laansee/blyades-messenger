@@ -2,7 +2,7 @@
   .chats-sidebar {width: 100%;}
 }
 @media (min-width: 740px) {
-  .chats-sidebar {width: 320px;}
+  .chats-sidebar {width: 320px; flex-shrink: 0;}
 }
 
 /* ---- ДОБАВИТЬ RESIZEBLE НА SIDEBAR ---- */ 
@@ -12,13 +12,24 @@
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
+  height: 100%;
+  box-sizing: border-box;
 }
 
 .sidebar-header { 
   padding: 14px 16px; 
   display: flex; 
   flex-direction: column; 
-  gap: 12px;}
+  gap: 12px;
+  box-sizing: border-box;}
+.sidebar-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.2px;
+  user-select: none;
+}
 .header-search-row {
   display: flex;
   align-items: center;
@@ -28,33 +39,71 @@
   background: none;
   border: none;
   color: #8e8e93;
-  padding: 8px;
-  border-radius: 10px;
   cursor: pointer;
+  padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background-color 0.15s, color 0.15s;
-  flex-shrink: 0;}
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: width 0.24s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.2s ease,
+              margin 0.24s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.2s ease;}
 .menu-toggle-btn:hover {
   background-color: #232327;
   color: #ffffff;}
+/* Состояние при активном глобальном поиске */
+.menu-toggle-btn.collapsed {
+  width: 0;
+  opacity: 0;
+  margin-right: -8px;
+  transform: scale(0.6);
+  pointer-events: none;
+}
+
 .search-input-wrapper {
   position: relative;
   flex: 1;
   display: flex;
-  align-items: center;}
+  align-items: center;
+  min-width: 0;
+  transition: width 0.24s cubic-bezier(0.4, 0, 0.2, 1);}
+
+.search-clear-exit-btn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #8e8e93;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s, background-color 0.15s;
+}
+
+.search-clear-exit-btn:hover {
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
 .sidebar-header section {
   display: flex;
-  justify-content: space-between;
-}
+  justify-content: space-between;}
 .sidebar-search-icon {
   position: absolute;
   left: 12px; 
   top: 50%;
   transform: translateY(-50%);
-  color: #636366
-}
+  color: #636366}
 .chat-search {
   width: 100%; 
   padding: 9px 12px 9px 36px; 
@@ -96,25 +145,62 @@
   flex: 1; 
   overflow-y: auto; 
   padding: 0 10px; }
-.chats-list::-webkit-scrollbar {/* Ширина всего элемента навигации */
-  width: 5px; }
-.chats-list::-webkit-scrollbar-track {/* Цвет дорожки */
-  background: #00000000;}
+.chats-list::-webkit-scrollbar {width: 5px; }
+.chats-list::-webkit-scrollbar-track {background: #00000000;}
 .chats-list::-webkit-scrollbar-thumb {
-  background: #525252;
-  border-radius: 20px;
-  border: none;}
-.chat-preview-card {
+  background: #383842;
+  border-radius: 20px;}
+.chats-list::-webkit-scrollbar-thumb:hover {background: #525252;}
+.chat-preview-card,
+.sidebar-item {
   display: flex; 
+  align-items: center;
   gap: 12px; 
   padding: 8px;
-  border-radius: 16px;
-  cursor: pointer; 
-  transition: background 0.2s; 
+  border-radius: 12px;
+  transition: background-color 0.15s ease, color 0.15s ease;
   margin-bottom: 4px;
   cursor: default;
-}
-.chat-preview-card:hover, .chat-preview-card.active { background-color: #232327; }
+  font-size: 14px;
+  user-select: none;}
+.chat-preview-card:hover, 
+.sidebar-item:hover { 
+  background-color: #232327; 
+  color: #ffffff;}
+.chat-preview-card.active,
+.sidebar-item.active { 
+  background-color: rgba(255, 255, 255, 0.08); 
+  color: #ffffff;}
+
+.sidebar-item svg {
+  color: #8e8e93;
+  transition: color 0.15s ease;
+  flex-shrink: 0;}
+.sidebar-item:hover svg,
+.sidebar-item.active svg {
+  color: #ffffff;}
+
+/* Тонкая разделительная линия */
+.sidebar-divider {
+  width: 100%;
+  height: 1px;
+  background-color: #2b2d31;
+  margin: 6px 0;}
+
+/* Спец-состояния для пунктов */
+.sidebar-item[aria-disabled="true"] {
+  color: #636366;
+  cursor: not-allowed;}
+.sidebar-item[aria-disabled="true"]:hover,
+.sidebar-item[aria-disabled="true"]:hover svg {background-color: transparent;}
+
+.sidebar-item[data-exit="true"] {color: #ef4444;}
+.sidebar-item[data-exit="true"] svg {color: #ef4444;}
+.sidebar-item[data-exit="true"]:hover {
+  background-color: rgba(239, 68, 68, 0.12);
+  color: #ff5c5c;}
+.sidebar-item[data-exit="true"]:hover svg {color: #ff5c5c;}
+
 .avatar-wrapper { position: relative; }
 .chat-avatar {
   width: 48px; 
@@ -279,3 +365,209 @@
   font-size: 13px;
   text-align: center;}
 
+/* ======================================================== */
+/* 🔍 TELEGRAM GLOBAL SEARCH STYLES                         */
+/* ======================================================== */
+
+.global-search-tabs {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 16px;
+  overflow-x: auto;
+  border-bottom: 1px solid #232428;
+  scrollbar-width: none;
+  background-color: #17181e;
+  flex-shrink: 0;
+}
+.global-search-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.global-search-tab-item {
+  padding: 10px 0;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #8e8e93;
+  cursor: pointer;
+  white-space: nowrap;
+  position: relative;
+  transition: color 0.15s ease;
+}
+.global-search-tab-item:hover {
+  color: #ffffff;
+}
+.global-search-tab-item.active {
+  color: #9d7bf6;
+  font-weight: 600;
+}
+.global-search-tab-item.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2.5px;
+  background-color: #9d7bf6;
+  border-radius: 2px 2px 0 0;
+}
+.global-search-tab-item.disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+  user-select: none;
+}
+.global-search-tab-item.disabled:hover {
+  color: #8e8e93;
+}
+
+/* Заголовки разделов («Частые контакты», «Недавние») */
+.search-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 6px 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #8e8e93;
+}
+.search-section-action {
+  font-size: 13px;
+  color: #9d7bf6;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  font-weight: 500;
+}
+.search-section-action:hover {
+  text-decoration: underline;
+}
+
+/* Горизонтальный список частых контактов */
+.top-contacts-scroll {
+  display: flex;
+  gap: 5px;
+  padding: 4px 6px 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  user-select: none;
+}
+.top-contacts-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.top-contact-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 62px;
+  flex-shrink: 0;
+  text-align: center;
+  padding: 6px;
+}
+.top-contact-card:hover {
+  border-radius: 7px;
+  background: #34343b;
+}
+.top-contact-name {
+  font-size: 12px;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+
+/* Разделительная плашка сообщений с выпадающим меню */
+.messages-divider-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background-color: #1a1b22;
+  border-top: 1px solid #232428;
+  border-bottom: 1px solid #232428;
+  position: relative;
+}
+.messages-count-text {
+  font-size: 13px;
+  color: #8e8e93;
+  font-weight: 500;
+}
+.messages-scope-btn {
+  background: none;
+  border: none;
+  color: #9d7bf6;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: background-color 0.15s;
+}
+.messages-scope-btn:hover {
+  background-color: rgba(157, 123, 246, 0.12);
+}
+
+/* Выпадающее меню выбора чатов */
+.scope-menu-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 16px;
+  margin-top: 4px;
+  background-color: #21212b;
+  border: 1px solid #2f2f3d;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.65);
+  min-width: 170px;
+  z-index: 1300;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.scope-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  font-size: 13.5px;
+  color: #ffffff;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+.scope-menu-item:hover {
+  background-color: #2b2b38;
+}
+.scope-menu-item.active {
+  color: #9d7bf6;
+}
+
+/* Контейнер экшенов внутри инпута поиска (фильтры + крестик) */
+.search-actions-group {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.search-action-icon-btn {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: #8e8e93;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.search-action-icon-btn:hover {
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.08);
+}

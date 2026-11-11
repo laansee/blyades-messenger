@@ -229,7 +229,7 @@ export default function ContactsModal({ show, onClose }: ContactsModalProps) {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                       <button 
                         type="button"
-                        title="Написать"
+                        // title="Написать"
                         onClick={() => {
                           onClose();
                           ctx.openOrCreateDirectChat?.(c);
@@ -241,7 +241,7 @@ export default function ContactsModal({ show, onClose }: ContactsModalProps) {
 
                       <button 
                         type="button"
-                        title="Редактировать"
+                        // title="Редактировать"
                         onClick={() => setEditingContact(c)}
                         style={{ background: 'none', border: 'none', color: '#8e8e93', cursor: 'pointer', padding: '6px', borderRadius: '6px', display: 'flex' }}
                       >
@@ -250,7 +250,7 @@ export default function ContactsModal({ show, onClose }: ContactsModalProps) {
 
                       <button 
                         type="button"
-                        title="Удалить контакт"
+                        // title="Удалить контакт"
                         onClick={() => handleDeleteContact(c)}
                         style={{ background: 'none', border: 'none', color: '#ff453a', cursor: 'pointer', padding: '6px', borderRadius: '6px', display: 'flex' }}
                       >

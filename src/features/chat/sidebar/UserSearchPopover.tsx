@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Search } from 'lucide-react';
 import SmartAvatar from '../../../components/common/SmartAvatar';
 import { formatUserOnlineStatus } from '../../../context/messengerContext';
@@ -22,15 +22,41 @@ export const UserSearchPopover: React.FC<UserSearchPopoverProps> = ({
   onSelectUser,
   onClose
 }) => {
+  const popoverRef = useRef<HTMLDivElement>(null);
+
+  // 🎯 Закрытие при клике вне зоны поповера
+  useEffect(() => {
+    if (!show) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
+        onClose();
+      }
+    };
+
+    // Слушаем с небольшой задержкой, чтобы клик открытия не триггерил закрытие
+    const timer = setTimeout(() => {
+      document.addEventListener('mousedown', handleClickOutside);
+    }, 0);
+
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [show, onClose]);
+
   if (!show) return null;
 
   return (
-    <div style={{
-      position: 'absolute', top: '56px', left: '16px', right: '16px', zIndex: 1200,
-      backgroundColor: '#21212b', border: '1px solid #2f2f3d', borderRadius: '12px',
-      boxShadow: '0 12px 32px rgba(0,0,0,0.65)', display: 'flex', flexDirection: 'column',
-      maxHeight: '460px', overflow: 'hidden'
-    }}>
+    <div 
+      ref={popoverRef}
+      style={{
+        position: 'absolute', top: '56px', left: '16px', right: '16px', zIndex: 1200,
+        backgroundColor: '#21212b', border: '1px solid #2f2f3d', borderRadius: '12px',
+        boxShadow: '0 12px 32px rgba(0,0,0,0.65)', display: 'flex', flexDirection: 'column',
+        maxHeight: '460px', overflow: 'hidden'
+      }}
+    >
       <div style={{ padding: '16px 16px 10px 16px', fontSize: '16px', fontWeight: 600, color: '#fff' }}>
         Показать сообщения от
       </div>

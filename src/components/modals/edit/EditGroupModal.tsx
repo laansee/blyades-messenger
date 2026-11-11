@@ -216,7 +216,7 @@ export default function EditGroupModal({
           <div 
             className={styles['modal-edit-avatar-btn']}
             onClick={() => setShowUploadSelector(true)}
-            title="Сменить фото группы"
+            // title="Сменить фото группы"
           >
             {groupUrl ? (
               <img src={groupUrl} alt="Avatar" className={styles['modal-edit-avatar-img']} />
@@ -419,7 +419,7 @@ export default function EditGroupModal({
           setGroupColor(chosenColor);
         }}
         targetType="groups"
-        title="Аватар группы"
+        // title="Аватар группы"
       />
 
       <AvatarCropModal 

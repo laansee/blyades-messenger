@@ -57,7 +57,7 @@ export function useModalAnimation(show: boolean, onClose?: () => void, duration 
 export interface ToastState {
   show: boolean;
   message: string;
-  type: 'success' | 'warning' | 'error' | 'info';
+  type: 'success' | 'warning' | 'error' | 'info' | 'loading';
 }
 
 interface ToastNotificationProps {
@@ -67,6 +67,22 @@ interface ToastNotificationProps {
 // 1. Компонент уведомлений (Toasts)
 export function ToastNotification({ toast }: ToastNotificationProps) {
   const getIcon = () => {
+    if (toast.type === 'loading') {
+      return (
+        <span
+          style={{
+            display: 'inline-block',
+            width: '15px',
+            height: '15px',
+            border: '2px solid rgba(255, 255, 255, 0.25)',
+            borderTopColor: '#9d7bf6',
+            borderRadius: '50%',
+            animation: 'spin 0.6s linear infinite',
+            verticalAlign: 'middle',
+          }}
+        />
+      );
+    }
     if (toast.type === 'success') return '✅';
     if (toast.type === 'warning') return '⚠️';
     if (toast.type === 'error') return '❌';
@@ -415,9 +431,7 @@ export function EditorModal({ show, title, fields, initialValues, onClose, onSav
             const currentValue = values[field.key] || '';
 
             return (
-              <div key={field.key} className={GlobalUIStyles['sModal-card']}>
-                <label className={GlobalUIStyles['sModal-label']}>{field.label}</label>
-                
+              <div className={GlobalUIStyles['profile-input-field']}>
                 {isTextarea ? (
                   <textarea
                     placeholder={field.placeholder}
@@ -429,14 +443,15 @@ export function EditorModal({ show, title, fields, initialValues, onClose, onSav
                 ) : (
                   <input
                     type={field.type || 'text'}
-                    placeholder={field.placeholder}
                     maxLength={field.maxLength}
                     value={currentValue}
                     onChange={e => setValues(prev => ({ ...prev, [field.key]: e.target.value }))}
-                    className={GlobalUIStyles['sModal-input']}
+                    className={GlobalUIStyles['profile-line-input']}
                     autoComplete="off"
+                    placeholder=" "
                   />
                 )}
+                <label className={GlobalUIStyles['profile-field-label']}>{field.label}</label>
 
                 {field.maxLength && (
                   <span className={GlobalUIStyles['sModal-counter']}>

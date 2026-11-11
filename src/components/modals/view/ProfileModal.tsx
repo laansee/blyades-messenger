@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import styles from '../../css/profile.module.css';
 import useMessengerContext from '../../../context/messengerContext';
-import { userService } from '../../../services/userService';
+import { userService, getUserPrivacy } from '../../../services/userService';
 
 import UserProfileView from './UserProfileView';
 import GroupProfileView from './GroupProfileView';
@@ -101,7 +101,26 @@ export default function ProfileModal() {
     };
   }, [ctx.showUserModal, targetIdentifier, cachedChatUser, isMe]);
 
-  const currentChatUser = isMe ? ctx.currentUser : (cachedChatUser || fetchedExternalUser);
+  const rawUser = isMe ? ctx.currentUser : (cachedChatUser || fetchedExternalUser);
+
+  // 🎯 Нормализуем приватность: читаем JSONB и прокидываем плоские алиасы
+  const currentChatUser = useMemo(() => {
+    if (!rawUser) return null;
+
+    const privacy = getUserPrivacy(rawUser);
+
+    return {
+      ...rawUser,
+      privacy,
+      // Обратная совместимость для компонентов вроде UserProfileView:
+      privacyPhone: privacy.phone,
+      privacyEmail: privacy.email,
+      privacyOnline: privacy.online,
+      privacyFullName: privacy.fullName,
+      privacyNameFormat: privacy.privacyNameFormat,
+      privacySearch: privacy.search,
+    };
+  }, [rawUser]);
 
   if (!ctx || !ctx.showUserModal || !currentChatUser) return null;
 
@@ -119,10 +138,23 @@ export default function ProfileModal() {
     }, 200);
   };
 
-  const shouldShowField = (privacySetting: string | undefined, isMeInHisContacts: boolean) => {
-    if (!privacySetting || privacySetting === 'all') return true;
-    if (privacySetting === 'contacts') return Boolean(isMeInHisContacts);
-    return false;
+  /**
+   * Проверка видимости: работает как с переданным значением ('all', 'contacts', 'none'),
+   * так и с именем поля ('phone', 'email', 'online', 'fullName')
+   */
+  const shouldShowField = (
+    fieldOrSetting: string | undefined, 
+    isMeInHisContacts: boolean
+  ) => {
+    if (!fieldOrSetting) return true;
+
+    // Если передан ключ поля ('phone', 'email' и т.д.), достаём значение из privacy
+    const settingValue = (currentChatUser?.privacy as any)?.[fieldOrSetting] ?? fieldOrSetting;
+
+    if (settingValue === 'all') return true;
+    if (settingValue === 'contacts') return Boolean(isMeInHisContacts);
+    if (settingValue === 'none') return false;
+    return true;
   };
 
   return createPortal(
@@ -147,7 +179,7 @@ export default function ProfileModal() {
         >
           {isMe ? (
             <MyProfileView
-              currentUser={ctx.currentUser}
+              currentUser={currentChatUser}
               onEditToggle={() => {
                 ctx.setShowUserModal(false);
                 window.location.href = '/settings?tab=account';

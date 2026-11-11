@@ -56,7 +56,7 @@ export default function UserProfileView({
           <button
             type="button"
             onClick={onClose}
-            title="Закрыть"
+            // title="Закрыть"
             className={styles['close-modal-btn']}
           >
             <X size={18} />
