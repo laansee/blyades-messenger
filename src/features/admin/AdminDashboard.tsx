@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../services/supabaseClient';
-import useMessengerContext from '../../context/messengerContext';
+import useMessengerContext, { formatUserOnlineStatus } from '../../context/messengerContext';
 import { type AppUser } from '../../services/userService';
 import { renderUserStatusBadge } from '../../utils/statusBadge';
+import { getProfileGradient } from '../../utils/themeColors';
 import { Navigate } from 'react-router';
 import { Menu, Shield, User, ShieldCheck, MessageSquare, Clock, Search, Copy, Hash } from 'lucide-react';
 import NavSidebar from '../navigation/NavSidebar';
@@ -22,11 +23,18 @@ export default function AdminDashboard() {
   const [activeSpyRoom, setActiveSpyRoom] = useState<string>('');
   const [spyMessages, setSpyMessages] = useState<any[]>([]);
   const [loadingSpy, setLoadingSpy] = useState(false);
-  const [scrollTop, setScrollTop] = useState(0);
+
+  const [spyMobileTab, setSpyMobileTab] = useState<'chat' | 'profile' | 'privacy'>('chat');
 
   if (!ctx.currentUser || ctx.currentUser.userStatus !== 'administrator') {
     return <Navigate to="/chat" replace />;
   }
+
+  const handleCopy = (text: string, label: string) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    ctx.showToast?.(`${label} скопирован в буфер`, 'success');
+  };
 
   const filteredUsersList = React.useMemo(() => {
     const query = adminSearchQuery.trim().toLowerCase().replace(/^[@#]/, '');
@@ -58,7 +66,6 @@ export default function AdminDashboard() {
           default: 1
         };
 
-        // 🚫 Исключаем сервисный системный аккаунт
         const realUsers = allUsers.filter((u: any) => 
           String(u.uuid) !== '00000000-0000-0000-0000-000000000000' &&
           String(u.id) !== '00000000-0000-0000-0000-000000000000' &&
@@ -108,7 +115,7 @@ export default function AdminDashboard() {
     setSpyMessages([]);
     setActiveSpyRoom('');
     setLoadingSpy(true);
-    setScrollTop(0);
+    setSpyMobileTab('chat');
 
     try {
       const { data: currentMemberships } = await supabase
@@ -184,13 +191,12 @@ export default function AdminDashboard() {
       return `${matchedChat.isGroup ? '👥' : '💬'} ${matchedChat.name}`;
     }
 
-    // 3. Личный диалог по составному ключу (если есть старый формат uuid1_uuid2)
     if (roomStrClean.includes('_')) {
       const parts = roomStrClean.split('_');
       const partnerUuid = parts.find(id => String(id) !== String(currentTargetUser.uuid));
       const partnerObj = usersList.find(u => u.uuid === partnerUuid);
       if (partnerObj) {
-        return `👤 ЛС с: ${partnerObj.username} [@${partnerObj.uniqueId || partnerObj.username}]`;
+        return `👤 ЛС: ${partnerObj.username} [@${partnerObj.uniqueId || partnerObj.username}]`;
       }
     }
 
@@ -198,7 +204,6 @@ export default function AdminDashboard() {
   };
 
   const renderSystemMessageContent = (text: string) => {
-    // 🎯 Регулярка ловит как {{user:UUID}}, так и {{chat:ID}}
     const entityTokenRegex = /\{\{(user|chat):([a-zA-Z0-9_-]+)\}\}/g;
 
     if (!text.includes('{{user:') && !text.includes('{{chat:')) {
@@ -211,15 +216,14 @@ export default function AdminDashboard() {
 
     while ((match = entityTokenRegex.exec(text)) !== null) {
       const matchIndex = match.index;
-      const entityType = match[1]; // 'user' или 'chat'
-      const entityId = match[2];   // UUID пользователя или ID чата
+      const entityType = match[1];
+      const entityId = match[2];
 
       if (matchIndex > lastIndex) {
         elements.push(text.slice(lastIndex, matchIndex));
       }
 
       if (entityType === 'chat') {
-        // 🎯 Обработка токена чата
         const foundChat = (ctx.chats || []).find((c: any) => String(c.id) === String(entityId));
         const chatTitle = foundChat?.name || 'Беседа';
 
@@ -229,7 +233,6 @@ export default function AdminDashboard() {
           </strong>
         );
       } else {
-        // 🎯 Обработка токена пользователя
         let resolvedName = 'Пользователь';
         const myUuid = String(ctx.currentUser?.uuid || ctx.currentUser?.id || '');
 
@@ -281,8 +284,6 @@ export default function AdminDashboard() {
   const renderSpyPanel = () => {
     if (!selectedUser) return null;
 
-    const avatarRatio = Math.min(scrollTop / 70, 1);
-
     const realFullName = `${selectedUser.firstName || ''} ${selectedUser.lastName || ''}`.trim();
     
     const isFullNameDisplay = 
@@ -293,8 +294,11 @@ export default function AdminDashboard() {
       ? realFullName
       : (selectedUser?.username || realFullName || 'Пользователь');
     
-    // const myIdDisplay = selectedUser.id ? `#${selectedUser.id}` : selectedUser.uuid?.slice(0, 8);
-    const myIdDisplay = selectedUser.uuid;
+    const myIdDisplay = selectedUser.id ? `#${selectedUser.id}` : selectedUser.uuid;
+
+    // 🎯 Статус онлайна через контекст (как в UserProfileView)
+    const isOnline = ctx.isUserOnline ? ctx.isUserOnline(selectedUser) : false;
+    const statusInfo = formatUserOnlineStatus(selectedUser?.updatedAt, selectedUser?.privacyOnline);
 
     return (
       <div className={styles['spy-container']}>
@@ -310,56 +314,79 @@ export default function AdminDashboard() {
           </button>
           <div className={styles['topbar-divider']} />
           <span className={styles['spy-target-title']}>
-            Объект наблюдения: {selectedUser.username}
+            Объект: {selectedUser.username}
           </span>
+        </div>
+
+        <div className={styles['spy-mobile-tabs']}>
+          <button
+            type="button"
+            className={`${styles['spy-mobile-tab-btn']} ${spyMobileTab === 'chat' ? styles.active : ''}`}
+            onClick={() => setSpyMobileTab('chat')}
+          >
+            💬 Переписка
+          </button>
+          <button
+            type="button"
+            className={`${styles['spy-mobile-tab-btn']} ${spyMobileTab === 'profile' ? styles.active : ''}`}
+            onClick={() => setSpyMobileTab('profile')}
+          >
+            👤 Профиль
+          </button>
+          <button
+            type="button"
+            className={`${styles['spy-mobile-tab-btn']} ${spyMobileTab === 'privacy' ? styles.active : ''}`}
+            onClick={() => setSpyMobileTab('privacy')}
+          >
+            🔒 Приватность
+          </button>
         </div>
 
         <div className={styles['spy-grid']}>
           
-          {/* ПАНЕЛЬ 1: ПРОФИЛЬ ОБЪЕКТА */}
-          <div className={styles['panel-profile']}>
+          {/* ПАНЕЛЬ 1: ПРОФИЛЬ ОБЪЕКТА (В ФОРМАТЕ МОДАЛОК ПРОФИЛЕЙ) */}
+          <div className={`${styles['panel-profile']} ${spyMobileTab === 'profile' ? styles['active-mobile-panel'] : ''}`}>
             <div className={styles['panel-header-red']}>
               <div className={styles['panel-header-title']}>
                 <User size={16} /> Карточка профиля объекта
               </div>
             </div>
             
+            {/* 🎯 Динамический градиентный задник по аналогии с MyProfileView / UserProfileView */}
             <div 
-              className={profileStyles['profile-header-gradient']}
-              style={{
-                height: `${200 - (avatarRatio * 110)}px`,
-                flexDirection: avatarRatio > 0.8 ? 'row' : 'column'
-              }}
+              className={styles['spy-profile-header']}
+              style={{ background: getProfileGradient(selectedUser?.profileColor) }}
             >
               <div className={profileStyles['profile-avatar-wrapper']}>
                 <SmartAvatar
-                  size={100}
+                  size={84}
                   avatarUrl={selectedUser.avatarUrl}
                   avatarColor={selectedUser.avatarColor}
-                  name={selectedUser.username}
+                  name={displayName}
                   isChannel={false}
                 />
               </div>
 
-              <h2 className={profileStyles['profile-name']}>
-                {renderUserStatusBadge(selectedUser)}
-                {displayName}
-              </h2>
-              <span className={profileStyles['profile-status']}>
-                в сети
-              </span>
+              <div className={styles['spy-profile-titles']}>
+                <h2 className={profileStyles['profile-name']}>
+                  {renderUserStatusBadge(selectedUser)}
+                  {displayName}
+                </h2>
+                <span className={`${profileStyles['profile-status']} ${isOnline ? profileStyles['online'] : ''}`}>
+                  {isOnline ? 'в сети' : statusInfo.text}
+                </span>
+              </div>
             </div>
 
-            <div 
-              onScroll={e => setScrollTop(e.currentTarget.scrollTop)}
-              className={profileStyles['info-section']}
-              style={{height: 'stretch'}}
-            >
+            <div className={styles['spy-profile-scroll-body']}>
               {(selectedUser.firstName || selectedUser.lastName) && (
-                <div className={profileStyles['info-item']}>
+                <div 
+                  onClick={() => handleCopy(realFullName, 'Имя и Фамилия')}
+                  className={profileStyles['info-item']}
+                >
                   <div className={profileStyles['info-item-content']}>
                     <span className={profileStyles['info-value']}>
-                      {`${selectedUser.firstName || ''} ${selectedUser.lastName || ''}`.trim()}
+                      {realFullName}
                     </span>
                     <span className={profileStyles['info-label']}>Настоящие Имя и Фамилия</span>
                   </div>
@@ -367,57 +394,75 @@ export default function AdminDashboard() {
                 </div>
               )}
 
-              <div className={profileStyles['info-item']}>
+              <div 
+                onClick={() => handleCopy(`@${selectedUser.uniqueId || selectedUser.username}`, 'Тег пользователя')}
+                className={profileStyles['info-item']}
+              >
                 <div className={profileStyles['info-item-content']}>
                   <span className={`${profileStyles['info-value']} ${profileStyles['accent']}`}>
                     @{selectedUser.uniqueId || selectedUser.username}
                   </span>
-                  <span className={profileStyles['info-label']}>Уникальный ID</span>
+                  <span className={profileStyles['info-label']}>Уникальный ID / Тег</span>
                 </div>
                 <Copy size={16} className={profileStyles['info-icon']} />
               </div>
 
-              <div className={profileStyles['info-item']}>
-                <div className={profileStyles['info-item-content']}>
-                  <span className={profileStyles['info-value']}>
-                    {selectedUser.phone || 'не указан'}
-                  </span>
-                  <span className={profileStyles['info-label']}>Номер телефона</span>
-                </div>
-                <Copy size={16} className={profileStyles['info-icon']} />
-              </div>
-              
-              <div className={profileStyles['info-item']}>
-                <div className={profileStyles['info-item-content']}>
-                  <span className={profileStyles['info-value']}>
-                    {selectedUser.email || 'не указана'}
-                  </span>
-                  <span className={profileStyles['info-label']}>Электронная почта</span>
-                </div>
-                <Copy size={16} className={profileStyles['info-icon']} />
-              </div>
-
-              {selectedUser.note && (
-                <div className={profileStyles['info-item']}>
+              {selectedUser.phone && (
+                <div 
+                  onClick={() => handleCopy(selectedUser.phone, 'Телефон')}
+                  className={profileStyles['info-item']}
+                >
                   <div className={profileStyles['info-item-content']}>
                     <span className={profileStyles['info-value']}>
-                      {selectedUser.aboutMe || 'Био-заметка отсутствует'}
+                      {selectedUser.phone}
+                    </span>
+                    <span className={profileStyles['info-label']}>Номер телефона</span>
+                  </div>
+                  <Copy size={16} className={profileStyles['info-icon']} />
+                </div>
+              )}
+              
+              {selectedUser.email && (
+                <div 
+                  onClick={() => handleCopy(selectedUser.email, 'Электронная почта')}
+                  className={profileStyles['info-item']}
+                >
+                  <div className={profileStyles['info-item-content']}>
+                    <span className={profileStyles['info-value']}>
+                      {selectedUser.email}
+                    </span>
+                    <span className={profileStyles['info-label']}>Электронная почта</span>
+                  </div>
+                  <Copy size={16} className={profileStyles['info-icon']} />
+                </div>
+              )}
+
+              {selectedUser.aboutMe && selectedUser.aboutMe.trim() !== '' && (
+                <div className={profileStyles['info-item']} style={{ cursor: 'default' }}>
+                  <div className={profileStyles['info-item-content']}>
+                    <span className={`${profileStyles['info-value']} ${profileStyles['multiline']}`}>
+                      {selectedUser.aboutMe}
                     </span>
                     <span className={profileStyles['info-label']}>О себе</span>
                   </div>
                 </div>
               )}
 
-              <div className={profileStyles['info-item']}>
-                <div className={profileStyles['info-item-content']}>
-                  <span className={profileStyles['info-value']}>
-                    {selectedUser.note}
-                  </span>
-                  <span className={profileStyles['info-label']}>Ваша заметка</span>
+              {selectedUser.note && (
+                <div className={profileStyles['info-item']} style={{ cursor: 'default' }}>
+                  <div className={profileStyles['info-item-content']}>
+                    <span className={profileStyles['info-value']}>
+                      {selectedUser.note}
+                    </span>
+                    <span className={profileStyles['info-label']}>Ваша заметка</span>
+                  </div>
                 </div>
-              </div>
+              )}
               
-              <div className={profileStyles['info-item']}>
+              <div 
+                onClick={() => handleCopy(selectedUser.uuid, 'UUID')}
+                className={profileStyles['info-item']}
+              >
                 <div className={profileStyles['info-item-content']}>
                   <span className={`${profileStyles['info-value']} ${profileStyles['mono']}`}>
                     {myIdDisplay}
@@ -429,19 +474,18 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-
           {/* ПАНЕЛЬ 2: НАСТРОЙКИ ПРИВАТНОСТИ */}
-          <div style={{ flex: 1, backgroundColor: '#111214', borderRadius: '12px', border: '1px solid #34c759', display: 'flex', flexDirection: 'column', padding: '20px', gap: '20px', overflowY: 'auto' }}>
-            <div style={{ color: '#34c759', fontWeight: 'bold', fontSize: '14px', textTransform: 'uppercase', borderBottom: '1px solid #2b2d31', paddingBottom: '10px' }}>Конфиденциальность</div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Показ телефона:</span><span style={{ color: '#34c759', fontWeight: 'bold' }}>{selectedUser.privacyPhone || 'all'}</span></div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Показ почты:</span><span style={{ color: '#34c759', fontWeight: 'bold' }}>{selectedUser.privacyEmail || 'all'}</span></div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Показ онлайна:</span><span style={{ color: '#34c759', fontWeight: 'bold' }}>{selectedUser.privacyOnline || 'all'}</span></div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Формат имени:</span><span style={{ color: '#34c759', fontWeight: 'bold' }}>{selectedUser.privacyNameFormat || 'username'}</span></div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Глобальный поиск:</span><span style={{ color: '#34c759', fontWeight: 'bold' }}>{selectedUser.privacySearch || 'all'}</span></div>
+          <div className={`${styles['panel-privacy']} ${spyMobileTab === 'privacy' ? styles['active-mobile-panel'] : ''}`}>
+            <div className={styles['privacy-title']}>Конфиденциальность</div>
+            <div className={styles['privacy-row']}><span>Показ телефона:</span><span className={styles['privacy-val']}>{selectedUser.privacyPhone || 'all'}</span></div>
+            <div className={styles['privacy-row']}><span>Показ почты:</span><span className={styles['privacy-val']}>{selectedUser.privacyEmail || 'all'}</span></div>
+            <div className={styles['privacy-row']}><span>Показ онлайна:</span><span className={styles['privacy-val']}>{selectedUser.privacyOnline || 'all'}</span></div>
+            <div className={styles['privacy-row']}><span>Формат имени:</span><span className={styles['privacy-val']}>{selectedUser.privacyNameFormat || 'username'}</span></div>
+            <div className={styles['privacy-row']}><span>Глобальный поиск:</span><span className={styles['privacy-val']}>{selectedUser.privacySearch || 'all'}</span></div>
           </div>
 
-          {/* 🟡 ЖЁЛТАЯ ПАНЕЛЬ: ОКНО ЧАТА И ПЕРЕХВАТА */}
-          <div className={styles['panel-chat-spy']}>
+          {/* ПАНЕЛЬ 3: ЧАТ И ПЕРЕХВАТ СООБЩЕНИЙ */}
+          <div className={`${styles['panel-chat-spy']} ${spyMobileTab === 'chat' ? styles['active-mobile-panel'] : ''}`}>
             <div className={styles['chat-select-header']}>
               <select 
                 value={activeSpyRoom} 
@@ -460,7 +504,10 @@ export default function AdminDashboard() {
               </select>
             </div>
 
-            <div className={styles['chat-messages-scroll']}>
+            <div 
+              className={styles['chat-messages-scroll']}
+              style={{ touchAction: 'pan-y' }}
+            >
               {loadingSpy ? (
                 <div className={styles['state-loading-msgs']}>Загрузка сообщений...</div>
               ) : spyMessages.length === 0 ? (
@@ -517,7 +564,7 @@ export default function AdminDashboard() {
       <NavSidebar />
 
       {/* Шапка панели */}
-      <div className={styles['admin-header']}>
+      <div className={`${styles['admin-header']} ${selectedUser ? styles['hide-on-mobile'] : ''}`}>
         <button 
           type="button" 
           onClick={() => ctx.setIsNavOpen?.(true)}
@@ -532,7 +579,7 @@ export default function AdminDashboard() {
         </div>
         <div>
           <h1 className={styles['admin-header-title']}>Admin Dashboard</h1>
-          <p className={styles['admin-header-subtitle']}>Кликните на пользователя, чтобы перехватить и прочитать его переписки</p>
+          <p className={styles['admin-header-subtitle']}>Кликните на пользователя, чтобы перехватить его переписки</p>
         </div>
       </div>
 
@@ -540,8 +587,6 @@ export default function AdminDashboard() {
         renderSpyPanel()
       ) : (
         <div className={styles['admin-main-section']}>
-          
-          {/* 🔍 ПАНЕЛЬ ПОИСКА */}
           <div className={styles['admin-search-wrapper']}>
             <Search 
               size={18} 
@@ -549,7 +594,7 @@ export default function AdminDashboard() {
             />
             <input
               type="text"
-              placeholder="Поиск по @тегу, UUID или никнейму..."
+              placeholder="Поиск по тегу, UUID или имени..."
               value={adminSearchQuery}
               onChange={(e) => setAdminSearchQuery(e.target.value)}
               className={styles['admin-search-input']}
@@ -566,7 +611,6 @@ export default function AdminDashboard() {
             )}
           </div>
 
-          {/* ТАБЛИЦА ПОЛЬЗОВАТЕЛЕЙ */}
           <div className={styles['table-card']}>
             {loading ? (
               <div className={styles['table-loading']}>Загрузка пользователей PostgreSQL...</div>
@@ -578,7 +622,6 @@ export default function AdminDashboard() {
                     <th>Уникальный тег</th>
                     <th>Роль</th>
                     <th>Подтверждён</th>
-                    {/* <th style={{ textAlign: 'center' }}>Действия</th> */}
                   </tr>
                 </thead>
                 <tbody>
@@ -609,7 +652,12 @@ export default function AdminDashboard() {
 
                             <div>
                               <span className={styles['user-name-title']}>{user.username}</span>
-                              <span className={styles['user-name-subtitle']}>{user.firstName || ''} {user.lastName || ''}</span>
+                              <span className={styles['user-name-subtitle']}>
+                                {user.firstName || ''} {user.lastName || ''}
+                                {user.uniqueId && (
+                                  <span className={styles['user-mobile-tag']}>@{user.uniqueId}</span>
+                                )}
+                              </span>
                             </div>
                           </div>
                         </td>
@@ -643,16 +691,6 @@ export default function AdminDashboard() {
                             </span>
                           )}
                         </td>
-                        {/* <td className={styles['cell-actions']} onClick={e => e.stopPropagation()}>
-                          <button
-                            type="button"
-                            onClick={() => handleKickUser(user)}
-                            className={styles['btn-delete-user']}
-                            disabled={user.userStatus === 'administrator'}
-                          >
-                            <Trash2 size={18} />
-                          </button>
-                        </td> */}
                       </tr>
                     );
                   })}
