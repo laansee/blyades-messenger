@@ -1,6 +1,6 @@
 import { formatUserOnlineStatus } from '../../../context/messengerContext';
 import styles from '../../css/profile.module.css';
-import { renderUserStatusBadge } from '../../../utils/statusBadge';
+import { getUserStatusBadge } from '../../../services/userService';
 import { X, Copy, Hash, MessagesCircle, Bell, Phone, Trash, Pen, Hand, Redo, Ellipsis } from 'lucide-react';
 import SmartAvatar from '../../common/SmartAvatar';
 import { getProfileGradient } from '../../../utils/themeColors.ts';
@@ -24,6 +24,10 @@ export default function UserProfileView({
   ctx
 }: UserProfileViewProps) {
   if (!currentChatUser) return null;
+
+  const appearance = currentChatUser.appearance || {};
+  const badge = getUserStatusBadge(currentChatUser);
+  const publicTag = currentChatUser.publicId || currentChatUser.uniqueId;
   
   const partnerIdentifier = String(
     currentChatUser.partnerId || currentChatUser.uuid || currentChatUser.id || ''
@@ -50,7 +54,7 @@ export default function UserProfileView({
     <div className={styles['view-mode']}>
       <div 
         className={styles['profile-header-gradient']}
-        style={{ background: getProfileGradient(currentChatUser?.profileColor) }}
+        style={{ background: getProfileGradient(appearance.profileColor || currentChatUser?.profileColor) }}
       >
         <div className={styles['profile-header-actions']}>
           <button
@@ -67,14 +71,18 @@ export default function UserProfileView({
           <SmartAvatar
             size={84}
             avatarUrl={currentChatUser.avatarUrl}
-            avatarColor={currentChatUser.avatarColor}
+            avatarColor={appearance.avatarColor || currentChatUser.avatarColor}
             name={baseName}
             isChannel={false}
           />
         </div>
 
         <h2 className={styles['profile-name']}>
-          {renderUserStatusBadge(currentChatUser)}
+          {badge && (
+            <span title={badge.title} style={{ cursor: 'help', userSelect: 'none' }}>
+              {badge.icon}
+            </span>
+          )}
           {baseName}
         </h2>
 
@@ -161,12 +169,12 @@ export default function UserProfileView({
           )}
         
           <div
-            onClick={() => handleCopy(`@${currentChatUser.uniqueId || currentChatUser.username}`, 'Тег пользователя')}
+            onClick={() => handleCopy(`@${publicTag || currentChatUser.username}`, 'Тег пользователя')}
             className={styles['info-item']}
           >
             <div className={styles['info-item-content']}>
               <span className={`${styles['info-value']} ${styles['accent']}`}>
-                @{currentChatUser.uniqueId || currentChatUser.username || 'не указан'}
+                @{publicTag || currentChatUser.username || 'не указан'}
               </span>
               <span className={styles['info-label']}>Имя пользователя</span>
             </div>

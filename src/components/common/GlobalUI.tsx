@@ -2,7 +2,10 @@ import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import useMessengerContext from '../../context/messengerContext';
 import GlobalUIStyles from '../css/global-ui.module.css';
-import { Plus, X } from 'lucide-react';
+import { 
+  Plus, X, CheckCircle2, AlertTriangle, XCircle, Info, 
+  ChevronRight, Camera, Minus, Check 
+} from 'lucide-react';
 
 export function useModalAnimation(show: boolean, onClose?: () => void, duration = 200) {
   const [mounted, setMounted] = useState(show);
@@ -68,25 +71,12 @@ interface ToastNotificationProps {
 export function ToastNotification({ toast }: ToastNotificationProps) {
   const getIcon = () => {
     if (toast.type === 'loading') {
-      return (
-        <span
-          style={{
-            display: 'inline-block',
-            width: '15px',
-            height: '15px',
-            border: '2px solid rgba(255, 255, 255, 0.25)',
-            borderTopColor: '#9d7bf6',
-            borderRadius: '50%',
-            animation: 'spin 0.6s linear infinite',
-            verticalAlign: 'middle',
-          }}
-        />
-      );
+      return <span className={GlobalUIStyles['toast-spinner']} />;
     }
-    if (toast.type === 'success') return '✅';
-    if (toast.type === 'warning') return '⚠️';
-    if (toast.type === 'error') return '❌';
-    return 'ℹ️';
+    if (toast.type === 'success') return <CheckCircle2 size={20} color="#2ec761" />;
+    if (toast.type === 'warning') return <AlertTriangle size={20} color="#ff9f0a" />;
+    if (toast.type === 'error') return <XCircle size={20} color="#ff3b30" />;
+    return <Info size={20} color="#007aff" />;
   };
 
   return (
@@ -313,7 +303,7 @@ export function DropdownMenu({ show, onClose, x, y, items, className, style }: D
         zIndex: 35000,
         display: 'block',
         animation: `${isClosing ? 'modalScaleOut' : 'modalScaleIn'} 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards`,
-        ...style // 👈 Пользовательские стили переопределяют дефолтные
+        ...style
       }}
       tabIndex={999999}
     >
@@ -350,7 +340,9 @@ export function DropdownMenu({ show, onClose, x, y, items, className, style }: D
                   </span>
                 )}
                 {item.arrow && (
-                  <span className={GlobalUIStyles['dropdown-item-arrow-indicator']}>▶</span>
+                  <span className={GlobalUIStyles['dropdown-item-arrow-indicator']}>
+                    <ChevronRight size={14} />
+                  </span>
                 )}
               </div>
             </button>
@@ -695,15 +687,15 @@ export function AvatarUploadSelectorModal({
             <div style={{ 
               width: '70px', height: '70px', borderRadius: '50%', 
               backgroundColor: avatarColor, display: 'flex', alignItems: 'center', 
-              justifyContent: 'center', fontSize: '28px', fontWeight: 'bold' 
+              justifyContent: 'center', color: '#fff'
             }}>
-              📸
+              <Camera size={28} />
             </div>
           )}
 
           <div style={{ textAlign: 'center', padding: '0 10px' }}>
             <span style={{ fontSize: '14px', fontWeight: '600', color: isDragOver ? '#9d7bf6' : '#fff', display: 'block', marginBottom: '4px' }}>
-              {isDragOver ? '💥 Бросайте сюда фото!' : 'Перетащите изображение или кликните'}
+              {isDragOver ? 'Бросайте сюда фото!' : 'Перетащите изображение или кликните'}
             </span>
             <span style={{ fontSize: '11px', color: '#a2a2b5' }}>PNG, JPG до 5 МБ</span>
           </div>
@@ -952,7 +944,9 @@ export function AvatarCropModal({ show, imageSrc, onClose, onSave }: AvatarCropM
         <p style={{ fontSize: '12px', color: '#a2a2b5', margin: 0, textAlign: 'center' }}>↕ Перетаскивайте фото мышкой для центрирования</p>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px', width: '100%', padding: '0 10px', boxSizing: 'border-box' }}>
-          <span style={{ fontSize: '16px', userSelect: 'none' }}>➖</span>
+          <span style={{ display: 'flex', alignItems: 'center', userSelect: 'none', color: '#a2a2b5' }}>
+            <Minus size={16} />
+          </span>
           <input
             type="range"
             min="1"
@@ -967,7 +961,7 @@ export function AvatarCropModal({ show, imageSrc, onClose, onSave }: AvatarCropM
             }}
             style={{ flex: 1, accentColor: '#9d7bf6', cursor: 'pointer' }}
           />
-          <span style={{ fontSize: '16px', userSelect: 'none' }}><Plus/></span>
+          <span style={{ display: 'flex', alignItems: 'center', userSelect: 'none', color: '#a2a2b5' }}><Plus/></span>
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '16px', width: '100%', borderTop: '1px solid #383842', paddingTop: '16px' }}>
@@ -1234,7 +1228,7 @@ export function AddParticipantsModal({ show, existingUserIds, onClose, onAdd }: 
                       </div>
                       
                       <div style={{ width: '20px', height: '20px', borderRadius: '50%', border: isChecked ? 'none' : '2px solid #3a3a3c', backgroundColor: isChecked ? '#9d7bf6' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s ease' }}>
-                        {isChecked && <span style={{ color: '#fff', fontSize: '10px', fontWeight: 'bold' }}>✓</span>}
+                        {isChecked && <Check size={12} color="#fff" strokeWidth={3} />}
                       </div>
                     </div>
                   );

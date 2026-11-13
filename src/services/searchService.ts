@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient';
+import { normalizeUser, getUserPrivacy } from './userService';
 
 export interface GlobalSearchResult {
   users: any[];
@@ -32,16 +33,15 @@ export const searchService = {
     }
   },
 
-  // 2. Глобальный поиск: публичные каналы/беседы и пользователи (с учетом privacySearch)
+  // 2. Глобальный поиск: публичные каналы/беседы и пользователи (с учетом privacy.search)
   async searchGlobal(query: string, currentUserId: string): Promise<GlobalSearchResult> {
-    const cleanTag = query.replace('@', '').trim();
+    const cleanTag = query.replace(/^@/, '').replace(/[,()]/g, '').trim();
     if (!cleanTag) {
       return { users: [], publicChats: [] };
     }
 
     try {
       const [chatsRes, usersRes] = await Promise.all([
-        // Поиск публичных каналов и групп
         supabase
           .from('chats')
           .select('*')
@@ -49,26 +49,27 @@ export const searchService = {
           .or(`name.ilike.%${cleanTag}%,publicId.ilike.%${cleanTag}%`)
           .limit(10),
 
-        // Поиск пользователей, не скрывших профиль из глобального поиска
         supabase
           .from('users')
           .select('*')
           .neq('uuid', currentUserId)
-          .or(`uniqueId.ilike.%${cleanTag}%,username.ilike.%${cleanTag}%`)
+          .is('bannedAt', null)
+          .or(`publicId.ilike.%${cleanTag}%,username.ilike.%${cleanTag}%`)
           .limit(10)
       ]);
 
       const publicChats = (chatsRes.data || []).map((chat: any) => ({
         ...chat,
+        avatarColor: chat.appearance?.avatarColor || '#5865F2',
         isChannel: chat.type === 'channel',
         isGroup: chat.type === 'group',
         isGlobal: true
       }));
 
-      // Фильтруем пользователей по privacySearch === 'none'
       const users = (usersRes.data || [])
-        .filter((u: any) => u.privacySearch !== 'none')
-        .map((u: any) => ({
+        .map(normalizeUser)
+        .filter(u => getUserPrivacy(u).search !== 'none')
+        .map(u => ({
           ...u,
           isGlobal: true,
           isUser: true
@@ -86,13 +87,12 @@ export const searchService = {
     chatId?: string | number | null;
     myChatIds?: (string | number)[];
     senderId?: string | null;
-    date?: string | null; // Формат 'YYYY-MM-DD'
+    date?: string | null;
     limit?: number;
   }) {
     const { query = '', chatId, myChatIds, senderId, date, limit = 60 } = params;
     const cleanQuery = query.trim();
 
-    // Запрос выполняется, если есть текст, выбран автор или выбрана дата
     if (!cleanQuery && !senderId && !date) return [];
 
     try {
@@ -103,12 +103,10 @@ export const searchService = {
         .order('createdAt', { ascending: false })
         .limit(limit);
 
-      // 1. Поиск по тексту (если введён)
       if (cleanQuery) {
         q = q.ilike('text', `%${cleanQuery}%`);
       }
 
-      // 2. Ограничение областью поиска (комната или список комнат)
       if (chatId != null && chatId !== '') {
         const numId = Number(chatId);
         q = !isNaN(numId) ? q.eq('chatId', numId) : q.eq('chatId', String(chatId));
@@ -117,12 +115,10 @@ export const searchService = {
         if (numericIds.length > 0) q = q.in('chatId', numericIds);
       }
 
-      // 3. Фильтр по автору сообщения
       if (senderId) {
         q = q.eq('senderId', String(senderId));
       }
 
-      // 4. Фильтр по дате (полные сутки в UTC без сдвига локального времени)
       if (date) {
         const startOfDay = `${date}T00:00:00.000Z`;
         const endOfDay = `${date}T23:59:59.999Z`;
@@ -135,8 +131,8 @@ export const searchService = {
         return [];
       }
 
-      return (data || []).filter((m: any) => 
-        m.senderId !== 'system' && 
+      return (data || []).filter((m: any) =>
+        m.senderId !== 'system' &&
         String(m.senderId) !== '00000000-0000-0000-0000-000000000000' &&
         !String(m.text || '').startsWith('{{user:')
       );

@@ -3,6 +3,7 @@ import styles from '../../components/css/sidebar.module.css';
 import { Search, Menu, X, User, Calendar } from 'lucide-react';
 import useMessengerContext from '../../context/messengerContext';
 import { supabase } from '../../services/supabaseClient';
+import { getChatRouteId } from '../../utils/chatRoute';
 
 import { ChatsDefaultView } from './sidebar/ChatsDefaultView';
 import { GlobalSearchView } from './sidebar/GlobalSearchView';
@@ -11,6 +12,27 @@ import { ChatMessageSearchView } from './sidebar/ChatMessageSearchView';
 export default function ChatsSidebar() {
   const ctx = useMessengerContext();
   const currentUserIdStr = String(ctx.currentUser?.uuid || ctx.currentUser?.id || '');
+
+  // Обновление URL в адресной строке при смене активного чата в сайдбаре
+  useEffect(() => {
+    if (!ctx.activeChatId) {
+      if (window.location.search) {
+        window.history.pushState(null, '', window.location.pathname);
+      }
+      return;
+    }
+
+    const activeChat = (ctx.chats || []).find((c: any) => String(c.id) === String(ctx.activeChatId));
+    if (activeChat) {
+      const routeId = getChatRouteId(activeChat, currentUserIdStr);
+      const newUrl = `/chat?id=${routeId}`; // Используем путь /chat вместо /chats
+      
+      if (window.location.search !== `?id=${routeId}`) {
+        window.history.pushState(null, '', newUrl);
+      }
+    }
+  }, [ctx.activeChatId, ctx.chats, currentUserIdStr]);
+
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Стейты режимов

@@ -4,6 +4,7 @@ import style from '../../components/css/settings.module.css';
 import sidebarStyles from '../../components/css/sidebar.module.css';
 import useMessengerContext from '../../context/messengerContext';
 import NavSidebar from '../navigation/NavSidebar';
+import { getUserPrivacy } from '../../services/userService';
 
 import EditProfile from './EditProfile';
 import PrivacySettings from './PrivacySettings';
@@ -31,6 +32,8 @@ export default function SettingsPage() {
 
   const [activeSettingsTab, setActiveSettingsTab] = useState<SettingsTab>(getTabFromUrl);
   const [mobileScreen, setMobileScreen] = useState<'menu' | 'content'>(() => (getTabFromUrl() ? 'content' : 'menu'));
+  const initialPrivacy = getUserPrivacy(currentUser);
+  const initialAppearance = currentUser?.appearance || {};
 
   // 3. Слушаем внешние переходы (если URL поменялся без перезагрузки страницы)
   useEffect(() => {
@@ -56,46 +59,48 @@ export default function SettingsPage() {
     window.history.replaceState(null, '', `/settings?tab=${urlParamKey}`);
   };
 
-  // 🚀 ОБЩИЕ СТЕЙТЫ ДАННЫХ ПРОФИЛЯ
-  const [uniqueId, setUniqueId] = useState(currentUser?.uniqueId || '');
+  // ОБЩИЕ СТЕЙТЫ ДАННЫХ ПРОФИЛЯ
+  const [publicId, setPublicId] = useState(currentUser?.publicId || '');
   const [username, setUsername] = useState(currentUser?.username || '');
   const [firstName, setFirstName] = useState(currentUser?.firstName || '');
   const [lastName, setLastName] = useState(currentUser?.lastName || '');
   const [email, setEmail] = useState(currentUser?.email || '');
   const [phone, setPhone] = useState(currentUser?.phone || '');
   const [aboutMe, setAboutMe] = useState(currentUser?.aboutMe || '');
-  const [avatarColor, setAvatarColor] = useState(currentUser?.avatarColor || '#007aff');
-  const [nameColor, setNameColor] = useState(currentUser?.nameColor || '#5eaddf');
+  const [avatarColor, setAvatarColor] = useState(initialAppearance.avatarColor || currentUser?.avatarColor || '#007aff');
+  const [nameColor, setNameColor] = useState(initialAppearance.nameColor || currentUser?.nameColor || '#5eaddf');
   const [avatarUrl, setAvatarUrl] = useState(currentUser?.avatarUrl || null);
-  const [profileColor, setProfileColor] = useState(currentUser?.profileColor || '#312b3a');
+  const [profileColor, setProfileColor] = useState(initialAppearance.profileColor || currentUser?.profileColor || '#312b3a');
 
-  // 🚀 ОБЩИЕ СТЕЙТЫ НАСТРОЕК КОНФИДЕНЦИАЛЬНОСТИ
-  const [privacyPhone, setPrivacyPhone] = useState(currentUser?.privacyPhone || 'all');
-  const [privacyEmail, setPrivacyEmail] = useState(currentUser?.privacyEmail || 'all');
-  const [privacyOnline, setPrivacyOnline] = useState(currentUser?.privacyOnline || 'all');
-  const [privacyNameFormat, setPrivacyNameFormat] = useState(currentUser?.privacyNameFormat || 'username');
-  const [privacyFullName, setPrivacyFullName] = useState(currentUser?.privacyFullName || 'all');
-  const [privacySearch, setPrivacySearch] = useState(currentUser?.privacySearch || 'all');
+  // ОБЩИЕ СТЕЙТЫ НАСТРОЕК КОНФИДЕНЦИАЛЬНОСТИ
+  const [privacyPhone, setPrivacyPhone] = useState(initialPrivacy.phone);
+  const [privacyEmail, setPrivacyEmail] = useState(initialPrivacy.email);
+  const [privacyOnline, setPrivacyOnline] = useState(initialPrivacy.online);
+  const [privacyNameFormat, setPrivacyNameFormat] = useState(initialPrivacy.privacyNameFormat);
+  const [privacyFullName, setPrivacyFullName] = useState(initialPrivacy.fullName);
+  const [privacySearch, setPrivacySearch] = useState(initialPrivacy.search);
 
   useEffect(() => {
     if (currentUser) {
-      setUniqueId(currentUser.uniqueId || '');
+      const p = getUserPrivacy(currentUser);
+      const app = currentUser.appearance || {};
+      setPublicId(currentUser.publicId || '');
       setUsername(currentUser.username || '');
       setFirstName(currentUser.firstName || '');
       setLastName(currentUser.lastName || '');
       setEmail(currentUser.email || '');
       setPhone(currentUser.phone || '');
       setAboutMe(currentUser.aboutMe || '');
-      setAvatarColor(currentUser.avatarColor || '#007aff');
-      setNameColor(currentUser.nameColor || '#5eaddf');
+      setAvatarColor(app.avatarColor || currentUser.avatarColor || '#007aff');
+      setNameColor(app.nameColor || currentUser.nameColor || '#5eaddf');
       setAvatarUrl(currentUser.avatarUrl || null);
-      setProfileColor(currentUser.profileColor || '#312b3a');
-      setPrivacyPhone(currentUser.privacyPhone || 'all');
-      setPrivacyEmail(currentUser.privacyEmail || 'all');
-      setPrivacyOnline(currentUser.privacyOnline || 'all');
-      setPrivacyNameFormat(currentUser.privacyNameFormat || 'username');
-      setPrivacyFullName(currentUser.privacyFullName || 'all');
-      setPrivacySearch(currentUser.privacySearch || 'all');
+      setProfileColor(app.profileColor || currentUser.profileColor || '#312b3a');
+      setPrivacyPhone(p.phone);
+      setPrivacyEmail(p.email);
+      setPrivacyOnline(p.online);
+      setPrivacyNameFormat(p.privacyNameFormat);
+      setPrivacyFullName(p.fullName);
+      setPrivacySearch(p.search);
     }
   }, [currentUser]);
 
@@ -243,8 +248,8 @@ export default function SettingsPage() {
                 setActiveSettingsTab(null);
                 window.history.replaceState(null, '', '/settings');
               }}
-              state={{ uniqueId, username, firstName, lastName, email, phone, aboutMe, avatarColor, avatarUrl, nameColor, profileColor }}
-              setters={{ setUniqueId, setUsername, setFirstName, setLastName, setEmail, setPhone, setAboutMe, setAvatarColor, setAvatarUrl, setNameColor, setProfileColor }}
+              state={{ publicId, username, firstName, lastName, email, phone, aboutMe, avatarColor, avatarUrl, nameColor, profileColor }}
+              setters={{ setPublicId, setUsername, setFirstName, setLastName, setEmail, setPhone, setAboutMe, setAvatarColor, setAvatarUrl, setNameColor, setProfileColor }}
             />
           )}
 

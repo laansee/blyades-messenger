@@ -5,6 +5,7 @@ import styles from '../../css/profile.module.css';
 import SmartAvatar from '../../common/SmartAvatar';
 import { supabase } from '../../../services/supabaseClient';
 import useMessengerContext from '../../../context/messengerContext';
+import { userService } from '../../../services/userService';
 
 interface AdminItem {
   id: string | number;
@@ -63,19 +64,12 @@ export const AdministratorsModal: React.FC<AdministratorsModalProps> = ({
       }
 
       const userUuids = members.map((m: any) => String(m.userId));
-      const { data: usersData, error: usersError } = await supabase
-        .from('users')
-        .select('*')
-        .in('uuid', userUuids);
+      const usersData = await userService.getUsersByUuids(userUuids);
+      const usersMap = new Map(usersData.map((u) => [String(u.uuid), u]));
 
-      if (usersError) throw usersError;
-
-      const usersMap = new Map((usersData || []).map((u: any) => [String(u.uuid || u.id), u]));
-
-      // Находим имя владельца
       const ownerMember = members.find((m: any) => m.role === 'owner');
       const ownerUser = ownerMember ? usersMap.get(String(ownerMember.userId)) : null;
-      const detectedOwnerName = ownerUser?.username || ownerUser?.name || 'владелец';
+      const detectedOwnerName = ownerUser?.username || 'владелец';
 
       const adminList: AdminItem[] = [];
       const candidateList: AdminItem[] = [];
@@ -87,12 +81,12 @@ export const AdministratorsModal: React.FC<AdministratorsModalProps> = ({
         const item: AdminItem = {
           id: u?.id || uid,
           uuid: uid,
-          name: u?.username || u?.name || 'Пользователь',
-          username: u?.username || u?.uniqueId,
+          name: u?.username || 'Пользователь',
+          username: u?.username || u?.publicId || undefined,
           avatarUrl: u?.avatarUrl || null,
-          avatarColor: u?.avatarColor || '#5865F2',
+          avatarColor: u?.appearance?.avatarColor || u?.avatarColor || '#5865F2',
           role: m.role || 'member',
-          online: u?.status === 'online',
+          online: u && ctx.isUserOnline ? ctx.isUserOnline(u) : false,
           promotedBy: m.role === 'owner' ? 'Владелец' : `Назначил(а) ${detectedOwnerName}`,
         };
 

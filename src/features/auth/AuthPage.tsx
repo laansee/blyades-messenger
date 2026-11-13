@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Eye, EyeOff, AlertTriangle } from 'lucide-react';
 import { supabase } from '../../services/supabaseClient';
 import { userService } from '../../services/userService';
 import { ToastNotification, type ToastState } from '../../components/common/GlobalUI';
@@ -11,8 +12,7 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [isRegister, setIsRegister] = useState(false);
 
-  const [email, setEmail] = useState(''); 
-  const [login, setLogin] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
@@ -21,7 +21,7 @@ export default function AuthPage() {
   const [toast, setToast] = useState<ToastState>({ show: false, message: '', type: 'info' });
 
   useEffect(() => {
-    document.title = isRegister ? "Регистрация | Blyades" : "Авторизация | Blyades";
+    document.title = isRegister ? 'Регистрация | Blyades' : 'Авторизация | Blyades';
   }, [isRegister]);
 
   useEffect(() => {
@@ -34,7 +34,7 @@ export default function AuthPage() {
   }, [toast.show]);
 
   const handleSignIn = async (e: React.FormEvent) => {
-    if (e) e.preventDefault(); 
+    if (e) e.preventDefault();
     setErrorMsg('');
     setLoading(true);
 
@@ -57,12 +57,15 @@ export default function AuthPage() {
       }
 
       if (data?.user) {
-        // 🎯 Ищем пользователя по строковому UUID через наш userService
         const publicUser = await userService.getUserByUuid(data.user.id);
 
         localStorage.setItem('blyades_user_id', data.user.id);
         localStorage.setItem('blyades_username', publicUser?.username || 'user');
-        localStorage.setItem('blyades_unique_id', publicUser?.uniqueId || 'user');
+        if (publicUser?.publicId) {
+          localStorage.setItem('blyades_unique_id', publicUser.publicId);
+        } else {
+          localStorage.removeItem('blyades_unique_id');
+        }
 
         window.location.reload();
       }
@@ -78,11 +81,14 @@ export default function AuthPage() {
     if (e) e.preventDefault();
     setErrorMsg('');
 
-    if (!email.trim() || !login.trim() || !password.trim()) {
+    const cleanEmail = email.trim();
+    const cleanPassword = password.trim();
+
+    if (!cleanEmail || !cleanPassword) {
       setErrorMsg('Пожалуйста, заполните все поля');
       return;
     }
-    if (password !== confirmPassword) {
+    if (cleanPassword !== confirmPassword.trim()) {
       setErrorMsg('Пароли не совпадают!');
       return;
     }
@@ -91,18 +97,18 @@ export default function AuthPage() {
 
     try {
       const generatedNameColor = getRandomDefaultNameColor();
+      const defaultUsername = cleanEmail.split('@')[0]?.trim() || 'Пользователь';
 
       const { data, error } = await supabase.auth.signUp({
-        email: email.trim(),
-        password: password.trim(),
+        email: cleanEmail,
+        password: cleanPassword,
         options: {
           data: {
-            username: login.trim(),
-            firstName: login.trim(),
+            username: defaultUsername,
             nameColor: generatedNameColor,
             profileColor: '#312b3a',
-          }
-        }
+          },
+        },
       });
 
       if (error) {
@@ -112,18 +118,9 @@ export default function AuthPage() {
       }
 
       if (data?.user) {
-        // 2. Если создание строки в public.users происходит вручную на клиенте (а не через SQL-триггер):
-        // await supabase.from('users').upsert({
-        //   uuid: data.user.id,
-        //   username: login.trim(),
-        //   email: email.trim(),
-        //   nameColor: generatedNameColor,
-        //   profileColor: '#312b3a',
-        // });
-        
         localStorage.setItem('blyades_user_id', data.user.id);
-        localStorage.setItem('blyades_username', login.trim());
-        localStorage.setItem('blyades_unique_id', login.trim());
+        localStorage.setItem('blyades_username', defaultUsername);
+        localStorage.removeItem('blyades_unique_id');
 
         setToast({
           show: true,
@@ -155,44 +152,59 @@ export default function AuthPage() {
                 <h1 className={styles.authTitle}>Войти в аккаунт</h1>
                 <p className={styles.authSubtitle}>Добро пожаловать обратно</p>
               </div>
-              {errorMsg && !isRegister && <div className={styles.authErrorAlert}>⚠️ {errorMsg}</div>}
+              {errorMsg && !isRegister && (
+                <div className={styles.authErrorAlert} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <AlertTriangle size={16} style={{ flexShrink: 0 }} />
+                  <span>{errorMsg}</span>
+                </div>
+              )}
               
               <form onSubmit={handleSignIn} className={styles.authFormFields}>
                 <div className={styles.inputGroup}>
-                  <label htmlFor='auth-email'>Электронная почта</label>
+                  <label htmlFor="auth-email">Электронная почта</label>
                   <input 
                     type="email" 
                     value={email} 
                     onChange={e => setEmail(e.target.value)} 
                     placeholder="ivan@example.com" 
                     required 
-                    id='auth-email'
+                    id="auth-email"
                     autoComplete="email"
                   />
                 </div>
                 <div className={styles.inputGroup}>
-                  <label htmlFor='auth-pass'>Пароль</label>
+                  <label htmlFor="auth-pass">Пароль</label>
                   <div style={{ position: 'relative', width: '100%', maxWidth: '320px', display: 'flex' }}>
                     <input 
-                      type={showLoginPass ? "text" : "password"} 
+                      type={showLoginPass ? 'text' : 'password'} 
                       value={password} 
                       onChange={e => setPassword(e.target.value)} 
                       placeholder="••••••••" 
                       autoComplete="current-password"
                       required
-                      id='auth-pass'
-                      style={{ width: '100%', boxSizing: 'border-box', paddingRight: '46px' }}
+                      id="auth-pass"
+                      style={{ width: '100%', boxSizing: 'border-box', paddingRight: '42px' }}
                     />
                     <button
                       type="button"
                       aria-label="Показать пароль"
                       onClick={() => setShowLoginPass(!showLoginPass)}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', padding: 0, zIndex: 10 }}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        position: 'absolute',
+                        right: '12px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        padding: 0,
+                        zIndex: 10,
+                        color: showLoginPass ? '#aa3bff' : '#9ca3af',
+                      }}
                     >
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                        <path d="M12 5c-6 0-10 7-10 7s4 7 10 7 10-7 10-7-4-7-10-7Zm0 11.5A4.5 4.5 0 1 1 12 7.5a4.5 4.5 0 0 1 0 9Z" fill={showLoginPass ? "#aa3bff" : "#AFA7A8"} />
-                        <circle cx="12" cy="12" r="2.2" fill={showLoginPass ? "#aa3bff" : "#AFA7A8"} />
-                      </svg>
+                      {showLoginPass ? <EyeOff size={20} /> : <Eye size={20} />}
                     </button>
                   </div>
                 </div>
@@ -213,7 +225,7 @@ export default function AuthPage() {
                   <span 
                     onClick={() => { 
                       setIsRegister(true); 
-                      setErrorMsg(''); 
+                      setTimeout(() => setErrorMsg(''), 600);
                     }} 
                     className={styles.authSwitchLink}
                   >
@@ -224,82 +236,85 @@ export default function AuthPage() {
             </div>
           </div>
 
-          {/* БЛОК 2: Центральная Картинка */}
+          {/* Центральная Картинка */}
           <div className={styles.authGraphicSide}>
             <div className={styles.authMockImage}>
               <img src={Image} alt="Logo" className="auth-backImg" />
             </div> 
           </div>
 
-          {/* БЛОК 3: Форма Регистрации */}
+          {/* Форма Регистрации */}
           <div className={styles.authFormSide}>
             <div className={styles.authFormWrapper}>
               <div className={styles.authHeaderText}>
                 <h1 className={styles.authTitle}>Регистрация</h1>
                 <p className={styles.authSubtitle}>Создайте новый профиль в системе</p>
               </div>
-              {errorMsg && isRegister && <div className={styles.authErrorAlert}>⚠️ {errorMsg}</div>}
+              {errorMsg && isRegister && (
+                <div className={styles.authErrorAlert} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <AlertTriangle size={16} style={{ flexShrink: 0 }} />
+                  <span>{errorMsg}</span>
+                </div>
+              )}
               
               <form onSubmit={handleSignUp} className={styles.authFormFields}>
                 <div className={styles.inputGroup}>
-                  <label htmlFor='reg-email'>Электронная почта</label>
+                  <label htmlFor="reg-email">Электронная почта</label>
                   <input 
                     type="email" 
                     value={email} 
                     onChange={e => setEmail(e.target.value)} 
                     placeholder="ivan@example.com" 
                     required
-                    id='reg-email'
+                    id="reg-email"
                     autoComplete="email"
                   />
                 </div>
                 <div className={styles.inputGroup}>
-                  <label htmlFor='reg-login'>Придумайте Логин</label>
-                  <input 
-                    type="text" 
-                    value={login} 
-                    onChange={e => setLogin(e.target.value)} 
-                    placeholder="ivan" 
-                    required
-                    id='reg-login'
-                    autoComplete="username"
-                  />
-                </div>
-                <div className={styles.inputGroup}>
-                  <label htmlFor='reg-pass'>Пароль</label>
+                  <label htmlFor="reg-pass">Пароль</label>
                   <div style={{ position: 'relative', width: '100%', maxWidth: '320px', display: 'flex' }}>
                     <input 
-                      type={showRegisterPass ? "text" : "password"}
+                      type={showRegisterPass ? 'text' : 'password'}
                       value={password} 
                       onChange={e => setPassword(e.target.value)} 
                       placeholder="••••••••" 
                       required
-                      id='reg-pass'
+                      id="reg-pass"
                       autoComplete="new-password"
-                      style={{ width: '100%', boxSizing: 'border-box', paddingRight: '46px' }}
+                      style={{ width: '100%', boxSizing: 'border-box', paddingRight: '42px' }}
                     />
                     <button
                       type="button"
                       aria-label="Показать пароль"
                       onClick={() => setShowRegisterPass(!showRegisterPass)}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', padding: 0, zIndex: 10 }}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        position: 'absolute',
+                        right: '12px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        padding: 0,
+                        zIndex: 10,
+                        color: showRegisterPass ? '#aa3bff' : '#9ca3af',
+                      }}
                     >
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                        <path d="M12 5c-6 0-10 7-10 7s4 7 10 7 10-7 10-7-4-7-10-7Zm0 11.5A4.5 4.5 0 1 1 12 7.5a4.5 4.5 0 0 1 0 9Z" fill={showRegisterPass ? "#aa3bff" : "#AFA7A8"} />
-                        <circle cx="12" cy="12" r="2.2" fill={showRegisterPass ? "#aa3bff" : "#AFA7A8"} />
-                      </svg>
+                      {showRegisterPass ? <EyeOff size={20} /> : <Eye size={20} />}
                     </button>
                   </div>
                 </div>
                 <div className={styles.inputGroup}>
-                  <label htmlFor='reg-pass-confirm'>Повторите пароль</label>
+                  <label htmlFor="reg-pass-confirm">Повторите пароль</label>
                   <input 
-                    type={showRegisterPass ? "text" : "password"}
+                    type={showRegisterPass ? 'text' : 'password'}
                     value={confirmPassword} 
                     onChange={e => setConfirmPassword(e.target.value)} 
                     placeholder="••••••••" 
                     required
-                    id='reg-pass-confirm'
+                    id="reg-pass-confirm"
                     autoComplete="new-password"
                   />
                 </div>
@@ -324,7 +339,7 @@ export default function AuthPage() {
                   <span 
                     onClick={() => { 
                       setIsRegister(false); 
-                      setErrorMsg(''); 
+                      setTimeout(() => setErrorMsg(''), 600);
                     }} 
                     className={styles.authSwitchLink}
                   >

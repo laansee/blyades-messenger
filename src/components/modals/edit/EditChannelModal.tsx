@@ -87,25 +87,29 @@ export default function EditChannelModal({
 
     const { data: chatRow } = await supabase
       .from('chats')
-      .select('signMessages, showAuthorProfiles, postMode')
+      .select('settings')
       .eq('id', entityId)
       .single();
 
     if (chatRow) {
-      const actualSign = Boolean(chatRow.signMessages);
-      const actualShowAuthors = Boolean(chatRow.showAuthorProfiles);
+      const settings = chatRow.settings || {};
+      const actualSign = Boolean(settings.signMessages);
+      const actualShowAuthors = Boolean(settings.showAuthorProfiles);
       setSignMessagesEnabled(actualSign);
       setShowAuthorProfilesEnabled(actualSign ? actualShowAuthors : false);
 
       if (ctx.setChats) {
         ctx.setChats((prev: any[]) =>
           prev.map((c: any) =>
-            Number(c.id) === entityId ? { 
-              ...c, 
-              signMessages: actualSign, 
-              showAuthorProfiles: actualSign ? actualShowAuthors : false,
-              postMode: chatRow.postMode 
-            } : c
+            Number(c.id) === entityId
+              ? {
+                  ...c,
+                  settings,
+                  signMessages: actualSign,
+                  showAuthorProfiles: actualSign ? actualShowAuthors : false,
+                  postMode: settings.postMode || 'channel',
+                }
+              : c
           )
         );
       }
@@ -193,15 +197,25 @@ export default function EditChannelModal({
     const isNumericId = !isNaN(numId) && numId > 0 && !String(rawId).startsWith('channel_');
     const uniqueStringId = String(currentChatUser?.uniqueId || currentChatUser?.id || '');
 
-    const updatedFields: Record<string, any> = {
-      name: channelName.trim(),
-      description: channelDesc.trim() || null,
-      avatarColor: channelColor,
-      avatarUrl: channelUrl.trim() || null,
+    const nextSettings = {
+      ...(currentChatUser?.settings || {}),
       signMessages: signMessagesEnabled,
       showAuthorProfiles: signMessagesEnabled ? showAuthorProfilesEnabled : false,
       postMode: signMessagesEnabled ? 'user' : 'channel',
-      updatedAt: new Date().toISOString()
+    };
+
+    const nextAppearance = {
+      ...(currentChatUser?.appearance || {}),
+      avatarColor: channelColor,
+    };
+
+    const updatedFields: Record<string, any> = {
+      name: channelName.trim(),
+      description: channelDesc.trim() || null,
+      appearance: nextAppearance,
+      avatarUrl: channelUrl.trim() || null,
+      settings: nextSettings,
+      updatedAt: new Date().toISOString(),
     };
 
     try {
@@ -230,14 +244,16 @@ export default function EditChannelModal({
         ctx.setChats((prev: any[]) =>
           prev.map((c: any) => {
             const isMatch = Number(c.id) === numId || String(c.uniqueId) === uniqueStringId || c.name === channelName;
-            return isMatch 
-              ? { 
-                  ...c, 
-                  ...updatedFields, 
-                  aboutMe: updatedFields.description, 
-                  signMessages: signMessagesEnabled,
-                  postMode: updatedFields.postMode 
-                } 
+            return isMatch
+              ? {
+                  ...c,
+                  ...updatedFields,
+                  avatarColor: channelColor,
+                  aboutMe: updatedFields.description,
+                  signMessages: nextSettings.signMessages,
+                  showAuthorProfiles: nextSettings.showAuthorProfiles,
+                  postMode: nextSettings.postMode,
+                }
               : c;
           })
         );

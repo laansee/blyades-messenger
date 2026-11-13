@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import styles from '../../components/css/settings.module.css';
 import useMessengerContext from '../../context/messengerContext';
-import { userService } from '../../services/userService';
+import { userService, getUserPrivacy, type UserPrivacySettings } from '../../services/userService';
 import { PrivacySelectorModal, type PrivacyOption } from '../../components/common/GlobalUI';
 
 export default function PrivacySettings({ state, setters }: any) {
@@ -51,26 +51,26 @@ export default function PrivacySettings({ state, setters }: any) {
     let subtitle = '';
     let options = defaultPrivacyOptions;
     let selectedValue = '';
-    let keyToUpdate: any = '';
-    let setterFn: (val: string) => void = () => {};
+    let keyToUpdate: keyof UserPrivacySettings = 'phone';
+    let setterFn: (val: any) => void = () => {};
 
     if (type === 'phone') {
       titleModal = 'Номер телефона';
       subtitle = 'Кто может видеть мой номер телефона в профиле.';
       selectedValue = privacyPhone;
-      keyToUpdate = 'privacyPhone';
+      keyToUpdate = 'phone';
       setterFn = setPrivacyPhone;
     } else if (type === 'online') {
       titleModal = 'Время захода';
       subtitle = 'Кто видит, когда вы были в сети и онлайн.';
       selectedValue = privacyOnline;
-      keyToUpdate = 'privacyOnline';
+      keyToUpdate = 'online';
       setterFn = setPrivacyOnline;
     } else if (type === 'email') {
       titleModal = 'Электронная почта';
       subtitle = 'Кто может видеть ваш email в карточке профиля.';
       selectedValue = privacyEmail;
-      keyToUpdate = 'privacyEmail';
+      keyToUpdate = 'email';
       setterFn = setPrivacyEmail;
     } else if (type === 'nameFormat') {
       titleModal = 'Отображение имени';
@@ -86,7 +86,7 @@ export default function PrivacySettings({ state, setters }: any) {
       titleModal = 'Имя и фамилия';
       subtitle = 'Кто видит строку реальных имён, если выбран вывод псевдонима.';
       selectedValue = privacyFullName;
-      keyToUpdate = 'privacyFullName';
+      keyToUpdate = 'fullName';
       setterFn = setPrivacyFullName;
     } else if (type === 'search') {
       titleModal = 'Поиск аккаунта';
@@ -96,18 +96,28 @@ export default function PrivacySettings({ state, setters }: any) {
         { value: 'none', label: 'Никто' }
       ];
       selectedValue = privacySearch || 'all';
-      keyToUpdate = 'privacySearch';
+      keyToUpdate = 'search';
       setterFn = setPrivacySearch;
     }
 
     const onSelectAction = async (val: string) => {
       ctx.showToast?.('Сохранение настроек приватности...', 'loading');
       const userUuid = String(currentUser?.uuid || currentUser?.id);
-      const res = await userService.updatePrivacySetting(userUuid, keyToUpdate, val as any);
+      const currentPrivacy = getUserPrivacy(currentUser);
+      const res = await userService.updatePrivacySetting(userUuid, keyToUpdate, val as any, currentPrivacy);
 
-      if (res.success) {
+      if (res.success && res.updatedPrivacy) {
         setterFn(val);
-        ctx.setCurrentUser({ ...currentUser, [keyToUpdate]: val });
+        ctx.setCurrentUser({
+          ...currentUser,
+          privacy: res.updatedPrivacy,
+          privacyPhone: res.updatedPrivacy.phone,
+          privacyEmail: res.updatedPrivacy.email,
+          privacyOnline: res.updatedPrivacy.online,
+          privacyNameFormat: res.updatedPrivacy.privacyNameFormat,
+          privacyFullName: res.updatedPrivacy.fullName,
+          privacySearch: res.updatedPrivacy.search,
+        });
         ctx.showToast?.('Настройки приватности обновлены! ✅', 'success');
       } else {
         ctx.showToast?.(`Ошибка сохранения: ${res.error}`, 'error');

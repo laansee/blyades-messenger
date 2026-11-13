@@ -40,8 +40,6 @@ export default function CreateChannelModal({ show, onClose }: CreateChannelModal
     const nowIso = new Date().toISOString();
 
     try {
-      const startText = 'Канал создан';
-      
       const { data: newChat, error: chatError } = await supabase
         .from('chats')
         .insert([
@@ -49,13 +47,15 @@ export default function CreateChannelModal({ show, onClose }: CreateChannelModal
             name: name.trim(),
             description: description.trim() || null,
             type: 'channel',
-            avatarColor: randomColor,
+            accessType: 'private',
+            appearance: { avatarColor: randomColor },
+            settings: {
+              signMessages: false,
+              showAuthorProfiles: false,
+              postMode: 'channel',
+            },
             createdBy: myUuid,
             uniqueId: channelUniqueId,
-            lastMessageText: startText,
-            lastMessageType: 'text',
-            lastMessageAt: nowIso,
-            lastMessageSenderUUID: '00000000-0000-0000-0000-000000000000',
             createdAt: nowIso,
             updatedAt: nowIso,
           },
@@ -89,14 +89,6 @@ export default function CreateChannelModal({ show, onClose }: CreateChannelModal
           createdAt: nowIso,
         },
       ]);
-
-      await supabase
-        .from('chats')
-        .update({
-          lastMessageText: channelStartText,
-          lastMessageAt: nowIso,
-        })
-        .eq('id', newChat.id);
 
       ctx.showToast(`Канал «${name.trim()}» успешно создан! 📢`, 'success');
 

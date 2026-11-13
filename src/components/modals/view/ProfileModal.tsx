@@ -108,11 +108,16 @@ export default function ProfileModal() {
     if (!rawUser) return null;
 
     const privacy = getUserPrivacy(rawUser);
+    const appearance = rawUser.appearance || {};
 
     return {
       ...rawUser,
+      publicId: rawUser.publicId ?? rawUser.uniqueId ?? null,
+      appearance,
+      avatarColor: appearance.avatarColor || rawUser.avatarColor || '#5865F2',
+      nameColor: appearance.nameColor || rawUser.nameColor || '#5eaddf',
+      profileColor: appearance.profileColor || rawUser.profileColor || '#312b3a',
       privacy,
-      // Обратная совместимость для компонентов вроде UserProfileView:
       privacyPhone: privacy.phone,
       privacyEmail: privacy.email,
       privacyOnline: privacy.online,

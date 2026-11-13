@@ -10,7 +10,6 @@ import {
   Ellipsis, LogOut 
 } from 'lucide-react';
 
-import { renderUserStatusBadge } from '../../../utils/statusBadge';
 import { AddParticipantsModal } from '../../common/GlobalUI';
 import SmartAvatar from '../../common/SmartAvatar';
 
@@ -93,10 +92,10 @@ export default function GroupProfileView({
 
     return groupMembers.filter((member) => {
       const name = (member.username || '').toLowerCase();
-      const uniqueId = (member.uniqueId || '').toLowerCase();
+      const publicTag = (member.publicId || '').toLowerCase();
       const fullName = `${member.firstName || ''} ${member.lastName || ''}`.toLowerCase();
 
-      return name.includes(query) || uniqueId.includes(query) || fullName.includes(query);
+      return name.includes(query) || publicTag.includes(query) || fullName.includes(query);
     });
   }, [groupMembers, searchQuery]);
 
@@ -159,7 +158,7 @@ export default function GroupProfileView({
           <SmartAvatar
             size={84}
             avatarUrl={currentChatUser.avatarUrl}
-            avatarColor={currentChatUser.avatarColor || '#5865F2'}
+            avatarColor={currentChatUser.appearance?.avatarColor || currentChatUser.avatarColor || '#5865F2'}
             name={baseName}
             isChannel={false}
           />
@@ -401,7 +400,11 @@ export default function GroupProfileView({
 
                       <div className={styles['info-users-text-col']}>
                         <span className={styles['info-users-name']}>
-                          {renderUserStatusBadge(member)}
+                          {member.statusBadge && (
+                            <span title={member.statusBadge.title} style={{ cursor: 'help', userSelect: 'none' }}>
+                              {member.statusBadge.icon}
+                            </span>
+                          )}
                           {displayName}
                         </span>
                         <span className={`${styles['info-users-status']} ${isOnline ? styles['online'] : ''}`}>

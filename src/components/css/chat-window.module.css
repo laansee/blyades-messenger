@@ -131,23 +131,36 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  margin: 4px 0;
+  margin: 14px 0 8px 0;
   width: 100%;
   user-select: none;
 }
 
 .chat-date-text {
-  background-color: rgba(31, 32, 40, 0.6); /* Полупрозрачный тёмный фон */
-  color: rgba(255, 255, 255, 0.85);       /* Мягкий белый цвет текста */
+  background-color: rgba(20, 21, 26, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #ebebf5;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   padding: 4px 14px;
-  border-radius: 12px;                      /* Закругление ТГ-стиля */
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border-radius: 14px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   text-align: center;
-  backdrop-filter: blur(4px);               /* Эффект лёгкого размытия под плашкой */
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
+.floating-date-wrapper {
+  position: sticky;
+  top: 10px;
+  z-index: 20;
+  height: 0;
+  overflow: visible;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  margin: 0;
+}
 
 .messages-body {
   flex: 1;
@@ -338,7 +351,7 @@ form.chat-input-zone {
   font-family: system-ui, -apple-system, sans-serif;}
 .input-action-btn { 
   background: none; border: none; font-size: 20px; cursor: pointer; color: #a0a0ab; 
-  display: flex; margin: auto 0; }
+  display: flex; margin: auto 0 12px; }
 .send-message-btn {
   background: none; border: none; width: 44px; height: 44px; border-radius: 12px; 
   cursor: pointer; display: flex; align-items: center; justify-content: center; 
@@ -566,32 +579,23 @@ form.chat-input-zone {
 
 /* Прилипающая плашка даты (скриншоты 1 и 2) */
 .sticky-date {
-  position: sticky;
-  top: 10px;
-  z-index: 15;
-  align-self: center;
-  margin: 12px auto;
   padding: 4px 14px;
-  background-color: rgba(20, 21, 26, 0.75);
+  height: fit-content;
+  background-color: rgba(20, 21, 26, 0.85);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 14px;
   color: #ebebf5;
   font-size: 13px;
   font-weight: 600;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   user-select: none;
   pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
 }
-
-/* Кластер сообщений от одного автора */
-.sender-group-container {
-  display: flex;
-  position: relative;
-  margin-bottom: 6px;
-  width: 100%;
-}
+.sticky-date.visible {opacity: 1;}
 
 .sender-group-container.incoming {
   flex-direction: row;

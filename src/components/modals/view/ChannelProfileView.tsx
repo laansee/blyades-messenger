@@ -297,7 +297,7 @@ export default function ChannelProfileView({
             <SmartAvatar
               size={84}
               avatarUrl={currentChatUser.avatarUrl}
-              avatarColor={currentChatUser.avatarColor || '#9d7bf6'}
+              avatarColor={currentChatUser.appearance?.avatarColor || currentChatUser.avatarColor || '#9d7bf6'}
               name={baseName}
               isChannel={true}
             />
@@ -470,7 +470,7 @@ export default function ChannelProfileView({
               </div>
 
               <div 
-                onClick={() => setShowSubscribersModal(true)}
+                onClick={() => setShowAdminsModal(true)}
                 className={styles['action-bottom-btn']}
                 style={{ display: 'flex', alignItems: 'center', gap: '14px' }}
               >

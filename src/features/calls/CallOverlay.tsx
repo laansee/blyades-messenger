@@ -150,7 +150,7 @@ export default function CallOverlay() {
             <div className={styles.userCard}>
               <div
                 className={`${styles.userAvatarCircle} ${isMeSpeaking ? styles.avatarSpeaking : ''}`}
-                style={{ backgroundColor: '#007aff' }}
+                style={{ backgroundColor: ctx.currentUser?.appearance?.avatarColor || ctx.currentUser?.avatarColor || '#007aff' }}
               >
                 {(ctx.currentUser?.username || 'U')[0].toUpperCase()}
               </div>

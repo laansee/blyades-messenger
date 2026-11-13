@@ -4,7 +4,8 @@ import { Search, ArrowLeft, Check } from 'lucide-react';
 import styles from '../../css/profile.module.css';
 import SmartAvatar from '../../common/SmartAvatar';
 import { supabase } from '../../../services/supabaseClient';
-import useMessengerContext from '../../../context/messengerContext';
+import useMessengerContext, { formatUserOnlineStatus } from '../../../context/messengerContext';
+import { userService } from '../../../services/userService';
 
 interface SubscriberItem {
   id: string | number;
@@ -66,29 +67,25 @@ export const SubscribersModal: React.FC<SubscribersModalProps> = ({
       }
 
       const userUuids = members.map((m: any) => String(m.userId));
-      const { data: usersData, error: usersError } = await supabase
-        .from('users')
-        .select('*')
-        .in('uuid', userUuids);
-
-      if (usersError) throw usersError;
-
-      const usersMap = new Map((usersData || []).map((u: any) => [String(u.uuid || u.id), u]));
+      const usersData = await userService.getUsersByUuids(userUuids);
+      const usersMap = new Map(usersData.map((u) => [String(u.uuid), u]));
 
       const formatted: SubscriberItem[] = members.map((m: any) => {
         const uid = String(m.userId);
         const u = usersMap.get(uid);
+        const isOnline = u && ctx.isUserOnline ? ctx.isUserOnline(u) : false;
+        const statusInfo = formatUserOnlineStatus(u?.updatedAt, u?.privacy?.online);
 
         return {
           id: u?.id || uid,
           uuid: uid,
-          name: u?.username || u?.name || 'Пользователь',
-          username: u?.username || u?.uniqueId,
+          name: u?.username || 'Пользователь',
+          username: u?.username || u?.publicId || undefined,
           avatarUrl: u?.avatarUrl || null,
-          avatarColor: u?.avatarColor || '#5865F2',
+          avatarColor: u?.appearance?.avatarColor || u?.avatarColor || '#5865F2',
           role: m.role || 'member',
-          online: u?.status === 'online',
-          lastSeen: u?.lastSeen,
+          online: isOnline,
+          lastSeen: statusInfo.text,
         };
       });
 

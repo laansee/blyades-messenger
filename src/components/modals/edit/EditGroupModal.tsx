@@ -148,12 +148,17 @@ export default function EditGroupModal({
     }
 
     const entityId = Number(currentChatUser?.internalChatId || currentChatUser?.id);
+    const nextAppearance = {
+      ...(currentChatUser?.appearance || {}),
+      avatarColor: groupColor,
+    };
+
     const updatedFields = {
       name: groupName.trim(),
       description: groupDesc.trim() || null,
-      avatarColor: groupColor,
+      appearance: nextAppearance,
       avatarUrl: groupUrl.trim() || null,
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
     };
 
     const { error } = await supabase
@@ -169,7 +174,14 @@ export default function EditGroupModal({
     if (ctx.setChats) {
       ctx.setChats((prev: any[]) =>
         prev.map((c: any) =>
-          Number(c.id) === entityId ? { ...c, ...updatedFields, aboutMe: updatedFields.description } : c
+          Number(c.id) === entityId
+            ? {
+                ...c,
+                ...updatedFields,
+                avatarColor: groupColor,
+                aboutMe: updatedFields.description,
+              }
+            : c
         )
       );
     }

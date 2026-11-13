@@ -31,7 +31,7 @@ export default function EditContactModal({ show, contact, onClose, onSuccess }: 
 
   const contactUuid = String(contact.contactId || contact.partnerId || contact.uuid || contact.id);
   const displayName = [firstName, lastName].filter(Boolean).join(' ').trim() || contact.username || contact.name || 'Пользователь';
-  const phoneDisplay = contact.phone || '@' + (contact.uniqueId || contact.username || 'user');
+  const phoneDisplay = contact.phone || '@' + (contact.publicId || contact.uniqueId || contact.username || 'user');
 
   // 🗑️ Удаление контакта
   const handleDelete = () => {

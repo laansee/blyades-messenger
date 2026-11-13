@@ -1,10 +1,10 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import styles from '../../../components/css/sidebar.module.css';
-import { Search, ArrowLeft, X, Check, Users, Megaphone } from 'lucide-react';
+import { Check, Users, Megaphone } from 'lucide-react';
 import useMessengerContext from '../../../context/messengerContext';
 import SmartAvatar from '../../../components/common/SmartAvatar';
-import { renderUserStatusBadge } from '../../../utils/statusBadge';
 import { searchService } from '../../../services/searchService';
+import { getUserStatusBadge } from '../../../services/userService';
 
 interface GlobalSearchViewProps {
   onClose: () => void;
@@ -159,7 +159,7 @@ export const GlobalSearchView: React.FC<GlobalSearchViewProps> = ({
         return false;
       }
       const name = String(c.name || c.username || '').toLowerCase();
-      const login = String(c.uniqueId || '').toLowerCase();
+      const login = String(c.publicId || c.uniqueId || '').toLowerCase();
       return name.includes(q) || login.includes(q);
     });
   }, [ctx.chats, query, isQueryEmpty, activeTab]);
@@ -344,7 +344,14 @@ export const GlobalSearchView: React.FC<GlobalSearchViewProps> = ({
                       </div>
                       <div className={styles['chat-info']}>
                         <span className={styles['chat-name']}>
-                          {renderUserStatusBadge(chat)}
+                          {(() => {
+                            const badge = getUserStatusBadge(chat);
+                            return badge ? (
+                              <span title={badge.title} style={{ cursor: 'help', userSelect: 'none' }}>
+                                {badge.icon}
+                              </span>
+                            ) : null;
+                          })()}
                           {chat.name}
                         </span>
                         <div className={styles['chat-last-message']}>
@@ -391,7 +398,14 @@ export const GlobalSearchView: React.FC<GlobalSearchViewProps> = ({
                           <span className={styles['chat-name']} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                             {isChannelItem && <Megaphone size={14} color="#8e8e93" style={{ flexShrink: 0 }} />}
                             {!isChannelItem && isGroupItem && <Users size={14} color="#8e8e93" style={{ flexShrink: 0 }} />}
-                            {renderUserStatusBadge(chat)}
+                            {(() => {
+                              const badge = getUserStatusBadge(chat);
+                              return badge ? (
+                                <span title={badge.title} style={{ cursor: 'help', userSelect: 'none' }}>
+                                  {badge.icon}
+                                </span>
+                              ) : null;
+                            })()}
                             <span>{chat.name}</span>
                           </span>
                           <span className={styles['chat-time']}>

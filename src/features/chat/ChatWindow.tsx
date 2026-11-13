@@ -8,15 +8,19 @@ import {
   Send, ArrowUp, ArrowDown, User, Eye,
   BellOff, MessageSquare, Trash, Phone, Clock, 
   Pin, Users, Megaphone, Bookmark, ArrowLeft,
+  Reply,
+  Copy,
+  Forward,
 } from 'lucide-react';
 
-import { DropdownMenu, AddParticipantsModal } from '../../components/common/GlobalUI'; 
-import { renderUserStatusBadge } from '../../utils/statusBadge';
+import { DropdownMenu, AddParticipantsModal } from '../../components/common/GlobalUI';
 import SmartAvatar from '../../components/common/SmartAvatar';
 import StartGroupCallModal from '../calls/StartGroupCallModal';
 import { SendAsModal } from '../../components/modals/common/SendAsModal';
 import { type ContextMenuItem } from '../../components/common/ContextMenu';
 import { getNameColor } from '../../utils/themeColors';
+import { getUserStatusBadge } from '../../services/userService';
+import { renderMessageWithLinks } from '../../utils/linkParser';
 
 function formatHoursAndMinutes(isoString: string | undefined): string {
   if (!isoString) return '';
@@ -40,6 +44,29 @@ export default function ChatWindow() {
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showStartGroupCallModal, setShowStartGroupCallModal] = useState(false);
+
+  const [isScrolling, setIsScrolling] = useState(false);
+  const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [isDatesVisible, setIsDatesVisible] = useState(false);
+  const [floatingDateTitle, setFloatingDateTitle] = useState<string | null>(null);
+  const hideDatesTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const triggerDatesVisibility = () => {
+    setIsDatesVisible(true);
+    if (hideDatesTimerRef.current) {
+      clearTimeout(hideDatesTimerRef.current);
+    }
+    hideDatesTimerRef.current = setTimeout(() => {
+      setIsDatesVisible(false);
+    }, 2500);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (hideDatesTimerRef.current) clearTimeout(hideDatesTimerRef.current);
+    };
+  }, []);
 
   // 🎯 Стейты для плавной анимации открытия и закрытия на мобилках
   const [renderedChatId, setRenderedChatId] = useState<string | null>(
@@ -162,15 +189,14 @@ export default function ChatWindow() {
 
     supabase
       .from('chats')
-      .select('signMessages, showAuthorProfiles, postMode')
+      .select('settings')
       .eq('id', numId)
       .single()
       .then(({ data }) => {
         if (data) {
-          const isSigned = Boolean(data.signMessages);
-          const isShowAuthors = Boolean(data.showAuthorProfiles);
-          setChannelSignMessages(isSigned);
-          setChannelShowAuthorProfiles(isShowAuthors);
+          const settings = data.settings || {};
+          setChannelSignMessages(Boolean(settings.signMessages));
+          setChannelShowAuthorProfiles(Boolean(settings.showAuthorProfiles));
         }
       });
   }, [isChannel, activeChatIdStr, currentChatUser?.signMessages, currentChatUser?.showAuthorProfiles]);
@@ -217,7 +243,7 @@ export default function ChatWindow() {
 
     const userDisplayName = (ctx.currentUser?.username || '').trim();
     const userFullName = `${ctx.currentUser?.firstName || ''} ${ctx.currentUser?.lastName || ''}`.trim();
-    const fallbackId = (ctx.currentUser?.uniqueId || '').trim();
+    const fallbackId = (ctx.currentUser?.publicId || ctx.currentUser?.uniqueId || '').trim();
 
     const authorSignature = userDisplayName || userFullName || fallbackId || 'Автор';
 
@@ -226,7 +252,6 @@ export default function ChatWindow() {
       chatId: activeChatIdStr,
       senderId: myId,
       senderType: optimisticSenderType,
-      authorId: myId,
       authorSignature: isSignActive && sendAsType !== 'channel'
         ? authorSignature
         : null,
@@ -362,7 +387,7 @@ export default function ChatWindow() {
       const isRenderAsAuthor = isChannel && isPostCreatedByUser && currentShowAuthors;
 
       const effectiveSenderId = isChannel
-        ? (isRenderAsAuthor ? String(msg.authorId || msg.senderId) : String(currentChatUser?.id || activeChatIdStr))
+        ? (isRenderAsAuthor ? String(msg.senderId) : String(currentChatUser?.id || activeChatIdStr))
         : String(msg.senderId);
 
       // В Избранном и Канале все сообщения выводятся слева
@@ -370,8 +395,8 @@ export default function ChatWindow() {
         ? false
         : (effectiveSenderId === myId);
 
-      const authorUserObj = (ctx.users || []).find((u: any) => String(u.uuid || u.id) === String(msg.authorId || msg.senderId)) ||
-                            (ctx.contacts || []).find((c: any) => String(c.contactId || c.partnerId || c.uuid || c.id) === String(msg.authorId || msg.senderId));
+      const authorUserObj = (ctx.users || []).find((u: any) => String(u.uuid || u.id) === String(msg.senderId)) ||
+                            (ctx.contacts || []).find((c: any) => String(c.contactId || c.partnerId || c.uuid || c.id) === String(msg.senderId));
 
       const senderDisplayName = isChannel
         ? (isRenderAsAuthor ? (authorUserObj?.username || authorUserObj?.name || 'Автор') : (currentChatUser?.name || 'Канал'))
@@ -477,14 +502,14 @@ export default function ChatWindow() {
     const menuItems: ContextMenuItem[] = [
       {
         label: 'Ответить',
-        icon: '↩️',
+        icon: <Reply size={16} />,
         disabled: true,
         title: 'Ответы на сообщения в разработке',
         onClick: () => {}
       },
       { 
         label: 'Копировать текст', 
-        icon: '📋', 
+        icon: <Copy size={16} />, 
         onClick: () => {
           if (ctx.handleCopyMessageText) ctx.handleCopyMessageText(msg.text);
           else navigator.clipboard.writeText(msg.text);
@@ -493,14 +518,14 @@ export default function ChatWindow() {
       },
       {
         label: 'Закрепить',
-        icon: '📌',
+        icon: <Pin size={16} />,
         disabled: true,
         title: 'Закрепление сообщений в разработке',
         onClick: () => {}
       },
       {
         label: 'Переслать',
-        icon: '➡️',
+        icon: <Forward size={16} />,
         disabled: true,
         title: 'Пересылка сообщений в разработке',
         onClick: () => {}
@@ -510,7 +535,7 @@ export default function ChatWindow() {
     if (isMyMsg || String(msg.senderId) === myId) {
       menuItems.splice(1, 0, {
         label: 'Редактировать',
-        icon: '✏️',
+        icon: <Pencil size={16} />,
         onClick: () => {
           ctx.setEditingMessage(msg);
           ctx.setMessageText(msg.text);
@@ -523,15 +548,26 @@ export default function ChatWindow() {
       { isDivider: true } as any,
       { 
         label: 'Удалить', 
-        icon: '🗑️', 
+        icon: <Trash size={16} />,
         isDanger: true, 
         onClick: () => {
           if (ctx.closeContextMenu) ctx.closeContextMenu();
+          
           ctx.showConfirm('Удаление сообщения', 'Удалить это сообщение?', async () => {
+            // 1. Сначала отправляем запрос на сервер (пока кнопка в модалке крутит лоадер)
+            const { error } = await supabase.from('messages').delete().eq('id', msg.id);
+            
+            if (error) {
+              ctx.showToast('Не удалось удалить сообщение', 'error');
+              throw error; // Это позволит модалке корректно обработать ошибку, если она настроена
+            }
+
+            // 2. Когда сервер ответил успехом, удаляем из локального стейта
             if (ctx.setAllMessages) {
               ctx.setAllMessages((prev: any[]) => prev.filter((m: any) => String(m.id) !== String(msg.id)));
             }
-            await supabase.from('messages').delete().eq('id', msg.id);
+
+            // 3. Показываем уведомление (модалка при этом закроется автоматически)
             ctx.showToast('Сообщение удалено', 'success');
           }, true);
         }
@@ -541,7 +577,7 @@ export default function ChatWindow() {
     ctx.setCtxMenu({ show: true, x: clientX, y: clientY, items: menuItems });
   };
 
-  const touchTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const touchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const touchStartPosRef = useRef<{ x: number; y: number } | null>(null);
   const isLongPressTriggeredRef = useRef(false);
 
@@ -600,13 +636,23 @@ export default function ChatWindow() {
       if (ctx.setMessageText) ctx.setMessageText('');
 
       prevMessagesLengthRef.current = displayedMessages.length;
-      messagesBodyRef.current.scrollTop = messagesBodyRef.current.scrollHeight;
+      requestAnimationFrame(() => {
+        if (messagesBodyRef.current) {
+          messagesBodyRef.current.scrollTop = messagesBodyRef.current.scrollHeight;
+        }
+      });
       setShowScrollBtn(false);
+      triggerDatesVisibility();
 
-      // 🎯 Автофокус только на ПК (> 739px), чтобы мобильный экран не дёргался
       if (window.innerWidth > 739) {
         messageInputRef.current?.focus();
       }
+      return;
+    }
+
+    if (!ctx.messagesLoading && prevMessagesLengthRef.current === 0 && displayedMessages.length > 0) {
+      prevMessagesLengthRef.current = displayedMessages.length;
+      messagesBodyRef.current.scrollTop = messagesBodyRef.current.scrollHeight;
       return;
     }
 
@@ -627,23 +673,7 @@ export default function ChatWindow() {
         behavior: 'smooth'
       });
     }
-  }, [ctx.activeChatId, displayedMessages, myId]);
-
-  useEffect(() => {
-    if (ctx.setEditingMessage) ctx.setEditingMessage(null);
-    if (ctx.setMessageText) ctx.setMessageText('');
-
-    const timer = setTimeout(() => {
-      if (messagesBodyRef.current) {
-        messagesBodyRef.current.scrollTop = messagesBodyRef.current.scrollHeight;
-      }
-      // 🎯 Автофокус только на ПК (> 739px)
-      if (messageInputRef.current && window.innerWidth > 739) {
-        messageInputRef.current.focus();
-      }
-    }, 50);
-    return () => clearTimeout(timer);
-  }, [ctx.activeChatId, ctx.allMessages]);
+  }, [ctx.activeChatId, ctx.messagesLoading, displayedMessages, myId]);
 
   if (!activeChatIdStr) {
     return (
@@ -855,6 +885,40 @@ export default function ChatWindow() {
     return <>{elements}</>;
   };
 
+  const handleMessagesScroll = () => {
+    const container = messagesBodyRef.current;
+    if (!container) return;
+
+    // Управление кнопкой «вниз»
+    const { scrollTop, scrollHeight, clientHeight } = container;
+    setShowScrollBtn(scrollHeight - scrollTop - clientHeight > 300);
+
+    // 🚀 Скролл пошел -> включаем видимость красной плашки сверху
+    setIsScrolling(true);
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+    }
+
+    // Определяем, какая дата сейчас находится в верхней части экрана
+    const containerTop = container.getBoundingClientRect().top;
+    const groups = container.querySelectorAll<HTMLElement>('[data-date-title]');
+
+    let currentStuckDate: string | null = null;
+    groups.forEach((el) => {
+      const rect = el.getBoundingClientRect();
+      if (rect.top <= containerTop + 80 && rect.bottom >= containerTop) {
+        currentStuckDate = el.getAttribute('data-date-title');
+      }
+    });
+
+    setFloatingDateTitle(currentStuckDate);
+
+    // ⏱️ Если 2.5 секунды нет скролла -> плавно гасим красную плашку сверху
+    scrollTimeoutRef.current = setTimeout(() => {
+      setIsScrolling(false);
+    }, 2500);
+  };
+
   const isChannelReadOnlyForUser = isChannel && 
     ctx.currentUser?.userStatus !== 'administrator' && 
     currentChatUser?.role !== 'owner' && 
@@ -910,7 +974,14 @@ export default function ChatWindow() {
                 'Избранное'
               ) : (
                 <>
-                  {renderUserStatusBadge(currentChatUser)} 
+                  {(() => {
+                    const badge = getUserStatusBadge(currentChatUser);
+                    return badge ? (
+                      <span title={badge.title} style={{ cursor: 'help', userSelect: 'none' }}>
+                        {badge.icon}
+                      </span>
+                    ) : null;
+                  })()}
                   {currentChatUser?.name || currentChatUser?.username || 'Загрузка...'}
                 </>
               )}
@@ -1014,11 +1085,55 @@ export default function ChatWindow() {
         className={styles['messages-body']} 
         ref={messagesBodyRef}
         onScroll={() => {
-          if (!messagesBodyRef.current) return;
-          const { scrollTop, scrollHeight, clientHeight } = messagesBodyRef.current;
+          const container = messagesBodyRef.current;
+          if (!container) return;
+
+          // Кнопка прокрутки вниз
+          const { scrollTop, scrollHeight, clientHeight } = container;
           setShowScrollBtn(scrollHeight - scrollTop - clientHeight > 300);
+
+          // 🚀 Скролл пошел -> показываем плашку сверху
+          setIsScrolling(true);
+          if (scrollTimeoutRef.current) {
+            clearTimeout(scrollTimeoutRef.current);
+          }
+
+          // Вычисляем, какая дата сейчас находится в верхней части экрана
+          const containerTop = container.getBoundingClientRect().top;
+          const groups = container.querySelectorAll<HTMLElement>('[data-date-title]');
+
+          let currentStuckDate: string | null = null;
+          groups.forEach((el) => {
+            const rect = el.getBoundingClientRect();
+            if (rect.top <= containerTop + 80 && rect.bottom >= containerTop) {
+              currentStuckDate = el.getAttribute('data-date-title');
+            }
+          });
+
+          if (currentStuckDate) {
+            setFloatingDateTitle(currentStuckDate);
+          }
+
+          // ⏱️ Если 2.5 секунды нет скролла -> плавно гасим плашку сверху
+          scrollTimeoutRef.current = setTimeout(() => {
+            setIsScrolling(false);
+          }, 2500);
         }}
       >
+        {!ctx.messagesLoading && floatingDateTitle && (
+          <div className={styles['floating-date-wrapper']}>
+            <div
+              className={styles['sticky-date']}
+              style={{
+                opacity: isScrolling ? 1 : 0,
+                transition: 'opacity 0.3s ease',
+              }}
+            >
+              {floatingDateTitle}
+            </div>
+          </div>
+        )}
+        
         {ctx.messagesLoading ? (
           <div className={styles['skeleton-container']}>
             <div className={`${styles['skeleton-row']} ${styles['skeleton-incoming']}`}>
@@ -1037,193 +1152,240 @@ export default function ChatWindow() {
             </div>
           </div>
         ) : (
-          groupedDays.map((dayGroup) => (
-            <div key={dayGroup.dateKey} className={styles['message-date-group']}>
-              <div className={styles['sticky-date']}>{dayGroup.dateTitle}</div>
+          groupedDays.map((dayGroup) => {
+            // 🎯 Прозрачность 0 только для той даты в потоке, которая сейчас дублируется плавающей плашкой сверху при скролле
+            const isCurrentSticky = isScrolling && floatingDateTitle === dayGroup.dateTitle;
 
-              {dayGroup.clusters.map((cluster) => {
-                if (cluster.isSystem) {
-                  return (
-                    <div key={cluster.clusterId} className={styles['system-message-container']}>
-                      {cluster.messages.map(({ msg }) => (
-                        <div 
-                          key={msg.id} 
-                          id={`message-${msg.id}`}
-                          className={styles['system-message-bubble']}
-                          onContextMenu={(e) => {
-                            e.preventDefault();
-                            const plainSystemText = msg.text
-                              .replace(/\{\{user:[a-zA-Z0-9_-]+\}\}/g, 'пользователь')
-                              .replace(/<\/?[^>]+(>|$)/g, '')
-                              .trim();
-                            ctx.setCtxMenu({
-                              show: true,
-                              x: e.clientX,
-                              y: e.clientY,
-                              items: [
-                                { 
-                                  label: 'Копировать текст', 
-                                  icon: '📋', 
-                                  onClick: () => navigator.clipboard.writeText(plainSystemText)
-                                }
-                              ]
-                            });
-                          }}
-                        >
-                          {renderSystemMessageContent(msg.text)}
-                        </div>
-                      ))}
-                    </div>
-                  );
-                }
+            return (
+              <div 
+                key={dayGroup.dateKey} 
+                className={styles['message-date-group']}
+                data-date-title={dayGroup.dateTitle}
+              >
+                <div 
+                  className={styles['chat-date-divider']}
+                  style={{
+                    opacity: isCurrentSticky ? 0 : 1,
+                    transition: 'opacity 0.25s ease',
+                  }}
+                >
+                  <div className={styles['chat-date-text']}>
+                    {dayGroup.dateTitle}
+                  </div>
+                </div>
 
-                const isGroupChat = currentChatUser?.type === 'group';
-                // Аватарка рендерится в беседах или в авторских постах канала (Скриншот 4)
-                const showAvatar = (isGroupChat && !cluster.isOutgoing) || (isChannel && cluster.isRenderAsAuthor);
-
-                return (
-                  <div 
-                    key={cluster.clusterId}
-                    className={`${styles['sender-group-container']} ${
-                      cluster.isOutgoing ? styles.outgoing : styles.incoming
-                    }`}
-                  >
-                    {showAvatar && (
-                      <div className={styles['sender-avatar-col']}>
-                        <SmartAvatar
-                          size={34}
-                          avatarUrl={cluster.senderUserObj?.avatarUrl}
-                          avatarColor={cluster.senderAvatarColor}
-                          name={cluster.senderDisplayName}
-                          onClick={() => ctx.setShowUserModal(cluster.senderId)}
-                        />
-                      </div>
-                    )}
-
-                    <div className={styles['sender-messages-col']}>
-                      {cluster.messages.map(({ msg, isFirstInGroup, isLastInGroup }) => {
-                        const showSenderHeaderName = isFirstInGroup && (
-                          isChannel 
-                            ? cluster.isRenderAsAuthor 
-                            : (isGroup && !cluster.isOutgoing)
-                        );
-
-                        // Подпись автора снизу: только если пост рендерится как от канала и в базе сохранился authorSignature
-                        const resolvedSignature = isChannel && !cluster.isRenderAsAuthor
-                          ? (
-                              cluster.senderUserObj?.username ||
-                              `${cluster.senderUserObj?.firstName || ''} ${cluster.senderUserObj?.lastName || ''}`.trim() ||
-                              msg.authorSignature
-                            )
-                          : null;
-
-                        const showBottomSignature = Boolean(resolvedSignature && (msg.authorSignature || msg.authorId));
-
-                        return (
+                {dayGroup.clusters.map((cluster) => {
+                  if (cluster.isSystem) {
+                    return (
+                      <div key={cluster.clusterId} className={styles['system-message-container']}>
+                        {cluster.messages.map(({ msg }) => (
                           <div 
-                            key={msg.id}
+                            key={msg.id} 
                             id={`message-${msg.id}`}
-                            className={`${styles['message-list-item']} ${
-                              isFirstInGroup ? styles['first-in-group'] : ''
-                            } ${isLastInGroup ? styles['last-in-group'] : ''}`}
-                          >
-                            <div 
-                              className={`${styles.message} ${
-                                cluster.isOutgoing ? styles['message-outgoing'] : styles['message-incoming']
-                              }`}
-                              // ПК: правый клик мыши
-                              onContextMenu={(e) => openMessageContextMenu(e, msg, cluster.isOutgoing)}
-                              // Мобилка 1: Долгое удержание пальца (как в Telegram Android/iOS)
-                              onTouchStart={(e) => handleTouchStart(e, msg, cluster.isOutgoing)}
-                              onTouchMove={handleTouchMove}
-                              onTouchEnd={handleTouchEnd}
-                              onTouchCancel={handleTouchEnd}
-                              // Мобилка 2: Обычный тап пальцем на экранах <= 739px (если не сработало долгое нажатие)
-                              onClick={(e) => {
-                                if (window.innerWidth <= 739) {
-                                  if (isLongPressTriggeredRef.current) {
-                                    isLongPressTriggeredRef.current = false;
-                                    return;
+                            className={styles['system-message-bubble']}
+                            onContextMenu={(e) => {
+                              e.preventDefault();
+                              const plainSystemText = msg.text
+                                .replace(/\{\{user:[a-zA-Z0-9_-]+\}\}/g, 'пользователь')
+                                .replace(/<\/?[^>]+(>|$)/g, '')
+                                .trim();
+                              ctx.setCtxMenu({
+                                show: true,
+                                x: e.clientX,
+                                y: e.clientY,
+                                items: [
+                                  { 
+                                    label: 'Копировать текст', 
+                                    icon: <Copy size={16} />,
+                                    onClick: () => navigator.clipboard.writeText(plainSystemText)
                                   }
-                                  openMessageContextMenu(e, msg, cluster.isOutgoing);
-                                }
-                              }}
-                            >
-                              <div className={styles['message-bubble']}>
-                                <div className={styles['message-text']}>
-                                  
-                                  {/* 🎯 Рендерим имя только если выполняется условие */}
-                                  {showSenderHeaderName && (
-                                    <span 
-                                      className={styles['group-msg-sender-name']} 
-                                      style={{ 
-                                        color: isChannel 
-                                          ? '#5288c1' 
-                                          : getNameColor(cluster.senderNameColor), 
-                                        cursor: 'pointer' 
-                                      }}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        ctx.setShowUserModal(cluster.senderId);
-                                      }}
-                                    >
-                                      {!isChannel && renderUserStatusBadge(cluster.senderUserObj)}
-                                      {cluster.senderDisplayName}
-                                    </span>
-                                  )}
+                                ]
+                              });
+                            }}
+                          >
+                            {renderSystemMessageContent(msg.text)}
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  }
 
-                                  {msg.text}
-                                
-                                  <span className={styles['message-meta']}>
-                                    {/* Глазок с просмотрами в канале */}
-                                    {isChannel && (
+                  const isGroupChat = currentChatUser?.type === 'group';
+                  // Аватарка рендерится в беседах или в авторских постах канала (Скриншот 4)
+                  const showAvatar = (isGroupChat && !cluster.isOutgoing) || (isChannel && cluster.isRenderAsAuthor);
+
+                  return (
+                    <div 
+                      key={cluster.clusterId}
+                      className={`${styles['sender-group-container']} ${
+                        cluster.isOutgoing ? styles.outgoing : styles.incoming
+                      }`}
+                    >
+                      {showAvatar && (
+                        <div className={styles['sender-avatar-col']}>
+                          <SmartAvatar
+                            size={34}
+                            avatarUrl={cluster.senderUserObj?.avatarUrl}
+                            avatarColor={cluster.senderAvatarColor}
+                            name={cluster.senderDisplayName}
+                            onClick={() => ctx.setShowUserModal(cluster.senderId)}
+                          />
+                        </div>
+                      )}
+
+                      <div className={styles['sender-messages-col']}>
+                        {cluster.messages.map(({ msg, isFirstInGroup, isLastInGroup }) => {
+                          const showSenderHeaderName = isFirstInGroup && (
+                            isChannel 
+                              ? cluster.isRenderAsAuthor 
+                              : (isGroup && !cluster.isOutgoing)
+                          );
+
+                          // Подпись автора снизу: только если пост рендерится как от канала и в базе сохранился authorSignature
+                          const resolvedSignature = isChannel && !cluster.isRenderAsAuthor
+                            ? (
+                                cluster.senderUserObj?.username ||
+                                `${cluster.senderUserObj?.firstName || ''} ${cluster.senderUserObj?.lastName || ''}`.trim() ||
+                                msg.authorSignature
+                              )
+                            : null;
+
+                          const showBottomSignature = Boolean(resolvedSignature && msg.authorSignature);
+
+                          return (
+                            <div 
+                              key={msg.id}
+                              id={`message-${msg.id}`}
+                              className={`${styles['message-list-item']} ${
+                                isFirstInGroup ? styles['first-in-group'] : ''
+                              } ${isLastInGroup ? styles['last-in-group'] : ''}`}
+                            >
+                              <div 
+                                className={`${styles.message} ${
+                                  cluster.isOutgoing ? styles['message-outgoing'] : styles['message-incoming']
+                                }`}
+                                // ПК: правый клик мыши
+                                onContextMenu={(e) => openMessageContextMenu(e, msg, cluster.isOutgoing)}
+                                // Мобилка 1: Долгое удержание пальца (как в Telegram Android/iOS)
+                                onTouchStart={(e) => handleTouchStart(e, msg, cluster.isOutgoing)}
+                                onTouchMove={handleTouchMove}
+                                onTouchEnd={handleTouchEnd}
+                                onTouchCancel={handleTouchEnd}
+                                // Мобилка 2: Обычный тап пальцем на экранах <= 739px (если не сработало долгое нажатие)
+                                onClick={(e) => {
+                                  if (window.innerWidth <= 739) {
+                                    if (isLongPressTriggeredRef.current) {
+                                      isLongPressTriggeredRef.current = false;
+                                      return;
+                                    }
+                                    openMessageContextMenu(e, msg, cluster.isOutgoing);
+                                  }
+                                }}
+                              >
+                                <div className={styles['message-bubble']}>
+                                  <div className={styles['message-text']}>
+                                    
+                                    {/* 🎯 Рендерим имя только если выполняется условие */}
+                                    {showSenderHeaderName && (
                                       <span 
+                                        className={styles['group-msg-sender-name']} 
                                         style={{ 
-                                          display: 'inline-flex', 
-                                          alignItems: 'center', 
-                                          gap: '3px', 
-                                          color: '#8e8e93', 
-                                          fontSize: '11px', 
-                                          marginRight: '6px'
+                                          color: isChannel 
+                                            ? '#5288c1' 
+                                            : getNameColor(cluster.senderNameColor), 
+                                          cursor: 'pointer' 
+                                        }}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          ctx.setShowUserModal(cluster.senderId);
                                         }}
                                       >
-                                        <Eye size={13} />
-                                        <span>{Array.isArray(msg.readBy) ? Math.max(1, msg.readBy.length) : (msg.views || 1)}</span>
+                                        {!isChannel && (() => {
+                                          const badge = getUserStatusBadge(cluster.senderUserObj);
+                                          return badge ? (
+                                            <span title={badge.title} style={{ cursor: 'help', userSelect: 'none' }}>
+                                              {badge.icon}
+                                            </span>
+                                          ) : null;
+                                        })()}
+                                        {cluster.senderDisplayName}
                                       </span>
                                     )}
 
-                                    {/* Подпись снизу в канале */}
-                                    {showBottomSignature && (
-                                      <span style={{ color: '#ffffff73', fontSize: '11px', marginRight: '5px' }}>
-                                        {resolvedSignature},
-                                      </span>
-                                    )}
+                                    {renderMessageWithLinks(msg.text, (tag) => {
+                                      // 1. Ищем среди каналов/чатов (по publicId, username или uniqueId)
+                                      const targetChannelOrChat = (ctx.chats || []).find(
+                                        (c: any) => c.publicId === tag || c.username === tag || c.uniqueId === tag
+                                      );
 
-                                    <span className={styles['message-time']}>
-                                      {msg.isEdited && <i>ред. </i>}
-                                      {formatHoursAndMinutes(msg.createdAt)}
+                                      if (targetChannelOrChat) {
+                                        // Если это канал/чат — открываем его профиль или переходим в него
+                                        ctx.setShowUserModal(targetChannelOrChat.uuid || targetChannelOrChat.id);
+                                        return;
+                                      }
+
+                                      // 2. Ищем среди пользователей
+                                      const targetUser = (ctx.users || []).find(
+                                        (u: any) => u.publicId === tag || u.username === tag || u.uniqueId === tag
+                                      );
+
+                                      if (targetUser) {
+                                        ctx.setShowUserModal(targetUser.uuid || targetUser.id);
+                                      } else {
+                                        ctx.showToast?.(`Элемент @${tag} не найден`, 'info');
+                                      }
+                                    })}
+                                  
+                                    <span className={styles['message-meta']}>
+                                      {/* Глазок с просмотрами в канале */}
+                                      {isChannel && (
+                                        <span 
+                                          style={{ 
+                                            display: 'inline-flex', 
+                                            alignItems: 'center', 
+                                            gap: '3px', 
+                                            color: '#8e8e93', 
+                                            fontSize: '11px', 
+                                            marginRight: '6px'
+                                          }}
+                                        >
+                                          <Eye size={13} />
+                                          <span>{Array.isArray(msg.readBy) ? Math.max(1, msg.readBy.length) : (msg.views || 1)}</span>
+                                        </span>
+                                      )}
+
+                                      {/* Подпись снизу в канале */}
+                                      {showBottomSignature && (
+                                        <span style={{ color: '#ffffff73', fontSize: '11px', marginRight: '5px' }}>
+                                          {resolvedSignature},
+                                        </span>
+                                      )}
+
+                                      <span className={styles['message-time']}>
+                                        {msg.isEdited && <i>ред. </i>}
+                                        {formatHoursAndMinutes(msg.createdAt)}
+                                      </span>
+
+                                      {cluster.isOutgoing && (
+                                        <span className={styles['message-status']}>
+                                          {msg.status === 'sending' && <Clock size={12} style={{ color: '#9ca3af' }} />}
+                                          {msg.status === 'send' && <Check size={14} style={{ color: '#9ca3af' }} />}
+                                          {msg.status === 'read' && <CheckCheck size={14} style={{ color: '#9ca3af' }} />}
+                                        </span>
+                                      )}
                                     </span>
-
-                                    {cluster.isOutgoing && (
-                                      <span className={styles['message-status']}>
-                                        {msg.status === 'sending' && <Clock size={12} style={{ color: '#9ca3af' }} />}
-                                        {msg.status === 'send' && <Check size={14} style={{ color: '#9ca3af' }} />}
-                                        {msg.status === 'read' && <CheckCheck size={14} style={{ color: '#9ca3af' }} />}
-                                      </span>
-                                    )}
-                                  </span>
+                                  </div>
                                 </div>
                               </div>
                             </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          ))
+                  );
+                })}
+              </div>
+          )})
         )}
       </div>
 
@@ -1279,7 +1441,7 @@ export default function ChatWindow() {
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                margin: 'auto 4px',
+                margin: 'auto 4px 9px',
                 flexShrink: 0,
                 borderRadius: '50%'
               }}

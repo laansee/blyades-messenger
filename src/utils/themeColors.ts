@@ -528,3 +528,15 @@ export function getProfileColor(idOrHex?: string | null): string {
   const theme = getProfileTheme(idOrHex);
   return Array.isArray(theme.circleColor) ? theme.circleColor[0] : theme.circleColor;
 }
+
+/**
+ * Универсальное извлечение цветов оформления из пользователя или чата (из JSONB appearance с фолбэком)
+ */
+export function resolveAppearance(entity: any) {
+  const app = entity?.appearance || {};
+  return {
+    avatarColor: app.avatarColor || entity?.avatarColor || '#5865F2',
+    nameColor: app.nameColor || entity?.nameColor || DEFAULT_NAME_THEME.nameColor,
+    profileColor: app.profileColor || entity?.profileColor || DEFAULT_PROFILE_COLOR,
+  };
+}

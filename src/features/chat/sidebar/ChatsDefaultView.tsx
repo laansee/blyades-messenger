@@ -39,6 +39,9 @@ export const ChatsDefaultView: React.FC<ChatsDefaultViewProps> = ({
       });
   }, [ctx.chats, activeTab]);
 
+  // Проверяем флаг загрузки из контекста (если у вас он называется иначе, например, ctx.loading, подставьте его)
+  const isLoading = ctx.chatsLoading || ctx.loading;
+
   return (
     <>
       <div className={styles['sidebar-tabs']}>
@@ -66,7 +69,11 @@ export const ChatsDefaultView: React.FC<ChatsDefaultViewProps> = ({
       </div>
 
       <div className={styles['chats-list']}>
-        {visibleChats.length === 0 ? (
+        {isLoading ? (
+          <div style={{ color: '#636366', textAlign: 'center', marginTop: '40px', fontSize: '14px' }}>
+            Загрузка...
+          </div>
+        ) : visibleChats.length === 0 ? (
           <div style={{ color: '#636366', textAlign: 'center', marginTop: '40px', fontSize: '14px' }}>
             Чаты не найдены
           </div>

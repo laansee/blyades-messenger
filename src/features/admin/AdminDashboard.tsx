@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../services/supabaseClient';
 import useMessengerContext, { formatUserOnlineStatus } from '../../context/messengerContext';
-import { type AppUser } from '../../services/userService';
-import { renderUserStatusBadge } from '../../utils/statusBadge';
+import { normalizeUser, getUserPrivacy, type AppUser } from '../../services/userService';
+import { renderUserStatusBadge } from '../../utils/_statusBadge';
 import { getProfileGradient } from '../../utils/themeColors';
 import { Navigate } from 'react-router';
-import { Menu, Shield, User, ShieldCheck, MessageSquare, Clock, Search, Copy, Hash } from 'lucide-react';
+import { Menu, Shield, User, ShieldCheck, MessageSquare, Clock, Search, Copy, Hash, Lock, Bug, ArrowLeft } from 'lucide-react';
+import AdminDebugPanel from './AdminDebugPanel';
 import NavSidebar from '../navigation/NavSidebar';
 import SmartAvatar from '../../components/common/SmartAvatar';
 import styles from '../../components/css/admin.module.css';
@@ -18,6 +19,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
 
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
+  const [showDebugPanel, setShowDebugPanel] = useState(false);
   const [userRooms, setUserRooms] = useState<string[]>([]);
   const [spyGroupsCache, setSpyGroupsCache] = useState<any[]>([]);
   const [activeSpyRoom, setActiveSpyRoom] = useState<string>('');
@@ -41,7 +43,7 @@ export default function AdminDashboard() {
     if (!query) return usersList;
 
     return usersList.filter((user: any) => {
-      const matchTag = String(user.uniqueId || '').toLowerCase().includes(query);
+      const matchTag = String(user.publicId || '').toLowerCase().includes(query);
       const matchNumericId = String(user.id || '').toLowerCase().includes(query);
       const matchUuid = String(user.uuid || '').toLowerCase().includes(query);
       const matchUsername = String(user.username || '').toLowerCase().includes(query);
@@ -66,12 +68,14 @@ export default function AdminDashboard() {
           default: 1
         };
 
-        const realUsers = allUsers.filter((u: any) => 
-          String(u.uuid) !== '00000000-0000-0000-0000-000000000000' &&
-          String(u.id) !== '00000000-0000-0000-0000-000000000000' &&
-          u.username?.toLowerCase() !== 'system' &&
-          u.userStatus !== 'system'
-        );
+        const realUsers = allUsers
+          .filter((u: any) =>
+            String(u.uuid) !== '00000000-0000-0000-0000-000000000000' &&
+            String(u.id) !== '00000000-0000-0000-0000-000000000000' &&
+            u.username?.toLowerCase() !== 'system' &&
+            u.userStatus !== 'system'
+          )
+          .map(normalizeUser);
 
         const sortedUsers = realUsers.sort((a, b) => {
           const weightA = roleWeights[a.userStatus] || 1;
@@ -196,7 +200,7 @@ export default function AdminDashboard() {
       const partnerUuid = parts.find(id => String(id) !== String(currentTargetUser.uuid));
       const partnerObj = usersList.find(u => u.uuid === partnerUuid);
       if (partnerObj) {
-        return `👤 ЛС: ${partnerObj.username} [@${partnerObj.uniqueId || partnerObj.username}]`;
+        return `👤 ЛС: ${partnerObj.username} [@${partnerObj.publicId || partnerObj.username}]`;
       }
     }
 
@@ -285,10 +289,9 @@ export default function AdminDashboard() {
     if (!selectedUser) return null;
 
     const realFullName = `${selectedUser.firstName || ''} ${selectedUser.lastName || ''}`.trim();
-    
-    const isFullNameDisplay = 
-      selectedUser?.privacyNameFormat === 'full_name' || 
-      selectedUser?.privacyNameFormat === 'name';
+
+    const privacy = getUserPrivacy(selectedUser);
+    const isFullNameDisplay = privacy.privacyNameFormat === 'full_name';
 
     const displayName = (isFullNameDisplay && realFullName)
       ? realFullName
@@ -296,9 +299,8 @@ export default function AdminDashboard() {
     
     const myIdDisplay = selectedUser.id ? `#${selectedUser.id}` : selectedUser.uuid;
 
-    // 🎯 Статус онлайна через контекст (как в UserProfileView)
     const isOnline = ctx.isUserOnline ? ctx.isUserOnline(selectedUser) : false;
-    const statusInfo = formatUserOnlineStatus(selectedUser?.updatedAt, selectedUser?.privacyOnline);
+    const statusInfo = formatUserOnlineStatus(selectedUser?.updatedAt, privacy.online);
 
     return (
       <div className={styles['spy-container']}>
@@ -309,8 +311,10 @@ export default function AdminDashboard() {
             type="button"
             onClick={() => setSelectedUser(null)}
             className={styles['btn-back-table']}
+            title="Назад к таблице"
+            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '6px 8px' }}
           >
-            ← Назад к таблице
+            <ArrowLeft size={18} />
           </button>
           <div className={styles['topbar-divider']} />
           <span className={styles['spy-target-title']}>
@@ -323,22 +327,25 @@ export default function AdminDashboard() {
             type="button"
             className={`${styles['spy-mobile-tab-btn']} ${spyMobileTab === 'chat' ? styles.active : ''}`}
             onClick={() => setSpyMobileTab('chat')}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
           >
-            💬 Переписка
+            <MessageSquare size={14} /> Переписка
           </button>
           <button
             type="button"
             className={`${styles['spy-mobile-tab-btn']} ${spyMobileTab === 'profile' ? styles.active : ''}`}
             onClick={() => setSpyMobileTab('profile')}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
           >
-            👤 Профиль
+            <User size={14} /> Профиль
           </button>
           <button
             type="button"
             className={`${styles['spy-mobile-tab-btn']} ${spyMobileTab === 'privacy' ? styles.active : ''}`}
             onClick={() => setSpyMobileTab('privacy')}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
           >
-            🔒 Приватность
+            <Lock size={14} /> Приватность
           </button>
         </div>
 
@@ -369,7 +376,11 @@ export default function AdminDashboard() {
 
               <div className={styles['spy-profile-titles']}>
                 <h2 className={profileStyles['profile-name']}>
-                  {renderUserStatusBadge(selectedUser)}
+                  {selectedUser.statusBadge && (
+                    <span title={selectedUser.statusBadge.title} style={{ cursor: 'help', userSelect: 'none' }}>
+                      {selectedUser.statusBadge.icon}
+                    </span>
+                  )}
                   {displayName}
                 </h2>
                 <span className={`${profileStyles['profile-status']} ${isOnline ? profileStyles['online'] : ''}`}>
@@ -395,14 +406,14 @@ export default function AdminDashboard() {
               )}
 
               <div 
-                onClick={() => handleCopy(`@${selectedUser.uniqueId || selectedUser.username}`, 'Тег пользователя')}
+                onClick={() => handleCopy(`@${selectedUser.publicId || selectedUser.username}`, 'Тег пользователя')}
                 className={profileStyles['info-item']}
               >
                 <div className={profileStyles['info-item-content']}>
                   <span className={`${profileStyles['info-value']} ${profileStyles['accent']}`}>
-                    @{selectedUser.uniqueId || selectedUser.username}
+                    @{selectedUser.publicId || selectedUser.username}
                   </span>
-                  <span className={profileStyles['info-label']}>Уникальный ID / Тег</span>
+                  <span className={profileStyles['info-label']}>Публичный тег</span>
                 </div>
                 <Copy size={16} className={profileStyles['info-icon']} />
               </div>
@@ -477,11 +488,11 @@ export default function AdminDashboard() {
           {/* ПАНЕЛЬ 2: НАСТРОЙКИ ПРИВАТНОСТИ */}
           <div className={`${styles['panel-privacy']} ${spyMobileTab === 'privacy' ? styles['active-mobile-panel'] : ''}`}>
             <div className={styles['privacy-title']}>Конфиденциальность</div>
-            <div className={styles['privacy-row']}><span>Показ телефона:</span><span className={styles['privacy-val']}>{selectedUser.privacyPhone || 'all'}</span></div>
-            <div className={styles['privacy-row']}><span>Показ почты:</span><span className={styles['privacy-val']}>{selectedUser.privacyEmail || 'all'}</span></div>
-            <div className={styles['privacy-row']}><span>Показ онлайна:</span><span className={styles['privacy-val']}>{selectedUser.privacyOnline || 'all'}</span></div>
-            <div className={styles['privacy-row']}><span>Формат имени:</span><span className={styles['privacy-val']}>{selectedUser.privacyNameFormat || 'username'}</span></div>
-            <div className={styles['privacy-row']}><span>Глобальный поиск:</span><span className={styles['privacy-val']}>{selectedUser.privacySearch || 'all'}</span></div>
+            <div className={styles['privacy-row']}><span>Показ телефона:</span><span className={styles['privacy-val']}>{privacy.phone}</span></div>
+            <div className={styles['privacy-row']}><span>Показ почты:</span><span className={styles['privacy-val']}>{privacy.email}</span></div>
+            <div className={styles['privacy-row']}><span>Показ онлайна:</span><span className={styles['privacy-val']}>{privacy.online}</span></div>
+            <div className={styles['privacy-row']}><span>Формат имени:</span><span className={styles['privacy-val']}>{privacy.privacyNameFormat}</span></div>
+            <div className={styles['privacy-row']}><span>Глобальный поиск:</span><span className={styles['privacy-val']}>{privacy.search}</span></div>
           </div>
 
           {/* ПАНЕЛЬ 3: ЧАТ И ПЕРЕХВАТ СООБЩЕНИЙ */}
@@ -581,9 +592,25 @@ export default function AdminDashboard() {
           <h1 className={styles['admin-header-title']}>Admin Dashboard</h1>
           <p className={styles['admin-header-subtitle']}>Кликните на пользователя, чтобы перехватить его переписки</p>
         </div>
+
+        {/* 🎯 Кнопка открытия отладки в правом углу шапки */}
+        <button
+          type="button"
+          onClick={() => {
+            setSelectedUser(null);
+            setShowDebugPanel(prev => !prev);
+          }}
+          className={`${styles['admin-debug-btn']} ${showDebugPanel ? styles['active'] : ''}`}
+          title="Открыть панель отладки"
+        >
+          <Bug size={18} />
+          <span>Отладка</span>
+        </button>
       </div>
 
-      {selectedUser ? (
+      {showDebugPanel ? (
+        <AdminDebugPanel/>
+      ) : selectedUser ? (
         renderSpyPanel()
       ) : (
         <div className={styles['admin-main-section']}>
@@ -654,14 +681,14 @@ export default function AdminDashboard() {
                               <span className={styles['user-name-title']}>{user.username}</span>
                               <span className={styles['user-name-subtitle']}>
                                 {user.firstName || ''} {user.lastName || ''}
-                                {user.uniqueId && (
-                                  <span className={styles['user-mobile-tag']}>@{user.uniqueId}</span>
+                                {user.publicId && (
+                                  <span className={styles['user-mobile-tag']}>@{user.publicId}</span>
                                 )}
                               </span>
                             </div>
                           </div>
                         </td>
-                        <td className={styles['cell-tag']}>@{user.uniqueId || '—'}</td>
+                        <td className={styles['cell-tag']}>@{user.publicId || '—'}</td>
                         <td className={styles['cell-role']}>
                           {user.userStatus === 'administrator' && (
                             <span className={`${styles['badge-role']} ${styles['badge-admin']}`}>
@@ -698,6 +725,7 @@ export default function AdminDashboard() {
               </table>
             )}
           </div>
+          <p title='Это пока как заглушка, возможно даже местоположение сменится'>Количество аккаунтов в системе: </p>
         </div>
       )}
     </div>

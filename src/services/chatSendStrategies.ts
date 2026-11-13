@@ -33,18 +33,6 @@ export const chatSendStrategies = {
       .single();
 
     if (error) throw error;
-
-    if (!isNaN(numericRoomId)) {
-      await supabase
-        .from('chats')
-        .update({
-          lastMessageText: text,
-          lastMessageAt: nowIso,
-          lastMessageSenderUUID: myId
-        })
-        .eq('id', numericRoomId);
-    }
-
     return data;
   },
 
@@ -66,18 +54,6 @@ export const chatSendStrategies = {
       .single();
 
     if (error) throw error;
-
-    if (!isNaN(numericRoomId)) {
-      await supabase
-        .from('chats')
-        .update({
-          lastMessageText: text,
-          lastMessageAt: nowIso,
-          lastMessageSenderUUID: myId
-        })
-        .eq('id', numericRoomId);
-    }
-
     return data;
   },
 
@@ -99,44 +75,30 @@ export const chatSendStrategies = {
       .single();
 
     if (error) throw error;
-
-    if (!isNaN(numericRoomId)) {
-      await supabase
-        .from('chats')
-        .update({
-          lastMessageText: text,
-          lastMessageAt: nowIso,
-          lastMessageSenderUUID: myId
-        })
-        .eq('id', numericRoomId);
-    }
-
     return data;
   },
 
   /**
-   * 📢 Отправка в канал:
+   * Отправка в канал:
    * Фиксирует senderType: 'user' ТОЛЬКО если showAuthorProfiles: true и автор не выбрал отправку от имени канала.
    * authorSignature сохраняется всегда, если включен signMessages.
    */
-  async sendChannel({ 
-    chatId, 
-    myId, 
-    text, 
-    nowIso, 
-    sendAsType, 
-    isSignModeActive, 
-    isShowAuthorProfilesActive, 
-    authorSignature 
+  async sendChannel({
+    chatId,
+    myId,
+    text,
+    nowIso,
+    sendAsType,
+    isSignModeActive,
+    isShowAuthorProfilesActive,
+    authorSignature
   }: ChannelSendOptions) {
     const numericRoomId = Number(chatId);
     const targetRoomId = isNaN(numericRoomId) ? chatId : numericRoomId;
 
-    // senderType становится 'user' только при явном включении showAuthorProfiles и отправке от своего аккаунта
-    const senderType: 'user' | 'channel' = 
+    const senderType: 'user' | 'channel' =
       (isShowAuthorProfilesActive && sendAsType !== 'channel') ? 'user' : 'channel';
 
-    // Подпись автора в метаданных сообщения
     const payloadSignature = (isSignModeActive && sendAsType !== 'channel')
       ? authorSignature
       : null;
@@ -147,7 +109,6 @@ export const chatSendStrategies = {
         chatId: targetRoomId,
         senderId: myId,
         senderType,
-        authorId: myId,
         authorSignature: payloadSignature,
         text,
         status: 'send',
@@ -157,18 +118,6 @@ export const chatSendStrategies = {
       .single();
 
     if (error) throw error;
-
-    if (!isNaN(numericRoomId)) {
-      await supabase
-        .from('chats')
-        .update({
-          lastMessageText: text,
-          lastMessageAt: nowIso,
-          lastMessageSenderUUID: myId
-        })
-        .eq('id', numericRoomId);
-    }
-
     return data;
   }
 };

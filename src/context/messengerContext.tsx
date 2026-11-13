@@ -72,9 +72,34 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const showToast = (message: string, type: 'info' | 'success' | 'error' | 'warning' = 'info') => {
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const hideToast = () => {
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = null;
+    }
+    setToast(prev => ({ ...prev, show: false }));
+  };
+
+  const showToast = (
+    message: string,
+    type: 'info' | 'success' | 'error' | 'warning' | 'loading' = 'info',
+    duration = 3000
+  ) => {
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = null;
+    }
+
     setToast({ show: true, message, type });
-    setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
+
+    if (type === 'loading') return;
+
+    toastTimerRef.current = setTimeout(() => {
+      setToast(prev => ({ ...prev, show: false }));
+      toastTimerRef.current = null;
+    }, duration);
   };
 
   const showConfirm = (
@@ -169,8 +194,9 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
 
       const formattedChats = chatRows
         .filter((chat: any) => {
-          // Если это личный чат без сообщений, но прямо сейчас открыт пользователем — НЕ скрываем его!
-          if (chat.type === 'direct' && chat.lastMessageId === null) {
+          const lastMsg = chat.lastMessage;
+          // Если это личный чат без сообщений, но прямо сейчас открыт пользователем — НЕ скрываем его
+          if (chat.type === 'direct' && !lastMsg?.id) {
             return String(chat.id) === currentActiveId;
           }
           return true;
@@ -178,6 +204,9 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
         .map((chat: any) => {
           const chatIdStr = String(chat.id);
           const isDirect = chat.type === 'direct';
+          const lastMsg = chat.lastMessage || {};
+          const chatSettings = chat.settings || {};
+          const chatAppearance = chat.appearance || {};
 
           const membership = myMemberships.find(
             (member: any) => String(member.chatId) === chatIdStr
@@ -190,17 +219,19 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
             : undefined;
 
           const partnerId = partnerMembership ? String(partnerMembership.userId) : undefined;
-          
-          const user = isDirect && partnerId 
-            ? usersList.find((item: any) => String(item.uuid) === partnerId || String(item.id) === partnerId) 
+
+          const user = isDirect && partnerId
+            ? usersList.find((item: any) => String(item.uuid) === partnerId || String(item.id) === partnerId)
             : undefined;
 
-          const contact = isDirect && partnerId 
-            ? contacts.find((item: any) => 
-                String(item.contactId) === partnerId || 
+          const userAppearance = user?.appearance || {};
+
+          const contact = isDirect && partnerId
+            ? contacts.find((item: any) =>
+                String(item.contactId) === partnerId ||
                 (user && String(item.contactId) === String(user.id)) ||
                 (user && String(item.contactId) === String(user.uuid))
-              ) 
+              )
             : undefined;
 
           const groupMembersCount = members.filter((m: any) => String(m.chatId) === chatIdStr).length;
@@ -212,11 +243,11 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
             });
           }
 
-          const contactFirstName = isDirect && contact?.firstName && contact.firstName !== 'EMPTY' 
-            ? contact.firstName 
+          const contactFirstName = isDirect && contact?.firstName && contact.firstName !== 'EMPTY'
+            ? contact.firstName
             : '';
-          const contactLastName = isDirect && contact?.lastName && contact.lastName !== 'EMPTY' 
-            ? contact.lastName 
+          const contactLastName = isDirect && contact?.lastName && contact.lastName !== 'EMPTY'
+            ? contact.lastName
             : '';
 
           let resolvedName = chat.name || (isDirect ? 'Пользователь' : 'Беседа без названия');
@@ -231,7 +262,7 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
 
           return {
             ...(isDirect ? user ?? {} : {}),
-            id: chatIdStr, 
+            id: chatIdStr,
             chatId: chatIdStr,
             internalChatId: chatIdStr,
             partnerId,
@@ -244,8 +275,12 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
             memberCount: groupMembersCount,
 
             avatarUrl: isDirect ? user?.avatarUrl : chat.avatarUrl,
-            avatarColor: (isDirect ? user?.avatarColor : chat.avatarColor) || '#5865F2',
-            nameColor: user?.nameColor || '#007aff',
+            avatarColor: (isDirect
+              ? (userAppearance.avatarColor || user?.avatarColor)
+              : (chatAppearance.avatarColor || chat.avatarColor)
+            ) || '#5865F2',
+            nameColor: userAppearance.nameColor || user?.nameColor || '#007aff',
+            profileColor: userAppearance.profileColor || user?.profileColor || '#312b3a',
             aboutMe: isDirect ? user?.aboutMe || '' : chat.description || '',
             updatedAt: isDirect ? user?.updatedAt : chat.updatedAt,
 
@@ -255,33 +290,38 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
             contactFirstName: isDirect ? contactFirstName : '',
             contactLastName: isDirect ? contactLastName : '',
 
-            privacyPhone: user?.privacyPhone || 'all',
-            privacyEmail: user?.privacyEmail || 'all',
-            privacyOnline: user?.privacyOnline || 'all',
-            privacyNameFormat: user?.privacyNameFormat || 'username',
-            privacyFullName: user?.privacyFullName || 'all',
+            privacyPhone: user?.privacy?.phone || user?.privacyPhone || 'all',
+            privacyEmail: user?.privacy?.email || user?.privacyEmail || 'all',
+            privacyOnline: user?.privacy?.online || user?.privacyOnline || 'all',
+            privacyNameFormat: user?.privacy?.privacyNameFormat || user?.privacyNameFormat || 'username',
+            privacyFullName: user?.privacy?.fullName || user?.privacyFullName || 'all',
 
             ownerId: chat.createdBy || chat.ownerId,
             createdBy: chat.createdBy,
             role: membership?.role || 'member',
-            publicId: chat.publicId || null,
-            uniqueId: chat.uniqueId || null,
-            signMessages: Boolean(chat.signMessages),
-            postMode: chat.postMode || 'channel',
+            publicId: isDirect ? (user?.publicId ?? null) : (chat.publicId ?? null),
+            uniqueId: isDirect ? (user?.publicId ?? null) : (chat.uniqueId ?? null),
+            settings: chatSettings,
+            appearance: isDirect ? userAppearance : chatAppearance,
+            signMessages: Boolean(chatSettings.signMessages),
+            showAuthorProfiles: Boolean(chatSettings.showAuthorProfiles),
+            postMode: chatSettings.postMode || 'channel',
             isPinned: membership?.isPinned ?? false,
             isArchived: membership?.isArchived ?? false,
             unreadCount: membership?.unreadCount ?? null,
 
-            lastMessageId: chat.lastMessageId,
-            lastMessageText: chat.lastMessageText,
-            lastMessageSenderUUID: chat.lastMessageSenderUUID,
-            lastMessageStatus: chat.lastMessageStatus || 'send',
-            lastMessageType: chat.lastMessageType,
-            lastMessageAt: chat.lastMessageAt,
+            lastMessageObj: chat.lastMessage || null,
+            lastMessageId: lastMsg.id ?? null,
+            lastMessageText: lastMsg.text ?? null,
+            lastMessageSenderUUID: lastMsg.senderId ?? null,
+            lastMessageSenderId: lastMsg.senderId ?? null,
+            lastMessageStatus: lastMsg.status || 'send',
+            lastMessageType: lastMsg.type || 'text',
+            lastMessageAt: lastMsg.createdAt ?? null,
 
-            lastMessage: chat.lastMessageText ?? 'Нет сообщений',
-            lastMessageTime: chat.lastMessageAt
-              ? new Date(chat.lastMessageAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            lastMessage: lastMsg.text ?? 'Нет сообщений',
+            lastMessageTime: lastMsg.createdAt
+              ? new Date(lastMsg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
               : '',
           };
       });
@@ -289,6 +329,10 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
       let finalChats = [...formattedChats];
 
       if (newsChannelData) {
+        const newsLastMsg = newsChannelData.lastMessage || {};
+        const newsSettings = newsChannelData.settings || {};
+        const newsAppearance = newsChannelData.appearance || {};
+
         const newsChatObj: any = {
           id: String(newsChannelData.id),
           chatId: String(newsChannelData.id),
@@ -300,7 +344,7 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
           isChannel: true,
           memberCount: null,
           avatarUrl: newsChannelData.avatarUrl,
-          avatarColor: newsChannelData.avatarColor || '#9d7bf6',
+          avatarColor: newsAppearance.avatarColor || '#9d7bf6',
           nameColor: '#9d7bf6',
           aboutMe: newsChannelData.description || 'Официальный новостной канал',
           updatedAt: newsChannelData.updatedAt || newsChannelData.createdAt,
@@ -318,24 +362,27 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
           createdBy: newsChannelData.createdBy,
           publicId: newsChannelData.publicId || null,
           uniqueId: newsChannelData.uniqueId || null,
-          signMessages: Boolean(newsChannelData.signMessages),
-          postMode: newsChannelData.postMode || 'channel',
+          settings: newsSettings,
+          appearance: newsAppearance,
+          signMessages: Boolean(newsSettings.signMessages),
+          showAuthorProfiles: Boolean(newsSettings.showAuthorProfiles),
+          postMode: newsSettings.postMode || 'channel',
           isPinned: true,
           isArchived: false,
           unreadCount: null,
-          lastMessageSenderUUID: newsChannelData.lastMessageSenderUUID,
-          lastMessageId: newsChannelData.lastMessageId,
-          lastMessageText: newsChannelData.lastMessageText,
-          lastMessageSenderId: newsChannelData.lastMessageSenderId,
-          lastMessageType: newsChannelData.lastMessageType,
-          lastMessageAt: newsChannelData.lastMessageAt,
-          lastMessage: newsChannelData.lastMessageText ?? 'Добро пожаловать в новостной канал!',
-          lastMessageTime: newsChannelData.lastMessageAt
-            ? new Date(newsChannelData.lastMessageAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          lastMessageObj: newsChannelData.lastMessage || null,
+          lastMessageSenderUUID: newsLastMsg.senderId ?? null,
+          lastMessageSenderId: newsLastMsg.senderId ?? null,
+          lastMessageId: newsLastMsg.id ?? null,
+          lastMessageText: newsLastMsg.text ?? null,
+          lastMessageType: newsLastMsg.type || 'text',
+          lastMessageAt: newsLastMsg.createdAt ?? null,
+          lastMessage: newsLastMsg.text ?? 'Добро пожаловать в новостной канал!',
+          lastMessageTime: newsLastMsg.createdAt
+            ? new Date(newsLastMsg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             : '',
         };
 
-        // Проверяем, чтобы не сдублировался, и ставим на самое первое место
         finalChats = [
           newsChatObj,
           ...formattedChats.filter((c: any) => String(c.id) !== '1')
@@ -755,6 +802,8 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
 
   const handleLogout = () => {
     localStorage.removeItem('blyades_user_id');
+    localStorage.removeItem('blyades_username');
+    localStorage.removeItem('blyades_unique_id');
     window.location.reload();
   };
 
@@ -861,13 +910,15 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
         uuid: targetUuid,
         type: 'direct',
         name: contactFullName || targetUser.name || targetUser.username || 'Пользователь',
-        username: targetUser.username || targetUser.uniqueId,
-        uniqueId: targetUser.uniqueId,
+        username: targetUser.username || targetUser.publicId || targetUser.uniqueId,
+        publicId: targetUser.publicId ?? targetUser.uniqueId ?? null,
+        uniqueId: targetUser.publicId ?? targetUser.uniqueId ?? null,
         isGroup: false,
         isChannel: false,
         memberCount: null,
         avatarUrl: targetUser.avatarUrl,
-        avatarColor: targetUser.avatarColor || '#5865F2',
+        avatarColor: targetUser.appearance?.avatarColor || targetUser.avatarColor || '#5865F2',
+        nameColor: targetUser.appearance?.nameColor || targetUser.nameColor || '#007aff',
         updatedAt: targetUser.updatedAt || new Date().toISOString(),
         isContact: Boolean(savedContact || targetUser.isContact),
         lastMessage: 'Нет сообщений',
@@ -917,7 +968,8 @@ export function MessengerProvider({ children }: { children: React.ReactNode }) {
         isNavOpen, setIsNavOpen, openOrCreateDirectChat,
         messagesLoading, olderMessagesLoading, messagesError,
         hasMoreMessages, loadOlderMessages, users,
-        showToast, showConfirm, closeContextMenu,
+        showToast, hideToast, 
+        showConfirm, closeContextMenu,
         fetchAndMatchChats,
         handleCopyMessageText, handleSendMessage,
         handleKeyDown, handleLogout,

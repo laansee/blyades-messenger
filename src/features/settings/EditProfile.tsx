@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import styles from '../../components/css/settings.module.css';
 import useMessengerContext from '../../context/messengerContext';
 import { supabase } from '../../services/supabaseClient';
-import { userService } from '../../services/userService';
+import { userService, getUserPrivacy } from '../../services/userService';
 import { 
   getProfileTheme, 
   getNameColor, 
@@ -32,8 +32,8 @@ export default function EditProfile({ state, setters }: any) {
   const currentUser = ctx.currentUser;
   const userUuid = String(currentUser?.uuid || currentUser?.id);
 
-  const { uniqueId, username, firstName, lastName, email, phone, aboutMe, avatarColor, avatarUrl, nameColor, profileColor } = state;
-  const { setUniqueId, setUsername, setFirstName, setLastName, setEmail, setPhone, setAboutMe, setAvatarColor, setAvatarUrl, setNameColor, setProfileColor } = setters;
+  const { publicId, username, firstName, lastName, email, phone, aboutMe, avatarColor, avatarUrl, nameColor, profileColor } = state;
+  const { setPublicId, setUsername, setFirstName, setLastName, setEmail, setPhone, setAboutMe, setAvatarColor, setAvatarUrl, setNameColor, setProfileColor } = setters;
 
   // Локальный стейт для ввода без задержек
   const [localAbout, setLocalAbout] = useState(aboutMe || '');
@@ -62,12 +62,12 @@ export default function EditProfile({ state, setters }: any) {
   const [showUploadSelector, setShowUploadSelector] = useState(false);
   const [showColorModal, setShowColorModal] = useState(false);
 
-  const showFullName = currentUser?.privacyNameFormat === 'full_name';
+  const showFullName = getUserPrivacy(currentUser).privacyNameFormat === 'full_name';
   const hasNamesFilled = (firstName && firstName.trim() !== '') || (lastName && lastName.trim() !== '');
 
   const previewDisplayName = (showFullName && hasNamesFilled)
     ? `${firstName || ''} ${lastName || ''}`.trim()
-    : (username?.trim() !== '' ? username : `@${uniqueId}`);
+    : (username?.trim() !== '' ? username : (publicId ? `@${publicId}` : 'Пользователь'));
 
   // 💾 Функция сохранения «О себе» с автоматической обрезкой до 70 символов
   const saveAboutMeDirectly = async (textToSave: string) => {
@@ -228,21 +228,17 @@ export default function EditProfile({ state, setters }: any) {
         }
       };
     } else if (type === 'username') {
-      titleModal = 'Имя пользователя';
-      fields = [{ key: 'uniqueId', label: 'Имя пользователя', placeholder: 'username' }];
-      initialValues = { uniqueId };
+      titleModal = 'Публичный тег';
+      fields = [{ key: 'publicId', label: 'Имя пользователя (тег)', placeholder: 'username' }];
+      initialValues = { publicId };
       onSaveAction = async (v) => {
-        if (!v.uniqueId.trim()) {
-          ctx.showToast?.('Имя пользователя не может быть пустым', 'warning');
-          return;
-        }
-        ctx.showToast?.('Проверка и сохранение логина...', 'loading');
-        const payload = { uniqueId: v.uniqueId.trim() };
-        const res = await userService.updateProfile(userUuid, payload);
+        ctx.showToast?.('Проверка и сохранение тега...', 'loading');
+        const res = await userService.updatePublicTag(userUuid, v.publicId || null);
         if (res.success) {
-          setUniqueId(v.uniqueId.trim());
-          ctx.setCurrentUser({ ...currentUser, ...payload });
-          ctx.showToast?.('Имя пользователя обновлено ✅', 'success');
+          const newTag = res.tag || '';
+          setPublicId(newTag);
+          ctx.setCurrentUser({ ...currentUser, publicId: res.tag ?? null, uniqueId: res.tag ?? null });
+          ctx.showToast?.(res.tag ? 'Публичный тег обновлён ✅' : 'Публичный тег удалён', 'success');
         } else {
           ctx.showToast?.(`Ошибка: ${res.error}`, 'error');
         }
@@ -415,7 +411,7 @@ export default function EditProfile({ state, setters }: any) {
             </div>
             <span className={styles.tgRowLabel}>Имя пользователя</span>
             <span className={`${styles.tgRowValue} ${styles.tgRowValueAccent}`}>
-              {uniqueId ? `@${uniqueId}` : 'Не указано'}
+              {publicId ? `@${publicId}` : 'Не указано'}
             </span>
           </div>
         </div>
@@ -451,6 +447,37 @@ export default function EditProfile({ state, setters }: any) {
             </div>
           </div>
         </div>
+
+        <div className={styles.tgSectionCard} style={{ marginTop: '24px', border: '1px solid rgba(255, 69, 58, 0.3)' }}>
+          {/* <span className={styles.tgSectionTitle} style={{ color: '#ff453a' }}>Опасная зона</span> */}
+          
+          <div 
+            className={styles.tgRow} 
+            onClick={() => {
+              ctx.showConfirm(
+                'Удаление аккаунта',
+                'Вы уверены, что хотите безвозвратно удалить свой аккаунт? Это действие невозможно отменить, все ваши данные будут стерты.',
+                async () => {
+                  ctx.showToast('Удаление аккаунта...', 'loading');
+                  try {
+                    const { error } = await supabase.rpc('delete_user_account');
+                    if (error) throw error;
+
+                    localStorage.clear();
+                    ctx.showToast('Аккаунт удален', 'info');
+                    window.location.href = '/auth';
+                  } catch (err: any) {
+                    ctx.showToast(`Ошибка удаления: ${err.message}`, 'error');
+                  }
+                },
+                true // Кнопка подтверждения красная (danger)
+              );
+            }}
+            style={{ cursor: 'pointer' }}
+          >
+            <span className={styles.tgRowLabel} style={{ color: '#ff453a', fontWeight: 600 }}>Удалить аккаунт</span>
+          </div>
+        </div>
       </div>
 
       {/* Модалки */}
@@ -483,10 +510,18 @@ export default function EditProfile({ state, setters }: any) {
         }}
         onFileSelect={(e) => e.target.files && e.target.files.length > 0 && processSelectedFile(e.target.files[0])}
         onColorSelect={async (chosenColor: string) => {
+          setAvatarColor(chosenColor);
           ctx.showToast?.('Сохранение цвета аватарки...', 'loading');
           const res = await userService.updateProfile(userUuid, { avatarColor: chosenColor });
           if (res.success) {
-            ctx.setCurrentUser({ ...currentUser, avatarColor: chosenColor });
+            ctx.setCurrentUser((prev: any) => ({
+              ...prev,
+              avatarColor: chosenColor,
+              appearance: {
+                ...(prev?.appearance || {}),
+                avatarColor: chosenColor,
+              },
+            }));
             ctx.showToast?.('Цвет аватарки сохранён! 🎨', 'success');
           } else {
             ctx.showToast?.(`Ошибка сохранения: ${res.error}`, 'error');

@@ -41,9 +41,9 @@ export default function ContactsModal({ show, onClose }: ContactsModalProps) {
       'Пользователь';
 
     const avatarUrl = globalUser?.avatarUrl || contact.avatarUrl || null;
-    const avatarColor = globalUser?.avatarColor || contact.avatarColor || '#5865F2';
+    const avatarColor = globalUser?.appearance?.avatarColor || globalUser?.avatarColor || contact.avatarColor || '#5865F2';
     const updatedAt = globalUser?.updatedAt || contact.updatedAt;
-    const privacyOnline = globalUser?.privacyOnline || contact.privacyOnline || 'all';
+    const privacyOnline = globalUser?.privacy?.online || globalUser?.privacyOnline || contact.privacyOnline || 'all';
 
     return {
       ...contact,

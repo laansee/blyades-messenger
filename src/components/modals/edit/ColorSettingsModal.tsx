@@ -3,18 +3,19 @@ import { X } from 'lucide-react';
 import styles from '../../css/profile.module.css';
 import chatStyles from '../../css/chat-window.module.css';
 import SmartAvatar from '../../common/SmartAvatar';
-import { supabase } from '../../../services/supabaseClient';
 import useMessengerContext from '../../../context/messengerContext';
 import { 
   PROFILE_THEMES, 
   NAME_THEMES, 
   DEFAULT_PROFILE_COLOR, 
-  DEFAULT_NAME_THEME,
+  // DEFAULT_NAME_THEME,
   getProfileTheme,
   getNameTheme,
   type ProfileTheme,
   type NameTheme
 } from '../../../utils/themeColors';
+// Замени импорт supabase на userService и normalizeUser:
+import { userService, normalizeUser } from '../../../services/userService';
 
 
 
@@ -58,7 +59,6 @@ export const ColorCirclePicker: React.FC<ColorCirclePickerProps> = ({
         const isString = typeof item === 'string';
         const key = isString ? item : (item.id || String(index));
         const colorVal = isString ? item : item.circleColor;
-        const title = isString ? item : item.name;
         const hasCenterBadge = !isString && (item as any).hasCenterBadge;
 
         // Фон кружочка: сплошной или двухцветный диагональный сплит
@@ -325,31 +325,24 @@ export default function ColorSettingsModal({
   const handleSave = async () => {
     setLoading(true);
     try {
-      const userUuid = currentUser?.uuid;
-      const numericId = Number(currentUser?.id);
+      const userUuid = String(currentUser?.uuid || currentUser?.id || '');
+      if (!userUuid) throw new Error('Не удалось определить ID пользователя');
 
-      let query = supabase.from('users').update({
+      const res = await userService.updateProfile(userUuid, {
         profileColor,
         nameColor,
       });
 
-      if (userUuid) {
-        query = query.eq('uuid', userUuid);
-      } else if (!isNaN(numericId) && numericId > 0) {
-        query = query.eq('id', numericId);
-      } else {
-        throw new Error('Не удалось определить ID пользователя');
-      }
-
-      const { error } = await query;
-      if (error) throw error;
+      if (!res.success) throw new Error(res.error);
 
       if (ctx.setCurrentUser) {
-        ctx.setCurrentUser((prev: any) => ({
-          ...prev,
-          profileColor,
-          nameColor,
-        }));
+        ctx.setCurrentUser((prev: any) =>
+          normalizeUser({
+            ...prev,
+            profileColor,
+            nameColor,
+          })
+        );
       }
 
       ctx.showToast?.('Цвета оформления обновлены! 🎨', 'success');

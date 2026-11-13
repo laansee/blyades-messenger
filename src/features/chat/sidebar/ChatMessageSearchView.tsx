@@ -7,6 +7,7 @@ import { searchService } from '../../../services/searchService';
 import { supabase } from '../../../services/supabaseClient';
 import { UserSearchPopover } from './UserSearchPopover';
 import { CalendarSearchPopover } from './CalendarSearchPopover';
+import { userService } from '../../../services/userService';
 
 interface ChatMessageSearchViewProps {
   showUserPopover: boolean;
@@ -70,8 +71,10 @@ export const ChatMessageSearchView: React.FC<ChatMessageSearchViewProps> = ({
           if (isNaN(numChatId)) return;
           const { data: memberRows } = await supabase.from('chat_members').select('userId').eq('chatId', numChatId);
           if (memberRows && memberRows.length > 0) {
-            const { data: userData } = await supabase.from('users').select('*').in('uuid', memberRows.map((m: any) => String(m.userId)));
-            if (userData) setChatMembersList(userData);
+            const normalizedMembers = await userService.getUsersByUuids(
+              memberRows.map((m: any) => String(m.userId))
+            );
+            setChatMembersList(normalizedMembers);
           }
         } else {
           setChatMembersList(ctx.users || []);

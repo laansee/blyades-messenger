@@ -2,7 +2,7 @@ import React from 'react';
 import styles from '../../../components/css/sidebar.module.css';
 import { Check, CheckCheck, Clock, Pin, Users, Megaphone } from 'lucide-react';
 import SmartAvatar from '../../../components/common/SmartAvatar';
-import { renderUserStatusBadge } from '../../../utils/statusBadge';
+import { getUserStatusBadge } from '../../../services/userService';
 
 interface ChatCardProps {
   chat: any;
@@ -89,7 +89,14 @@ export const ChatCard: React.FC<ChatCardProps> = ({
             {!isChannel && isGroup && (
               <Users size={15} color="#8e8e93" style={{ flexShrink: 0, opacity: 0.85 }} />
             )}
-            {renderUserStatusBadge(chat)}
+            {(() => {
+              const badge = getUserStatusBadge(chat);
+              return badge ? (
+                <span title={badge.title} style={{ cursor: 'help', userSelect: 'none', flexShrink: 0 }}>
+                  {badge.icon}
+                </span>
+              ) : null;
+            })()}
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {chat.name}
             </span>

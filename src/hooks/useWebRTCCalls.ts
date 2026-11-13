@@ -52,7 +52,7 @@ export function useWebRTCCalls(ctx: any) {
           id: p.identity,
           username: found?.name || found?.username || p.name || `User #${p.identity}`,
           avatarUrl: found?.avatarUrl || null,
-          avatarColor: found?.avatarColor || '#9d7bf6',
+          avatarColor: found?.appearance?.avatarColor || found?.avatarColor || '#9d7bf6',
         });
       });
       setConferenceUsers(remoteUsers);

@@ -1,7 +1,12 @@
+.inputGroup input::-ms-reveal,
+.inputGroup input::-ms-clear {
+  display: none;
+}
+
 .authPageContainer {
   width: 100vw;
-  height: 100vh;
-  background-color: #7b0909; /* Твой фирменный глубокий красный */
+  height: 100dvh;
+  background-color: #7b0909;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -16,32 +21,31 @@
   width: 100%;
   max-width: 900px;
   height: 100%;
-  max-height: 540px;
+  max-height: 580px;
   background-color: #121216;
   border-radius: 24px;
-  overflow: hidden; /* 🔥 ОБРЕЗАЕТ ВСЁ ЛИШНЕЕ по краям карточки (каракули прячутся!) */
+  overflow: hidden;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   position: relative;
 }
 
-/* 🔥 ДЛИННЫЙ ПОЕЗД КОНТЕНТА: Выстраивает блоки в один горизонтальный ряд */
+/* Длинный трек из 3 секций (Вход — Картинка — Регистрация) */
 .authTrack {
   display: flex;
-  width: 150%; /* 3 блока по 50% каждый = 150% общей ширины */
+  width: 150%;
   height: 100%;
-  transition: transform 0.6s cubic-bezier(0.76, 0, 0.24, 1); /* Дорогая плавная инерция движения */
-  transform: translateX(0); /* По умолчанию: Авторизоваться (Картинка слева, форма справа) */
+  transition: transform 0.6s cubic-bezier(0.76, 0, 0.24, 1);
+  transform: translateX(0);
 }
 
-/* 🔥 СДВИГ ПРИ РЕГИСТРАЦИИ: Смещаем весь ряд ровно на одну секцию (на 50% влево) */
 .showRegister {
-  transform: translateX(-33.3333%); /* Сдвигает поезд, выдвигая скрытую форму справа */
+  transform: translateX(-33.3333%);
 }
 
-/* Каждый из трех блоков занимает строго одинаковую долю */
-.authFormSide, .authGraphicSide {
-  width: 33.3333%; /* Каждая панель равна ровно половине видимой карточки */
+.authFormSide,
+.authGraphicSide {
+  width: 33.3333%;
   height: 100%;
   box-sizing: border-box;
 }
@@ -50,7 +54,7 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 40px;
+  padding: 36px 40px;
   color: #ffffff;
   background-color: #121216;
 }
@@ -59,15 +63,16 @@
   overflow: hidden;
 }
 
-/* Внутренний UI (дизайн инпутов и текста) */
+/* Контейнер формы (дефолт для Входа) */
 .authFormWrapper {
   width: 100%;
   max-width: 320px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
 }
+
 .authHeaderText {
   display: flex;
   flex-direction: column;
@@ -75,30 +80,41 @@
 }
 
 .authTitle {
-  margin: 0 0 -6px 0;
+  margin: 0;
   color: #ffffff;
-  border: 0 solid;
-  font: 26px system-ui, 'Segoe UI', Roboto, sans-serif;
+  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+  font-size: 26px;
+  line-height: 1.2;
   font-weight: 700;
-  letter-spacing: -1.68px;
+  letter-spacing: -0.5px;
 }
 
 .authSubtitle {
   color: #9ca3af;
-  font-size: 13px;
+  font-size: 13.5px;
+  line-height: 1.4;
   margin: 0;
 }
 
 .authFormFields {
   display: flex;
   flex-direction: column;
+  gap: 16px;
+}
+
+/* Компактные отступы строго для 3-й секции (Регистрация), идут ПОСЛЕ базовых классов */
+.authFormSide:last-child .authFormWrapper {
   gap: 14px;
+}
+
+.authFormSide:last-child .authFormFields {
+  gap: 12px;
 }
 
 .inputGroup {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 2px;
 }
 
 .inputGroup label {
@@ -106,72 +122,78 @@
   color: #9ca3af;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin: -8px 0;
-  text-align: justify;
+  letter-spacing: 0.6px;
+  margin: 0;
+  padding-left: 2px;
 }
 
 .inputGroup input {
-  padding: 6px 14px;
-  border-radius: 8px;
+  padding: 10px 14px;
+  border-radius: 10px;
   border: 1px solid #383842;
   background-color: #1a1a22;
   color: #ffffff;
   font-size: 14px;
+  line-height: 1.4;
   outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
 }
 
 .inputGroup input:focus {
   border-color: #ef4444;
-  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+  background-color: #1f1f29;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.18);
 }
 
 .authSubmitBtn {
   width: 100%;
-  padding: 9px 14px;
-  background-color: #ef4444;
+  padding: 11px 16px;
+  background-color: #932a2a;
   color: #ffffff;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   font-weight: 700;
   font-size: 14px;
   cursor: pointer;
   transition: background-color 0.2s, transform 0.1s;
   margin-top: 6px;
-  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.3);
 }
-
-.authSubmitBtn:hover { background-color: #dc2626; }
-.authSubmitBtn:active { transform: scale(0.98); }
+.authSubmitBtn:hover {background-color: #af1f1f;}
+.authSubmitBtn:active {transform: scale(0.98);}
 
 .registerBtnColor {
-  background-color: #2ec761;
-  box-shadow: 0 4px 12px rgba(46, 199, 97, 0.3);
+  background-color: #249148;
+  box-shadow: 0 4px 14px rgba(46, 199, 97, 0.3);
 }
-.registerBtnColor:hover { background-color: #22c55e; }
+.registerBtnColor:hover {background-color: #2eaf59;}
 
 .authSwitchText {
   text-align: center;
   font-size: 13px;
   color: #9ca3af;
-  margin: 10px 0 0 0;
+  margin: 4px 0 0 0;
 }
 
 .authSwitchLink {
   color: #ef4444;
   font-weight: 600;
   cursor: pointer;
+  margin-left: 2px;
 }
-.authSwitchLink:hover { text-decoration: underline; }
+
+.authSwitchLink:hover {
+  text-decoration: underline;
+}
 
 .authErrorAlert {
   background-color: rgba(239, 68, 68, 0.1);
   border: 1px solid rgba(239, 68, 68, 0.3);
   color: #ef4444;
-  padding: 8px 12px;
-  border-radius: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
   font-size: 13px;
+  line-height: 1.35;
 }
 
 .authMockImage {
@@ -180,13 +202,40 @@
   background: linear-gradient(135deg, #1c2b59 0%, #0d1326 100%);
 }
 
+.authMockImage img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
 /* Мобильная адаптация */
 @media (max-width: 768px) {
-  .authGraphicSide { display: none; }
-  .authTrack { width: 200%; }
-  .showRegister { transform: translateX(-50%); }
-  .authFormSide { width: 50%; padding: 30px 20px; }
-}
-@media (min-width: 942px) {
-    .authGraphicSide {width: 451px}
+  .authPageContainer {
+    padding: 14px;
+  }
+
+  .authMainCard {
+    height: auto;
+    max-height: 100%;
+    border-radius: 20px;
+  }
+
+  .authGraphicSide {
+    display: none;
+  }
+
+  .authTrack {
+    width: 200%;
+    align-items: center;
+  }
+
+  .showRegister {
+    transform: translateX(-50%);
+  }
+
+  .authFormSide {
+    width: 50%;
+    padding: 28px 22px;
+  }
 }

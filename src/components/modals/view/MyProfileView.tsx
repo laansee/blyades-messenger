@@ -3,7 +3,7 @@ import { Pencil, X, Copy, QrCode, Hash } from 'lucide-react';
 import styles from '../../css/profile.module.css';
 import SmartAvatar from '../../common/SmartAvatar';
 import { getProfileGradient } from '../../../utils/themeColors';
-import { renderUserStatusBadge } from '../../../utils/statusBadge';
+import { getUserStatusBadge, getUserPrivacy } from '../../../services/userService';
 
 interface MyProfileViewProps {
   currentUser: any;
@@ -19,23 +19,19 @@ export default function MyProfileView({
 }: MyProfileViewProps) {
   if (!currentUser) return null;
 
-  const realFullName = `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim();
-  
-  // Проверяем, настроен ли вывод Имени и Фамилии в качестве Display Name
-  const isFullNameDisplay = 
-    currentUser?.privacyNameFormat === 'full_name' || 
-    currentUser?.privacyNameFormat === 'name';
+  const privacy = getUserPrivacy(currentUser);
+  const appearance = currentUser.appearance || {};
+  const badge = getUserStatusBadge(currentUser);
+  const publicTag = currentUser.publicId || currentUser.uniqueId;
 
-  // 🎯 Вычисляем заголовок шапки
+  const realFullName = `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim();
+  const isFullNameDisplay = privacy.privacyNameFormat === 'full_name';
+
   const displayName = (isFullNameDisplay && realFullName)
     ? realFullName
     : (currentUser?.username || realFullName || 'Пользователь');
 
-  // 🎯 МЕХАНИКА:
-  // Если заголовок — это никнейм, то показываем поле "Настоящие Имя и Фамилия".
-  // Если заголовок — это Имя и Фамилия, скрываем поле, чтобы не дублировать шапку.
   const shouldShowRealNameField = !isFullNameDisplay && Boolean(realFullName);
-
   const myIdDisplay = currentUser.id ? `#${currentUser.id}` : currentUser.uuid?.slice(0, 8);
 
   const handleCopy = (text: string, label: string) => {
@@ -45,19 +41,14 @@ export default function MyProfileView({
 
   return (
     <div className={styles['view-mode']}>
-      
-      {/* ======================================================== */}
-      {/* 🔮 ВЕРХНЯЯ ФИОЛЕТОВАЯ ПЛАШКА В СТИЛЕ AYUGRAM              */}
-      {/* ======================================================== */}
       <div 
         className={styles['profile-header-gradient']}
-        style={{ background: getProfileGradient(currentUser?.profileColor) }}
+        style={{ background: getProfileGradient(appearance.profileColor || currentUser?.profileColor) }}
       >
         <div className={styles['profile-header-actions']}>
           <NavLink
             to="/settings?tab=account"
             className={styles['close-modal-btn']}
-            // title="Редактировать профиль"
             onClick={() => {
               if (ctx.setActiveTab) ctx.setActiveTab('settings');
               onClose();
@@ -69,7 +60,6 @@ export default function MyProfileView({
           <button
             type="button"
             onClick={onClose}
-            // title="Закрыть"
             className={styles['close-modal-btn']}
           >
             <X size={18} />
@@ -80,14 +70,18 @@ export default function MyProfileView({
           <SmartAvatar
             size={84}
             avatarUrl={currentUser.avatarUrl}
-            avatarColor={currentUser.avatarColor}
+            avatarColor={appearance.avatarColor || currentUser.avatarColor}
             name={displayName}
             isChannel={false}
           />
         </div>
 
         <h2 className={styles['profile-name']}>
-          {renderUserStatusBadge(currentUser)}
+          {badge && (
+            <span title={badge.title} style={{ cursor: 'help', userSelect: 'none' }}>
+              {badge.icon}
+            </span>
+          )}
           {displayName}
         </h2>
 
@@ -96,11 +90,7 @@ export default function MyProfileView({
         </span>
       </div>
 
-      {/* ======================================================== */}
-      {/* 📋 ТЕЛО ПРОФИЛЯ С ИНФОРМАЦИЕЙ                            */}
-      {/* ======================================================== */}
       <div className={styles['info-section']}>
-        
         {shouldShowRealNameField && (
           <div 
             onClick={() => handleCopy(realFullName, 'Имя и Фамилия')}
@@ -116,21 +106,19 @@ export default function MyProfileView({
           </div>
         )}
 
-        {/* Имя пользователя (@username) */}
         <div 
-          onClick={() => handleCopy(`@${currentUser.uniqueId || currentUser.username}`, 'Тег пользователя')}
+          onClick={() => handleCopy(`@${publicTag || currentUser.username}`, 'Тег пользователя')}
           className={styles['info-item']}
         >
           <div className={styles['info-item-content']}>
             <span className={`${styles['info-value']} ${styles['accent']}`}>
-              @{currentUser.uniqueId || currentUser.username}
+              @{publicTag || currentUser.username}
             </span>
             <span className={styles['info-label']}>Имя пользователя</span>
           </div>
           <QrCode size={18} className={styles['info-icon']} />
         </div>
 
-        {/* Номер телефона */}
         {currentUser.phone && (
           <div 
             onClick={() => handleCopy(currentUser.phone, 'Телефон')}
@@ -144,7 +132,6 @@ export default function MyProfileView({
           </div>
         )}
 
-        {/* Электронная почта */}
         {currentUser.email && (
           <div 
             onClick={() => handleCopy(currentUser.email, 'Электронная почта')}
@@ -158,7 +145,6 @@ export default function MyProfileView({
           </div>
         )}
 
-        {/* О себе / Био */}
         {currentUser.aboutMe && currentUser.aboutMe.trim() !== '' && (
           <div className={styles['info-item']} style={{ cursor: 'default' }}>
             <div className={styles['info-item-content']}>
@@ -170,7 +156,6 @@ export default function MyProfileView({
           </div>
         )}
 
-        {/* Идентификатор профиля */}
         <div 
           onClick={() => handleCopy(currentUser.uuid, 'UUID')}
           className={styles['info-item']}

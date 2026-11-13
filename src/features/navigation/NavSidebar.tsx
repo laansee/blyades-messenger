@@ -8,6 +8,7 @@ import {
 import useMessengerContext from '../../context/messengerContext';
 import SmartAvatar from '../../components/common/SmartAvatar';
 import { getProfileTheme, getSidebarHeaderGradient } from '../../utils/themeColors';
+import { getUserPrivacy } from '../../services/userService';
 
 export default function NavSidebar({
   onOpenCreateGroup,
@@ -20,7 +21,8 @@ export default function NavSidebar({
 }) {
   const ctx = useMessengerContext();
   const isOpen = Boolean(ctx.isNavOpen);
-  const profileTheme = getProfileTheme(ctx.currentUser?.profileColor);
+  const currentAppearance = ctx.currentUser?.appearance || {};
+  const profileTheme = getProfileTheme(currentAppearance.profileColor || ctx.currentUser?.profileColor);
   const sidebarBg = getSidebarHeaderGradient(profileTheme);
 
   // Стейты меню
@@ -41,7 +43,7 @@ export default function NavSidebar({
   }, [isOpen]);
 
   const mySettingsFullName = `${ctx.currentUser?.firstName || ''} ${ctx.currentUser?.lastName || ''}`.trim();
-  const myAccountDisplayName = ctx.currentUser?.privacyNameFormat === 'full_name' && mySettingsFullName
+  const myAccountDisplayName = getUserPrivacy(ctx.currentUser).privacyNameFormat === 'full_name' && mySettingsFullName
     ? mySettingsFullName
     : (ctx.currentUser?.username && ctx.currentUser.username.trim() !== '' ? ctx.currentUser.username : 'Пользователь');
 
