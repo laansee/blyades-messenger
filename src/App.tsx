@@ -24,50 +24,57 @@ function RouteChangeWatcher() {
 
   useEffect(() => {
     const handleUrlSync = async () => {
-      // Проверяем, что мы находимся в разделе чатов
-      if (location.pathname.startsWith('/chat')) {
-        const params = new URLSearchParams(location.search);
-        const idParam = params.get('id');
+      // console.log('🌐 [RouteChangeWatcher] Сработал effect. search:', location.search, '| activeChatId в стейте:', ctx.activeChatId);
 
-        if (!idParam) {
-          // Если параметр пропал из URL, а чат был открыт — закрываем
-          if (ctx.activeChatId && ctx.setActiveChatId) {
-            ctx.setActiveChatId(null);
-          }
+      if (!location.pathname.startsWith('/chat')) {
+        if (ctx.activeChatId && ctx.setActiveChatId) {
+          ctx.setActiveChatId(null);
+        }
+        return;
+      }
+
+      const params = new URLSearchParams(location.search);
+      const idParam = params.get('id');
+
+      if (!idParam) {
+        // console.log('🌐 [RouteChangeWatcher] idParam отсутствует в URL. Закрываем активный чат.');
+        if (ctx.activeChatId && ctx.setActiveChatId) {
+          ctx.setActiveChatId(null);
+        }
+        return;
+      }
+
+      if (!ctx.chats || ctx.chats.length === 0) {
+        // console.log('⏳ [RouteChangeWatcher] Список чатов пуст, ждем загрузки данных...');
+        return;
+      }
+
+      const foundChat = resolveChatFromRoute(ctx.chats, idParam);
+
+      if (foundChat) {
+        if (String(ctx.activeChatId) === String(foundChat.id)) {
+          // console.log('✨ [RouteChangeWatcher] Чат уже открыт и равен activeChatId:', foundChat.id);
           return;
         }
-
-      // Если чаты еще не догрузились из базы, ждем
-        if (!ctx.chats || ctx.chats.length === 0) return;
-
-        const foundChat = resolveChatFromRoute(ctx.chats, idParam);
-
-        if (foundChat && String(ctx.activeChatId) !== String(foundChat.id)) {
-          ctx.setActiveChatId(String(foundChat.id));
-        } else if (!foundChat && idParam.startsWith('d') && ctx.handleStartDirectChat) {
-          // Автоматическое создание/открытие ЛС, если чата еще не было в списке
-          const targetUserId = idParam.slice(1);
-          try {
-            const newChatId = await ctx.handleStartDirectChat(targetUserId);
-            if (newChatId && String(ctx.activeChatId) !== String(newChatId)) {
-              ctx.setActiveChatId(String(newChatId));
-            }
-          } catch (err: unknown) {
-            console.error('Не удалось открыть ЛС по ссылке:', err);
+        // console.log('🚀 [RouteChangeWatcher] Переключаем activeChatId на:', foundChat.id, foundChat.name);
+        ctx.setActiveChatId(String(foundChat.id));
+      } else if (idParam.startsWith('d')) {
+        // console.log('🛠 [RouteChangeWatcher] ЛС не найдена в списке, пробуем открыть/создать для userId:', idParam.slice(1));
+        const targetUserId = idParam.slice(1);
+        try {
+          if (ctx.openOrCreateDirectChat) {
+            await ctx.openOrCreateDirectChat({ uuid: targetUserId, id: targetUserId });
           }
+        } catch (err: unknown) {
+          // console.error('❌ [RouteChangeWatcher] Не удалось открыть ЛС по ссылке:', err);
         }
       } else {
-        // Если ушли со страницы /chat — сбрасываем активный чат
-        if (ctx.setActiveChatId) ctx.setActiveChatId(null);
-        if (ctx.setEditingMessage) ctx.setEditingMessage(null);
-        if (ctx.setMessageText) ctx.setMessageText('');
-        if (ctx.setShowMsgSearch) ctx.setShowMsgSearch(false);
-        if (ctx.setSearchQuery) ctx.setSearchQuery('');
+        // console.warn('⚠️ [RouteChangeWatcher] Чат не найден по idParam:', idParam);
       }
     };
 
     handleUrlSync();
-  }, [location.pathname, location.search, ctx.chats]);
+  }, [location.search, ctx.chats, ctx.activeChatId]);
 
   return null;
 }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useNavigate } from 'react-router';
 import styles from '../../components/css/chat-window.module.css';
 import useMessengerContext, { formatUserOnlineStatus } from '../../context/messengerContext';
 import { supabase } from '../../services/supabaseClient';
@@ -35,7 +36,8 @@ function formatHoursAndMinutes(isoString: string | undefined): string {
 }
 
 export default function ChatWindow() {
-  const ctx = useMessengerContext();
+  const navigate = useNavigate();
+const ctx = useMessengerContext();
   const messagesBodyRef = useRef<HTMLDivElement>(null);
   const messageInputRef = useRef<HTMLTextAreaElement>(null);
   
@@ -75,6 +77,7 @@ export default function ChatWindow() {
   const [isMobileOpen, setIsMobileOpen] = useState<boolean>(Boolean(ctx.activeChatId));
 
   useEffect(() => {
+    // console.log('🪟 [ChatWindow Animation Effect] ctx.activeChatId изменился на:', ctx.activeChatId, '| текущий renderedChatId:', renderedChatId);
     if (ctx.activeChatId) {
       setRenderedChatId(String(ctx.activeChatId));
       const rafId = requestAnimationFrame(() => {
@@ -85,14 +88,15 @@ export default function ChatWindow() {
       return () => cancelAnimationFrame(rafId);
     } else {
       setIsMobileOpen(false);
-      // Таймаут сброса: для продакшна 300мс (под transition: 0.28s).
-      // Если тестируете на 3 секундах, поставьте здесь 3000
+      // console.log('🪟 [ChatWindow Animation Effect] Закрываем окно чата (запуск таймера 300мс)');
       const closeTimer = setTimeout(() => {
         setRenderedChatId(null);
+        // console.log('🪟 [ChatWindow Animation Effect] renderedChatId сброшен в null');
       }, 300);
       return () => clearTimeout(closeTimer);
     }
   }, [ctx.activeChatId]);
+  
 
   // Канал: настройки и выбор авторства
   const [sendAsType, setSendAsType] = useState<'user' | 'channel'>('channel');
@@ -158,6 +162,16 @@ export default function ChatWindow() {
 
     return null;
   }, [ctx.chats, ctx.contacts, ctx.users, activeChatIdStr]);
+
+  // 🎯 Динамическое обновление заголовка страницы в зависимости от открытого чата
+  useEffect(() => {
+    if (activeChatIdStr && currentChatUser) {
+      const displayName = currentChatUser.name || currentChatUser.username || 'Чат';
+      document.title = `${displayName} | Byades`;
+    } else {
+      document.title = 'Чаты | Byades';
+    }
+  }, [activeChatIdStr, currentChatUser]);
 
   // 2. Определение режима чата
   const isChannel = Boolean(currentChatUser?.isChannel || currentChatUser?.type === 'channel');
@@ -937,6 +951,7 @@ export default function ChatWindow() {
               ctx.setActiveChatId(null);
               if (ctx.setEditingMessage) ctx.setEditingMessage(null);
               if (ctx.setMessageText) ctx.setMessageText('');
+              navigate('/chat', { replace: true }); // 🎯 Сбрасываем URL на чистый /chat
             }}
             title="Назад к чатам"
           >
@@ -1134,22 +1149,55 @@ export default function ChatWindow() {
           </div>
         )}
         
-        {ctx.messagesLoading ? (
+        {ctx.messagesLoading && displayedMessages.length === 0 ? (
           <div className={styles['skeleton-container']}>
-            <div className={`${styles['skeleton-row']} ${styles['skeleton-incoming']}`}>
-              <div className={styles['skeleton-avatar']} />
-              <div className={`${styles['skeleton-bubble']} ${styles['skeleton-bubble-incoming']}`} style={{ width: '180px' }}>
-                <div className={styles['skeleton-line']} style={{ width: '70%' }} />
-                <div className={styles['skeleton-meta']} />
+            {/* 1. Входящее (короткое) */}
+            <div className={`${styles['skeleton-row']} ${styles['skeleton-incoming']}`} style={{ display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
+              <div className={styles['skeleton-avatar']} style={{ width: '34px', height: '34px', borderRadius: '50%', backgroundColor: '#2b2d31', flexShrink: 0 }} />
+              <div className={`${styles['skeleton-bubble']} ${styles['skeleton-bubble-incoming']}`} style={{ width: '180px', padding: '12px', borderRadius: '12px', backgroundColor: '#1e1f22' }}>
+                <div className={styles['skeleton-line']} style={{ width: '70%', height: '12px', backgroundColor: '#2b2d31', borderRadius: '4px' }} />
+                <div className={styles['skeleton-meta']} style={{ width: '30%', height: '8px', backgroundColor: '#2b2d31', borderRadius: '4px', marginTop: '8px', marginLeft: 'auto' }} />
               </div>
             </div>
-            <div className={`${styles['skeleton-row']} ${styles['skeleton-outgoing']}`}>
-              <div className={`${styles['skeleton-bubble']} ${styles['skeleton-bubble-outgoing']}`} style={{ width: '240px' }}>
-                <div className={`${styles['skeleton-line']} ${styles['skeleton-line-outgoing']}`} style={{ width: '90%' }} />
-                <div className={`${styles['skeleton-line']} ${styles['skeleton-line-outgoing']}`} style={{ width: '50%' }} />
-                <div className={styles['skeleton-meta']} />
+
+            {/* 2. Исходящее (среднее двухстрочное) */}
+            <div className={`${styles['skeleton-row']} ${styles['skeleton-outgoing']}`} style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <div className={`${styles['skeleton-bubble']} ${styles['skeleton-bubble-outgoing']}`} style={{ width: '240px', padding: '12px', borderRadius: '12px', backgroundColor: '#2b2d31' }}>
+                <div className={`${styles['skeleton-line']} ${styles['skeleton-line-outgoing']}`} style={{ width: '90%', height: '12px', backgroundColor: '#3f4147', borderRadius: '4px' }} />
+                <div className={`${styles['skeleton-line']} ${styles['skeleton-line-outgoing']}`} style={{ width: '50%', height: '12px', backgroundColor: '#3f4147', borderRadius: '4px', marginTop: '6px' }} />
+                <div className={styles['skeleton-meta']} style={{ width: '25%', height: '8px', backgroundColor: '#3f4147', borderRadius: '4px', marginTop: '8px', marginLeft: 'auto' }} />
               </div>
             </div>
+
+            {/* 3. Входящее (длинное трехстрочное) */}
+            <div className={`${styles['skeleton-row']} ${styles['skeleton-incoming']}`} style={{ display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
+              <div className={styles['skeleton-avatar']} style={{ width: '34px', height: '34px', borderRadius: '50%', backgroundColor: '#2b2d31', flexShrink: 0 }} />
+              <div className={`${styles['skeleton-bubble']} ${styles['skeleton-bubble-incoming']}`} style={{ width: '280px', padding: '12px', borderRadius: '12px', backgroundColor: '#1e1f22' }}>
+                <div className={styles['skeleton-line']} style={{ width: '95%', height: '12px', backgroundColor: '#2b2d31', borderRadius: '4px' }} />
+                <div className={styles['skeleton-line']} style={{ width: '80%', height: '12px', backgroundColor: '#2b2d31', borderRadius: '4px', marginTop: '6px' }} />
+                <div className={styles['skeleton-line']} style={{ width: '40%', height: '12px', backgroundColor: '#2b2d31', borderRadius: '4px', marginTop: '6px' }} />
+                <div className={styles['skeleton-meta']} style={{ width: '25%', height: '8px', backgroundColor: '#2b2d31', borderRadius: '4px', marginTop: '8px', marginLeft: 'auto' }} />
+              </div>
+            </div>
+
+            {/* 4. Исходящее (короткое) */}
+            <div className={`${styles['skeleton-row']} ${styles['skeleton-outgoing']}`} style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <div className={`${styles['skeleton-bubble']} ${styles['skeleton-bubble-outgoing']}`} style={{ width: '140px', padding: '12px', borderRadius: '12px', backgroundColor: '#2b2d31' }}>
+                <div className={`${styles['skeleton-line']} ${styles['skeleton-line-outgoing']}`} style={{ width: '80%', height: '12px', backgroundColor: '#3f4147', borderRadius: '4px' }} />
+                <div className={styles['skeleton-meta']} style={{ width: '35%', height: '8px', backgroundColor: '#3f4147', borderRadius: '4px', marginTop: '8px', marginLeft: 'auto' }} />
+              </div>
+            </div>
+
+            {/* 5. Входящее (среднее) */}
+            <div className={`${styles['skeleton-row']} ${styles['skeleton-incoming']}`} style={{ display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
+              <div className={styles['skeleton-avatar']} style={{ width: '34px', height: '34px', borderRadius: '50%', backgroundColor: '#2b2d31', flexShrink: 0 }} />
+              <div className={`${styles['skeleton-bubble']} ${styles['skeleton-bubble-incoming']}`} style={{ width: '210px', padding: '12px', borderRadius: '12px', backgroundColor: '#1e1f22' }}>
+                <div className={styles['skeleton-line']} style={{ width: '85%', height: '12px', backgroundColor: '#2b2d31', borderRadius: '4px' }} />
+                <div className={styles['skeleton-line']} style={{ width: '60%', height: '12px', backgroundColor: '#2b2d31', borderRadius: '4px', marginTop: '6px' }} />
+                <div className={styles['skeleton-meta']} style={{ width: '30%', height: '8px', backgroundColor: '#2b2d31', borderRadius: '4px', marginTop: '8px', marginLeft: 'auto' }} />
+              </div>
+            </div>
+            
           </div>
         ) : (
           groupedDays.map((dayGroup) => {

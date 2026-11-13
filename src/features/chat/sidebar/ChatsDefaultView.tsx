@@ -2,6 +2,8 @@ import React, { useState, useMemo } from 'react';
 import styles from '../../../components/css/sidebar.module.css';
 import useMessengerContext from '../../../context/messengerContext';
 import { ChatCard } from './ChatCard';
+import { useNavigate } from 'react-router';
+import { getChatRouteId } from '../../../utils/chatRoute';
 
 interface ChatsDefaultViewProps {
   currentUserIdStr: string;
@@ -19,6 +21,7 @@ export const ChatsDefaultView: React.FC<ChatsDefaultViewProps> = ({
   formatMessageTimeOrDate
 }) => {
   const ctx = useMessengerContext();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'all' | 'unread' | 'groups'>('all');
 
   const visibleChats = useMemo(() => {
@@ -39,7 +42,6 @@ export const ChatsDefaultView: React.FC<ChatsDefaultViewProps> = ({
       });
   }, [ctx.chats, activeTab]);
 
-  // Проверяем флаг загрузки из контекста (если у вас он называется иначе, например, ctx.loading, подставьте его)
   const isLoading = ctx.chatsLoading || ctx.loading;
 
   return (
@@ -85,7 +87,11 @@ export const ChatsDefaultView: React.FC<ChatsDefaultViewProps> = ({
               isSelected={String(ctx.activeChatId) === String(chat.id)}
               currentUserIdStr={currentUserIdStr}
               isUserOnline={ctx.isUserOnline ? ctx.isUserOnline(chat) : false}
-              onSelect={() => ctx.setActiveChatId(String(chat.id))}
+              onSelect={() => {
+                const routeId = getChatRouteId(chat, currentUserIdStr);
+                // console.log('🖱️ [ChatClick] Клик по чату в сайдбаре:', { name: chat.name, id: chat.id, calculatedRouteId: routeId });
+                navigate(`/chat?id=${routeId}`);
+              }}
               onContextMenu={(e) => onOpenContextMenu(e, chat)}
               resolveSenderName={resolveSenderName}
               formatText={formatSidebarMessageText}
